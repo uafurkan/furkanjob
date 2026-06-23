@@ -1,0 +1,14 @@
+{
+  "name": "furkan-job-apply",
+  "version": "1.0.0",
+  "description": "İşletme içeriğini yapıştır; mail bul/ara, ülke-pozisyon algıla, başvuru taslağı üret ve CV ile otomatik gönder.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "nodemailer": "^6.9.13"
+  }
+}
