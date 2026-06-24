@@ -103,6 +103,36 @@
 .plan-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); font-size: var(--text-14); }
 .plan-list li::before { content: "✓ "; color: var(--signal-success); }
 
+/* ---------- Confirm modal ---------- */
+.confirm-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4);
+  animation: fade-in .15s ease;
+}
+.confirm-modal {
+  width: 100%; max-width: 400px;
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  display: flex; flex-direction: column; gap: var(--space-4);
+}
+.confirm-title {
+  font-size: var(--text-18); font-weight: 600; color: var(--content-primary);
+}
+.confirm-to {
+  font-size: var(--text-14); color: var(--content-secondary);
+  word-break: break-all;
+}
+.confirm-cv {
+  font-size: var(--text-13); color: var(--content-tertiary);
+}
+.confirm-actions {
+  display: flex; gap: var(--space-3); justify-content: flex-end; padding-top: var(--space-2);
+}
+@keyframes fade-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
+
 /* ---------- Admin ---------- */
 .admin-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-4); }
 

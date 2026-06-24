@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useT } from "@/components/i18n";
 import { APP_LANGS } from "@/lib/engine/template";
@@ -33,6 +33,7 @@ export default function NewApplication() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err" | "warn"; text: string } | null>(null);
+  const [confirmPending, setConfirmPending] = useState<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
 
   const srcLabel = (s: string) =>
     ({ text: t("new.src.text"), "page-scrape": t("new.src.scrape"), "web-search": t("new.src.web"), none: t("new.src.none") } as Record<string, string>)[s] || s;
@@ -72,7 +73,7 @@ export default function NewApplication() {
 
   async function doSend(p: { to: string; subject: string; body: string; meta: GenResult }, skipConfirm = false) {
     if (!p.to.trim()) return setMsg({ kind: "err", text: t("new.enterRecipient") });
-    if (!skipConfirm && !confirm(`${p.to}\n\n${t("new.send")}?`)) return;
+    if (!skipConfirm) { setConfirmPending(p); return; }
     setSending(true);
     setMsg(null);
     try {
@@ -177,6 +178,24 @@ export default function NewApplication() {
       )}
 
       {msg && <div className={`notice notice-${msg.kind} reveal`}>{msg.text}</div>}
+
+      {confirmPending && (
+        <div className="confirm-overlay" onClick={() => setConfirmPending(null)}>
+          <div className="confirm-modal glass" onClick={(e) => e.stopPropagation()}>
+            <p className="confirm-title">{t("new.send")}?</p>
+            <p className="confirm-to">{confirmPending.to}</p>
+            {confirmPending.meta.cv && (
+              <p className="confirm-cv">📎 {confirmPending.meta.cv.filename}</p>
+            )}
+            <div className="confirm-actions">
+              <button className="btn" onClick={() => setConfirmPending(null)}>{t("new.cancel")}</button>
+              <button className="btn btn-primary" onClick={() => { const p = confirmPending; setConfirmPending(null); doSend(p, true); }}>
+                {t("new.send")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
