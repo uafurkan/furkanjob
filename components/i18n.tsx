@@ -26,11 +26,17 @@ export function useT(): Ctx {
 
 export function LangToggle({ className = "" }: { className?: string }) {
   const { lang, setLang } = useT();
+  const handleClick = () => {
+    const newLang = lang === "en" ? "tr" : "en";
+    setLang(newLang);
+    document.cookie = `lang=${newLang}; path=/; max-age=31536000; samesite=lax`;
+    window.location.reload();
+  };
   return (
     <button
       className={`btn btn-sm btn-ghost ${className}`}
       aria-label="Language"
-      onClick={() => setLang(lang === "en" ? "tr" : "en")}
+      onClick={handleClick}
       title={lang === "en" ? "Türkçe'ye geç" : "Switch to English"}
     >
       {lang === "en" ? "EN" : "TR"}
