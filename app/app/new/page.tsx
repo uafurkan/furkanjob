@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useT } from "@/components/i18n";
 import { APP_LANGS } from "@/lib/engine/template";
@@ -21,6 +21,32 @@ type GenResult = {
   used: number;
 };
 
+type SavedDraft = {
+  text: string;
+  language: string;
+  auto: boolean;
+  to: string;
+  subject: string;
+  body: string;
+  res: GenResult;
+  savedAt: number;
+};
+
+const DRAFT_KEY = "paply:draft:v1";
+
+function saveDraft(draft: SavedDraft) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch {}
+}
+function loadDraft(): SavedDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as SavedDraft) : null;
+  } catch { return null; }
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+}
+
 export default function NewApplication() {
   const { t } = useT();
   const [text, setText] = useState("");
@@ -34,6 +60,45 @@ export default function NewApplication() {
   const [sending, setSending] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err" | "warn"; text: string } | null>(null);
   const [confirmPending, setConfirmPending] = useState<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore draft on mount
+  useEffect(() => {
+    const d = loadDraft();
+    if (!d) return;
+    setText(d.text);
+    setLanguage(d.language);
+    setAuto(d.auto);
+    setRes(d.res);
+    setTo(d.to);
+    setSubject(d.subject);
+    setBody(d.body);
+    setDraftRestoredAt(d.savedAt);
+  }, []);
+
+  // Auto-save draft whenever editable fields change (debounced 800ms)
+  useEffect(() => {
+    if (!res) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveDraft({ text, language, auto, to, subject, body, res, savedAt: Date.now() });
+    }, 800);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [text, language, auto, to, subject, body, res]);
+
+  function discardDraft() {
+    clearDraft();
+    setText("");
+    setLanguage("auto");
+    setAuto(false);
+    setRes(null);
+    setTo("");
+    setSubject("");
+    setBody("");
+    setMsg(null);
+    setDraftRestoredAt(null);
+  }
 
   const srcLabel = (s: string) =>
     ({ text: t("new.src.text"), "page-scrape": t("new.src.scrape"), "web-search": t("new.src.web"), none: t("new.src.none") } as Record<string, string>)[s] || s;
@@ -57,6 +122,7 @@ export default function NewApplication() {
       setTo(toVal);
       setSubject(d.subject);
       setBody(d.body);
+      setDraftRestoredAt(null);
       if (d.emailSource === "none") {
         setMsg({ kind: "warn", text: t("new.noEmailFound") });
         return;
@@ -89,6 +155,8 @@ export default function NewApplication() {
       const d = await r.json();
       if (r.status === 402) return setMsg({ kind: "warn", text: t("new.limitReached") });
       if (!r.ok) throw new Error(d.error || "Error");
+      clearDraft();
+      setDraftRestoredAt(null);
       setMsg({ kind: "ok", text: `${d.sentTo.join(", ")} ${d.cvAttached ? t("new.cvAttached") : t("new.cvNone")}` });
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
@@ -97,11 +165,30 @@ export default function NewApplication() {
     }
   }
 
+  const restoredLabel = draftRestoredAt
+    ? t("new.draftRestored").replace("{time}", new Date(draftRestoredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+    : null;
+
   return (
     <div className="page-new stack gap-6">
       <header className="page-head">
-        <h1>{t("new.title")}</h1>
-        <p className="text-secondary">{t("new.sub")}</p>
+        <div className="row gap-3" style={{ justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div>
+            <h1>{t("new.title")}</h1>
+            <p className="text-secondary">{t("new.sub")}</p>
+          </div>
+          {res && (
+            <button className="btn btn-ghost btn-sm draft-discard" onClick={discardDraft} title={t("new.discard")}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+              </svg>
+              {t("new.discard")}
+            </button>
+          )}
+        </div>
+        {restoredLabel && (
+          <p className="draft-restored-notice">{restoredLabel}</p>
+        )}
       </header>
 
       <section className="glass card stack gap-4">

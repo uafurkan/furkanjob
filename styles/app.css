@@ -103,6 +103,28 @@
 .plan-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); font-size: var(--text-14); }
 .plan-list li::before { content: "✓ "; color: var(--signal-success); }
 
+/* ---------- Draft restore notice ---------- */
+.draft-restored-notice {
+  margin-top: var(--space-2);
+  font-size: var(--text-12);
+  color: var(--content-tertiary);
+  display: flex; align-items: center; gap: 5px;
+}
+.draft-restored-notice::before {
+  content: "";
+  display: inline-block; width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--signal-success, #5FD0A6);
+  flex-shrink: 0;
+}
+.draft-discard {
+  color: var(--signal-error, #F2796B);
+  border-color: rgba(242,121,107,.25);
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.draft-discard:hover { background: rgba(242,121,107,.08); }
+
 /* ---------- Confirm modal ---------- */
 .confirm-overlay {
   position: fixed; inset: 0; z-index: 200;
