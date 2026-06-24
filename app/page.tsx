@@ -78,7 +78,7 @@ export default function Landing() {
 
       <footer className="landing-foot container text-secondary">
         <span>
-          paply &nbsp;·&nbsp;
+          <a href="https://paply.me" style={{ textDecoration: "none", color: "inherit" }}>paply.me</a> &nbsp;·&nbsp;
           <span style={{ fontSize: "var(--text-12)", opacity: 0.55 }}>a <strong style={{ fontWeight: 600, color: "var(--content-secondary)" }}>Veor</strong> company</span>
         </span>
         <Link href="/app/new" className="btn btn-sm">{t("landing.foot.cta")}</Link>

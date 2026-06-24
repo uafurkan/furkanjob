@@ -1,6 +1,6 @@
 {
-  "name": "paply",
-  "short_name": "applythat",
+  "name": "paply.me",
+  "short_name": "paply",
   "description": "Paste a page, send the application — with your CV, from your inbox.",
   "start_url": "/app/new",
   "scope": "/",
