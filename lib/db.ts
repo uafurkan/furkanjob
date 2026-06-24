@@ -298,6 +298,9 @@ export async function getDefaultCv(userId: string): Promise<Cv | null> {
 export async function addCv(
   data: Omit<Cv, "id" | "createdAt" | "isDefault"> & { isDefault?: boolean; dataB64?: string }
 ): Promise<Cv> {
+  // Self-contained, idempotent migration: guarantees the cvs.data column exists
+  // (ensureSchema is never wired up at runtime, so the upload path runs it here).
+  await sql`ALTER TABLE cvs ADD COLUMN IF NOT EXISTS data TEXT`;
   await sql`UPDATE cvs SET is_default=FALSE WHERE user_id=${data.userId}`;
   const rows = await sql`
     INSERT INTO cvs (id, user_id, filename, storage_key, mime, size, data, is_default, created_at)
