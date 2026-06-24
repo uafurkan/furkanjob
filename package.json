@@ -1,8 +1,8 @@
 {
-  "name": "applythatforme",
+  "name": "paply",
   "version": "0.1.0",
   "private": true,
-  "description": "applythatforme.com — paste a business page, the agent finds the email, writes a tailored visa-sponsorship application, and sends it with your CV from your connected inbox.",
+  "description": "paply — paste a business page, the agent finds the email, writes a tailored visa-sponsorship application, and sends it with your CV from your connected inbox.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

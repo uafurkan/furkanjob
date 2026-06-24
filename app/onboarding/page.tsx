@@ -36,7 +36,7 @@ export default async function OnboardingPage() {
   return (
     <main className="onboarding container">
       <header className="page-head reveal">
-        <Link href="/" className="brand"><span className="brand-dot" /> applythatforme</Link>
+        <Link href="/" className="brand"><span className="brand-dot" /> paply</Link>
         <h1 style={{ marginTop: "var(--space-4)" }}>{t("onboarding.title")}</h1>
         <p className="text-secondary">{t("onboarding.sub")}</p>
       </header>

@@ -14,7 +14,7 @@ export default function Landing() {
   return (
     <main className="landing">
       <header className="site-header glass">
-        <Link href="/" className="brand"><span className="brand-dot" /> applythatforme</Link>
+        <Link href="/" className="brand"><span className="brand-dot" /> paply</Link>
         <div className="topbar-right">
           <LangToggle />
           <Link href="/signin" className="btn btn-sm">{t("common.signin")}</Link>
@@ -81,7 +81,7 @@ export default function Landing() {
       </section>
 
       <footer className="landing-foot container text-secondary">
-        <span>applythatforme</span>
+        <span>paply</span>
         <Link href="/app/new" className="btn btn-sm">{t("landing.foot.cta")}</Link>
       </footer>
     </main>

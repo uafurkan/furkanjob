@@ -3,7 +3,7 @@ import "./globals.css";
 import Providers from "./providers";
 import { getLang } from "@/lib/i18n-server";
 
-const APP = process.env.NEXT_PUBLIC_APP_NAME || "applythatforme";
+const APP = process.env.NEXT_PUBLIC_APP_NAME || "paply";
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {

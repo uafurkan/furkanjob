@@ -1,4 +1,4 @@
-# applythatforme — Product Rules (global, not tied to any individual)
+# paply — Product Rules (global, not tied to any individual)
 
 This is a multi-tenant SaaS. Nothing in the product is hardcoded to a specific person; every applicant
 fills in their own profile during onboarding and signs in with their own email.

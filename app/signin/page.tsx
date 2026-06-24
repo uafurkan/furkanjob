@@ -11,7 +11,7 @@ export default function SignInPage() {
     <main className="centered-page">
       <div className="glass-strong card card-pad-lg auth-card reveal">
         <Link href="/" className="brand" style={{ justifyContent: "center", marginBottom: "var(--space-4)" }}>
-          <span className="brand-dot" /> applythatforme
+          <span className="brand-dot" /> paply
         </Link>
         <h1 style={{ textAlign: "center", fontSize: "var(--text-28)" }}>{t("signin.title")}</h1>
         <p className="text-secondary" style={{ textAlign: "center", marginBottom: "var(--space-6)" }}>

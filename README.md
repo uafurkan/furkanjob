@@ -1,4 +1,4 @@
-# applythatforme
+# paply
 
 Paste any hotel/restaurant page → the agent finds the business email (or searches the web), writes a
 tailored, multilingual visa-sponsorship application, and sends it with your CV **from your own connected
@@ -45,7 +45,7 @@ Out of the box (no keys): demo sign-in, smart-template drafts, JSON storage. Add
 - **Auth** (`lib/auth.ts`): NextAuth (Google + demo), encrypted token storage (`lib/crypto.ts`).
 - **i18n** (`lib/i18n.ts`, `components/i18n.tsx`): EN default, TR toggle.
 
-## Notes for going live (applythatforme.com)
+## Notes for going live (paply.app)
 
 - Set `NEXT_PUBLIC_BASE_URL` + Google OAuth redirect URI to the domain; submit the `gmail.send` scope for
   Google verification; register the domain in Stripe for Apple Pay.

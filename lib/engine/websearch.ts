@@ -4,7 +4,7 @@
 // Never fabricates an address — only extracts ones that actually appear on a page.
 import { extractEmails } from "./detect";
 
-const UA = "Mozilla/5.0 (compatible; ApplyThatForMeBot/1.0; +https://applythatforme.com)";
+const UA = "Mozilla/5.0 (compatible; PaplyBot/1.0; +https://paply.app)";
 const TIMEOUT = 12000;
 
 async function fetchText(url: string): Promise<string> {

@@ -20,8 +20,8 @@ export default function AppNav({ name, plan, isAdmin }: { name?: string | null; 
     <>
       {/* desktop top bar */}
       <header className="topbar glass" role="banner">
-        <Link href="/app/new" className="brand" aria-label="applythatforme">
-          <span className="brand-dot" /> applythatforme
+        <Link href="/app/new" className="brand" aria-label="paply">
+          <span className="brand-dot" /> paply
         </Link>
         <nav className="topnav" aria-label="Menu">
           {TABS.map((tab) => (
