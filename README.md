@@ -45,8 +45,10 @@ Out of the box (no keys): demo sign-in, smart-template drafts, JSON storage. Add
 - **Auth** (`lib/auth.ts`): NextAuth (Google + demo), encrypted token storage (`lib/crypto.ts`).
 - **i18n** (`lib/i18n.ts`, `components/i18n.tsx`): EN default, TR toggle.
 
-## Notes for going live (paply.app)
+## Notes for going live (paply.me)
 
-- Set `NEXT_PUBLIC_BASE_URL` + Google OAuth redirect URI to the domain; submit the `gmail.send` scope for
-  Google verification; register the domain in Stripe for Apple Pay.
-- Swap the JSON repository for Prisma/Postgres and object storage (S3/R2) for CVs.
+- Set `NEXT_PUBLIC_BASE_URL=https://paply.me` + `NEXTAUTH_URL=https://paply.me` in Vercel env.
+- Update Google OAuth redirect URI to `https://paply.me/api/auth/callback/google`; submit the `gmail.send` scope for
+  Google verification.
+- Register the domain in Stripe for Apple Pay & Google Pay automatic detection.
+- (Optional) Swap the JSON repository for Prisma/Postgres and object storage (S3/R2) for CVs once scaling.
