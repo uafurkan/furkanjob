@@ -1,5 +1,4 @@
 import Link from "next/link";
-import LiquidLens from "@/components/glass/LiquidLens";
 import { LangToggle } from "@/components/i18n";
 import { getT } from "@/lib/i18n-server";
 
@@ -40,20 +39,17 @@ export default function Landing() {
         </div>
 
         <div className="hero-stage reveal delay-2">
-          <LiquidLens width={140} height={140}>
-            <div className="hero-scene">
-              <div className="scene-side scene-raw">
-                <div className="scene-tag">{t("landing.scene.pasted")}</div>
-                <p>Lakeside Suites, Queenstown. Front desk &amp; kitchen roles. careers@example-hotel.co.nz</p>
-              </div>
-              <div className="scene-side scene-out">
-                <div className="scene-tag">{t("landing.scene.application")}</div>
-                <p><b>Front Desk / Kitchen — Lakeside Suites</b></p>
-                <p className="text-secondary">Dear Hiring Manager, I require AEWV sponsorship to work in New Zealand…</p>
-              </div>
+          <div className="hero-scene">
+            <div className="scene-side scene-raw">
+              <div className="scene-tag">{t("landing.scene.pasted")}</div>
+              <p>Lakeside Suites, Queenstown. Front desk &amp; kitchen roles. careers@example-hotel.co.nz</p>
             </div>
-          </LiquidLens>
-          <p className="hero-hint text-secondary">{t("landing.hint")}</p>
+            <div className="scene-side scene-out">
+              <div className="scene-tag">{t("landing.scene.application")}</div>
+              <p><b>Front Desk / Kitchen — Lakeside Suites</b></p>
+              <p className="text-secondary">Dear Hiring Manager, I require AEWV sponsorship to work in New Zealand…</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -81,7 +77,10 @@ export default function Landing() {
       </section>
 
       <footer className="landing-foot container text-secondary">
-        <span>paply</span>
+        <span>
+          paply &nbsp;·&nbsp;
+          <span style={{ fontSize: "var(--text-12)", opacity: 0.55 }}>a <strong style={{ fontWeight: 600, color: "var(--content-secondary)" }}>Veor</strong> company</span>
+        </span>
         <Link href="/app/new" className="btn btn-sm">{t("landing.foot.cta")}</Link>
       </footer>
     </main>
