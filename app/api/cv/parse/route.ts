@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
-import * as pdfjsLib from "pdfjs-dist";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export const runtime = "nodejs";
-export const config = { api: { bodyParser: { sizeLimit: "10mb" } } };
+export const maxDuration = 30;
 
 async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  // Legacy build runs in Node without DOM APIs (no DOMMatrix/canvas).
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const pdf = await pdfjsLib.getDocument({
+    data: new Uint8Array(buffer),
+    useSystemFonts: true,
+    disableFontFace: true,
+  }).promise;
   let text = "";
   for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    text += content.items.map((item: any) => item.str).join(" ");
+    text += content.items.map((item: any) => ("str" in item ? item.str : "")).join(" ");
   }
   return text.slice(0, 6000);
 }
