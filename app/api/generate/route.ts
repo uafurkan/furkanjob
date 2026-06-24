@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfile, getUsage, getDefaultCv } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
 import { runPipeline } from "@/lib/engine/pipeline";
-import { canUseAI, isOverLimit, planInfo } from "@/lib/plans";
+import { aiTier, isOverLimit, planInfo } from "@/lib/plans";
 
 export const runtime = "nodejs";
 
@@ -20,12 +20,11 @@ export async function POST(req: Request) {
 
   const profile = await getProfile(user.id);
   const engineProfile = toEngineProfile(profile, user);
-  const useAI = canUseAI(user.plan);
 
   const result = await runPipeline({
     text,
     profile: engineProfile,
-    useAI,
+    tier: aiTier(user.plan),
     searchWeb: true,
     language: body?.language || undefined,
     hints: {

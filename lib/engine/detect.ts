@@ -60,6 +60,13 @@ export function detectCountry(text: string): CountryRule {
   return { code: "XX", name: "the destination country", visa: "work visa sponsorship" };
 }
 
+// Canonical country/visa lookup by code (used when the AI layer returns a country code,
+// so visa wording stays controlled rather than AI-generated).
+export function countryByCode(code: string): CountryRule {
+  const r = COUNTRY_RULES.find((c) => c.code === code.toUpperCase());
+  return r ? { code: r.code, name: r.name, visa: r.visa } : { code: "XX", name: "the destination country", visa: "work visa sponsorship" };
+}
+
 const POSITION_RULES: { test: RegExp; label: string }[] = [
   { test: /\bfront desk|receptionist|front office\b/i, label: "Front Desk" },
   { test: /\bkitchen|chef|cook|kitchen hand|commis\b/i, label: "Kitchen" },
@@ -75,13 +82,33 @@ export function detectPositions(text: string): string[] {
   return hits.length ? [...new Set(hits)] : [];
 }
 
+// Collapse a brand string that was duplicated by scraped logo markup:
+// "Hotel Montreal Hotel Montreal" or "Hotel MontrealHotel Montreal" → "Hotel Montreal".
+function collapseDouble(s: string): string {
+  const compact = s.replace(/\s+/g, " ").trim();
+  const words = compact.split(" ");
+  if (words.length >= 2 && words.length % 2 === 0) {
+    const h = words.length / 2;
+    if (words.slice(0, h).join(" ").toLowerCase() === words.slice(h).join(" ").toLowerCase()) {
+      return words.slice(0, h).join(" ");
+    }
+  }
+  const n = compact.length;
+  if (n >= 6 && n % 2 === 0) {
+    const a = compact.slice(0, n / 2).trim();
+    const b = compact.slice(n / 2).trim();
+    if (a && a.toLowerCase() === b.toLowerCase()) return a;
+  }
+  return compact;
+}
+
 export function guessCompany(text: string, emails: string[]): string {
   // Prefer a content line that names a venue type.
   const venueLine = text
     .split("\n")
     .map((l) => l.trim())
     .find((l) => /\b(hotel|suites|resort|restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie)\b/i.test(l) && l.length < 80);
-  if (venueLine) return venueLine.replace(/\s+[-–—|].*$/, "").trim();
+  if (venueLine) return collapseDouble(venueLine.replace(/\s+[-–—|].*$/, "").trim());
 
   if (emails.length) {
     const domain = emails[0].split("@")[1] || "";
@@ -91,7 +118,7 @@ export function guessCompany(text: string, emails: string[]): string {
     }
   }
   const firstLine = text.split("\n").map((l) => l.trim()).find((l) => l.length > 3 && l.length < 80);
-  return firstLine || "your company";
+  return firstLine ? collapseDouble(firstLine) : "your company";
 }
 
 // Lightweight language detection of the pasted business text (for "auto" application language).
