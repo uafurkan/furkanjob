@@ -4,7 +4,6 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   experimental: {
     serverActions: { bodySizeLimit: "8mb" },
-    instrumentationHook: true,
   },
 };
 

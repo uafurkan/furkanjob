@@ -15,8 +15,20 @@ const now = () => new Date().toISOString();
 const id = () => randomUUID();
 export const currentPeriod = () => new Date().toISOString().slice(0, 7);
 
-// ---------- Schema init (called once at startup) ----------
-export async function initSchema() {
+let _schemaInitialized = false;
+
+// ---------- Schema init (lazy, called on first DB access) ----------
+async function ensureSchema() {
+  if (_schemaInitialized) return;
+  try {
+    await initSchema();
+    _schemaInitialized = true;
+  } catch (e) {
+    console.warn("Schema init failed (may already exist):", e);
+  }
+}
+
+async function initSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
