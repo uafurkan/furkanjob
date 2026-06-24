@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     relocation: b.relocation === undefined ? true : Boolean(b.relocation),
     tone: b.tone?.toString() || "warm-professional",
     includeSignature: Boolean(b.includeSignature),
+    applicationLanguage: b.applicationLanguage?.toString() || "auto",
     completedAt: new Date().toISOString(),
   });
 

@@ -41,6 +41,7 @@ export type Profile = {
   relocation: boolean;
   tone: string;
   includeSignature: boolean;
+  applicationLanguage: string; // "auto" | en | tr | es | fr | de | it | pt
   defaultCvId?: string | null;
   completedAt?: string | null;
   updatedAt: string;

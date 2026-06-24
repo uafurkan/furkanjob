@@ -1,10 +1,12 @@
 // Optional Claude generation (Pro). Returns null when no key → caller falls back to the template.
 import Anthropic from "@anthropic-ai/sdk";
 import type { Draft, GenerateInput } from "./types";
+import { APP_LANGS, type AppLang } from "./template";
 
-export async function aiDraft({ text, analysis, profile }: GenerateInput): Promise<Draft | null> {
+export async function aiDraft({ text, analysis, profile }: GenerateInput, lang: AppLang = "en"): Promise<Draft | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
+  const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
 
   const sponsorship = profile.needsVisaSponsorship
     ? `The applicant REQUIRES visa sponsorship to work in ${analysis.country.name} (${analysis.country.visa}) and this must be stated clearly and professionally.`
@@ -25,7 +27,7 @@ Business content the applicant pasted:
 ${text.slice(0, 4000)}
 """
 
-Write a concise, warm, professional application email. Return STRICT JSON only: {"subject": "...", "body": "..."}.
+Write a concise, warm, professional application email IN ${langName} (both subject and body fully in ${langName}). Return STRICT JSON only: {"subject": "...", "body": "..."}.
 Rules (must follow exactly):
 - Subject: plain text, NO "SUBJECT:" prefix.
 - Body: transparently state the visa sponsorship requirement (if needed), reference the company and role(s), state the languages, and mention the CV is attached.

@@ -14,6 +14,7 @@ export type EngineProfile = {
   relocation: boolean;
   includeSignature: boolean;
   tone: string;
+  applicationLanguage: string; // "auto" | en | tr | es | fr | de | it | pt
 };
 
 export type Draft = { subject: string; body: string };

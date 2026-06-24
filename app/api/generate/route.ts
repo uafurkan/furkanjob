@@ -27,6 +27,7 @@ export async function POST(req: Request) {
     profile: engineProfile,
     useAI,
     searchWeb: true,
+    language: body?.language || undefined,
     hints: {
       company: body?.company || undefined,
       country: body?.country || undefined,
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
     subject: result.draft.subject,
     body: result.draft.body,
     draftSource: result.draftSource,
+    language: result.language,
     cv: cv ? { filename: cv.filename } : null,
     overLimit,
     plan: user.plan,

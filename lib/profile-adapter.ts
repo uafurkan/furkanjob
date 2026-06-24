@@ -18,6 +18,7 @@ export function toEngineProfile(profile: Profile | null, user: User | null): Eng
       relocation: profile.relocation,
       includeSignature: profile.includeSignature,
       tone: profile.tone,
+      applicationLanguage: profile.applicationLanguage || "auto",
     };
   }
   return {
@@ -33,5 +34,6 @@ export function toEngineProfile(profile: Profile | null, user: User | null): Eng
     relocation: DEFAULT_PROFILE.relocation,
     includeSignature: DEFAULT_PROFILE.includeSignature,
     tone: DEFAULT_PROFILE.tone,
+    applicationLanguage: DEFAULT_PROFILE.applicationLanguage,
   };
 }

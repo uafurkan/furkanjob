@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "seed": "node scripts/seed.mjs"
+    "start": "next start"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

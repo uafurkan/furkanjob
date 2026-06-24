@@ -94,6 +94,27 @@ export function guessCompany(text: string, emails: string[]): string {
   return firstLine || "your company";
 }
 
+// Lightweight language detection of the pasted business text (for "auto" application language).
+// Scores common function words + diacritics per language; returns null when unsure.
+const LANG_HINTS: { code: string; re: RegExp }[] = [
+  { code: "es", re: /\b(el|la|los|las|de|y|para|con|trabajo|empresa|hotel|restaurante|gracias|nuestro|empleo)\b|[ñ¿¡]/gi },
+  { code: "fr", re: /\b(le|la|les|des|et|pour|avec|nous|votre|travail|emploi|hôtel|restaurant|merci|équipe)\b|[àâçéèêëîïôûœ]/gi },
+  { code: "de", re: /\b(und|der|die|das|für|mit|wir|unser|arbeit|stelle|bewerbung|gäste|küche|mitarbeiter)\b|[äöüß]/gi },
+  { code: "it", re: /\b(il|lo|la|gli|le|di|e|per|con|noi|lavoro|nostro|albergo|ristorante|grazie|cucina)\b/gi },
+  { code: "pt", re: /\b(o|a|os|as|de|e|para|com|nós|nosso|trabalho|emprego|hotel|restaurante|obrigado|equipa|cozinha)\b|[ãõç]/gi },
+  { code: "tr", re: /\b(ve|için|ile|bir|iş|başvuru|otel|restoran|mutfak|ekip|çalış|departman|misafir)\b|[şğıİ]/gi },
+];
+
+export function detectTextLang(text: string): string | null {
+  const sample = text.slice(0, 2000);
+  let best: { code: string; n: number } | null = null;
+  for (const h of LANG_HINTS) {
+    const n = (sample.match(h.re) || []).length;
+    if (n >= 4 && (!best || n > best.n)) best = { code: h.code, n };
+  }
+  return best?.code || null;
+}
+
 export type Analysis = {
   emails: string[];
   urls: string[];

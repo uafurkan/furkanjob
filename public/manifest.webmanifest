@@ -1,0 +1,14 @@
+{
+  "name": "applythatforme",
+  "short_name": "applythat",
+  "description": "Paste a page, send the application — with your CV, from your inbox.",
+  "start_url": "/app/new",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A0C10",
+  "theme_color": "#0A0C10",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

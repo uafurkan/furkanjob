@@ -64,6 +64,14 @@ export async function setUserPlan(userId: string, plan: Plan): Promise<void> {
   const u = db.users.find((x) => x.id === userId);
   if (u) { u.plan = plan; write(db); }
 }
+export async function setUserStripeCustomer(userId: string, stripeCustomerId: string): Promise<void> {
+  const db = read();
+  const u = db.users.find((x) => x.id === userId);
+  if (u) { u.stripeCustomerId = stripeCustomerId; write(db); }
+}
+export async function findUserByStripeCustomerId(stripeCustomerId: string): Promise<User | null> {
+  return read().users.find((u) => u.stripeCustomerId === stripeCustomerId) || null;
+}
 
 // ---------- Email accounts ----------
 export async function getDefaultEmailAccount(userId: string): Promise<EmailAccount | null> {
@@ -115,6 +123,7 @@ export async function upsertProfile(userId: string, data: Partial<Profile>): Pro
       needsVisaSponsorship: data.needsVisaSponsorship ?? true, targetCountries: data.targetCountries ?? [],
       shortBio: data.shortBio ?? null, availability: data.availability ?? null, relocation: data.relocation ?? true,
       tone: data.tone ?? "warm-professional", includeSignature: data.includeSignature ?? false,
+      applicationLanguage: data.applicationLanguage ?? "auto",
       defaultCvId: data.defaultCvId ?? null, completedAt: data.completedAt ?? null, updatedAt: now(),
     };
     db.profiles.push(p);
