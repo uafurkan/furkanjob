@@ -95,24 +95,35 @@ export function guessCompany(text: string, emails: string[]): string {
 }
 
 // Lightweight language detection of the pasted business text (for "auto" application language).
-// Scores common function words + diacritics per language; returns null when unsure.
-const LANG_HINTS: { code: string; re: RegExp }[] = [
-  { code: "es", re: /\b(el|la|los|las|de|y|para|con|trabajo|empresa|hotel|restaurante|gracias|nuestro|empleo)\b|[ñ¿¡]/gi },
-  { code: "fr", re: /\b(le|la|les|des|et|pour|avec|nous|votre|travail|emploi|hôtel|restaurant|merci|équipe)\b|[àâçéèêëîïôûœ]/gi },
-  { code: "de", re: /\b(und|der|die|das|für|mit|wir|unser|arbeit|stelle|bewerbung|gäste|küche|mitarbeiter)\b|[äöüß]/gi },
-  { code: "it", re: /\b(il|lo|la|gli|le|di|e|per|con|noi|lavoro|nostro|albergo|ristorante|grazie|cucina)\b/gi },
-  { code: "pt", re: /\b(o|a|os|as|de|e|para|com|nós|nosso|trabalho|emprego|hotel|restaurante|obrigado|equipa|cozinha)\b|[ãõç]/gi },
-  { code: "tr", re: /\b(ve|için|ile|bir|iş|başvuru|otel|restoran|mutfak|ekip|çalış|departman|misafir)\b|[şğıİ]/gi },
+// Only switches away from English when there is clear, distinctive evidence. Hint words that
+// collide with English or proper nouns (a, o, de, la, le, hotel, restaurant…) are deliberately
+// EXCLUDED — they caused English hospitality copy (e.g. "a ... hotel") to be misread as
+// Portuguese/Spanish. Language-unique diacritics weigh double. English-dominant or ambiguous
+// text returns null, which the caller treats as English / the user's profile language.
+const EN_HINTS = /\b(the|and|you|your|our|for|with|are|from|this|that|will|have|rooms?|booking|luxury|stay|guests?|city|welcome|enjoy|home|world|best|find|place|relaxed|comfort)\b/gi;
+
+const LANG_HINTS: { code: string; words: RegExp; marks?: RegExp }[] = [
+  { code: "es", words: /\b(los|las|para|con|una|por|trabajo|empresa|gracias|nuestro|empleo|habitaciones|ciudad|estancia)\b/gi, marks: /[ñ¿¡]/g },
+  { code: "fr", words: /\b(les|des|pour|avec|nous|votre|vous|travail|emploi|merci|équipe|chambres?|ville|séjour|nos|cet)\b/gi, marks: /[àâçèêëîïôùûœ]/g },
+  { code: "de", words: /\b(und|der|die|das|für|mit|wir|unser|eine|arbeit|stelle|bewerbung|gäste|küche|zimmer|stadt|suchen)\b/gi, marks: /[äöüß]/g },
+  { code: "it", words: /\b(gli|per|con|noi|una|nostro|lavoro|albergo|ristorante|grazie|cucina|camere?|città|soggiorno)\b/gi, marks: /[ìòù]/g },
+  { code: "pt", words: /\b(para|com|nós|nosso|uma|trabalho|emprego|obrigado|equipa|cozinha|quartos?|cidade|estadia)\b/gi, marks: /[ãõ]/g },
+  { code: "tr", words: /\b(ve|için|ile|bir|başvuru|otel|restoran|mutfak|ekip|departman|misafir|oda|şehir|çalışma)\b/gi, marks: /[şğıİ]/g },
 ];
 
 export function detectTextLang(text: string): string | null {
   const sample = text.slice(0, 2000);
+  const english = (sample.match(EN_HINTS) || []).length;
   let best: { code: string; n: number } | null = null;
   for (const h of LANG_HINTS) {
-    const n = (sample.match(h.re) || []).length;
-    if (n >= 4 && (!best || n > best.n)) best = { code: h.code, n };
+    const words = (sample.match(h.words) || []).length;
+    const marks = h.marks ? (sample.match(h.marks) || []).length : 0;
+    const n = words + marks * 2; // distinctive diacritics are a strong signal
+    if (!best || n > best.n) best = { code: h.code, n };
   }
-  return best?.code || null;
+  // Require clear, distinctive evidence that also outweighs the English baseline.
+  if (best && best.n >= 5 && best.n > english) return best.code;
+  return null;
 }
 
 export type Analysis = {
