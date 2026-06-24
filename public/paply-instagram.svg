@@ -15,8 +15,9 @@
   <rect width="1080" height="1080" fill="url(#bg)"/>
   <rect width="1080" height="1080" fill="url(#glow)"/>
 
-  <!-- Wordmark: lowercase, rounded geometric sans (Poppins / Nunito style fallback) -->
-  <text x="540" y="540"
+  <!-- Wordmark: lowercase, rounded geometric sans (Poppins / Nunito style fallback).
+       Nudged up ~34px so the p/y descenders don't make it look bottom-heavy (optical centering). -->
+  <text x="540" y="506"
         font-family="'Poppins', 'Nunito', 'Segoe UI', system-ui, -apple-system, sans-serif"
         font-size="320"
         font-weight="600"
