@@ -173,6 +173,28 @@ export async function incrementUsage(userId: string, period = currentPeriod()): 
   return u.applicationsSent;
 }
 
+// ---------- Admin aggregates ----------
+export async function listUsers(): Promise<User[]> {
+  return read().users.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+export async function listAllApplications(limit = 100): Promise<Application[]> {
+  return read().applications.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
+}
+export async function getAdminStats() {
+  const db = read();
+  const period = currentPeriod();
+  const sent = db.applications.filter((a) => a.status === "sent");
+  return {
+    users: db.users.length,
+    proUsers: db.users.filter((u) => u.plan === "pro" || u.plan === "team").length,
+    gmailConnected: db.emailAccounts.filter((a) => a.provider === "google").length,
+    applications: db.applications.length,
+    sent: sent.length,
+    failed: db.applications.filter((a) => a.status === "failed").length,
+    thisMonthSent: db.usage.filter((u) => u.period === period).reduce((n, u) => n + u.applicationsSent, 0),
+  };
+}
+
 // ---------- Subscriptions ----------
 export async function upsertSubscription(userId: string, data: Partial<Subscription>): Promise<Subscription> {
   const db = read();

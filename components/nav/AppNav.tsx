@@ -11,7 +11,7 @@ const TABS = [
   { href: "/app/billing", key: "nav.pro", icon: IconSpark },
 ];
 
-export default function AppNav({ name, plan }: { name?: string | null; plan?: string }) {
+export default function AppNav({ name, plan, isAdmin }: { name?: string | null; plan?: string; isAdmin?: boolean }) {
   const path = usePathname();
   const { t } = useT();
   const isActive = (href: string) => path === href || path.startsWith(href + "/");
@@ -31,6 +31,7 @@ export default function AppNav({ name, plan }: { name?: string | null; plan?: st
           ))}
         </nav>
         <div className="topbar-right">
+          {isAdmin && <Link href="/admin" className="chip" style={{ textDecoration: "none" }}>Admin</Link>}
           {plan && <span className={`chip${plan === "pro" ? " chip-accent" : ""}`}>{plan === "pro" ? t("plan.pro") : t("plan.free")}</span>}
           <LangToggle />
           <button className="btn btn-sm btn-ghost" onClick={() => signOut({ callbackUrl: "/" })}>

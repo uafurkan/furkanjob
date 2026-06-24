@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getProfile } from "@/lib/db";
+import { isAdminEmail } from "@/lib/admin";
 import AppNav from "@/components/nav/AppNav";
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
@@ -12,7 +13,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
 
   return (
     <div className="app-shell">
-      <AppNav name={user.name} plan={user.plan} />
+      <AppNav name={user.name} plan={user.plan} isAdmin={isAdminEmail(user.email)} />
       <main className="app-main container">{children}</main>
     </div>
   );
