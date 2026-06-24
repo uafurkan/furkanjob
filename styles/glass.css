@@ -84,6 +84,7 @@
   transition: border-color var(--dur-secondary) var(--ease-settle), box-shadow var(--dur-secondary) var(--ease-settle), background var(--dur-secondary) var(--ease-settle);
 }
 select { appearance: auto; }
+select option { color: #12151c; background: #ffffff; }
 .textarea { resize: vertical; min-height: 160px; }
 .input::placeholder, .textarea::placeholder { color: var(--content-tertiary); }
 .input:focus, .textarea:focus, select:focus { outline: none; border-color: var(--accent); background: rgba(255, 255, 255, 0.06); box-shadow: 0 0 0 1px var(--accent), 0 0 22px var(--glow-halo); }
