@@ -311,9 +311,14 @@ export async function addCv(
 }
 // Returns the raw CV bytes from the DB (null if stored only on disk / legacy).
 export async function getCvData(cvId: string): Promise<Buffer | null> {
-  const rows = await sql`SELECT data FROM cvs WHERE id=${cvId} LIMIT 1`;
-  const b64 = rows[0]?.data as string | null | undefined;
-  return b64 ? Buffer.from(b64, "base64") : null;
+  try {
+    const rows = await sql`SELECT data FROM cvs WHERE id=${cvId} LIMIT 1`;
+    const b64 = rows[0]?.data as string | null | undefined;
+    return b64 ? Buffer.from(b64, "base64") : null;
+  } catch {
+    // `data` column may not exist on an older schema — caller falls back to disk.
+    return null;
+  }
 }
 
 // ---------- Applications ----------

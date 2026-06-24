@@ -14,6 +14,16 @@ import fs from "node:fs";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  try {
+    return await handleSend(req);
+  } catch (e: any) {
+    // Never leak an HTML 500 page — the client expects JSON.
+    console.error("send route error:", e);
+    return NextResponse.json({ ok: false, error: e?.message || "Sunucu hatası" }, { status: 500 });
+  }
+}
+
+async function handleSend(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
