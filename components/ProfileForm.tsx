@@ -18,6 +18,14 @@ type Initial = {
   applicationLanguage?: string;
 };
 
+type ParsedCv = {
+  fullName: string;
+  summary: string;
+  languages: string[];
+  targetRoles: string[];
+  yearsExperience: number;
+};
+
 export default function ProfileForm({
   mode,
   initial,
@@ -46,13 +54,17 @@ export default function ProfileForm({
   const [cv, setCv] = useState(cvFilename);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err" | "info"; text: string } | null>(null);
+  const [parsedCv, setParsedCv] = useState<ParsedCv | null>(null);
+  const [showParseConfirm, setShowParseConfirm] = useState(false);
 
   const split = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
 
   async function uploadCv(file: File) {
     setUploading(true);
     setMsg(null);
+    setParsedCv(null);
+    setShowParseConfirm(false);
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -60,12 +72,33 @@ export default function ProfileForm({
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || t("pf.uploadFailed"));
       setCv(d.cv.filename);
-      setMsg({ kind: "ok", text: t("pf.cvUploaded") });
+
+      // Parse CV to extract profile data
+      const parseRes = await fetch("/api/cv/parse", { method: "POST", body: fd });
+      if (parseRes.ok) {
+        const parsed = await parseRes.json();
+        setParsedCv(parsed);
+        setShowParseConfirm(true);
+        setMsg({ kind: "info", text: t("pf.cvParsed") });
+      } else {
+        setMsg({ kind: "ok", text: t("pf.cvUploaded") });
+      }
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
     } finally {
       setUploading(false);
     }
+  }
+
+  function applyParsedData() {
+    if (!parsedCv) return;
+    if (parsedCv.fullName) setFullName(parsedCv.fullName);
+    if (parsedCv.summary) setShortBio(parsedCv.summary);
+    if (parsedCv.languages.length) setLanguages(parsedCv.languages.join(", "));
+    if (parsedCv.targetRoles.length) setTargetRoles(parsedCv.targetRoles.join(", "));
+    setParsedCv(null);
+    setShowParseConfirm(false);
+    setMsg({ kind: "ok", text: t("pf.profileUpdated") });
   }
 
   async function save() {
@@ -164,6 +197,24 @@ export default function ProfileForm({
           </span>
         </div>
       </section>
+
+      {showParseConfirm && parsedCv && (
+        <section className="glass card stack gap-3" style={{ borderColor: "var(--signal-success, #5FD0A6)" }}>
+          <h3>{t("pf.cvParsedTitle")}</h3>
+          <p className="text-secondary" style={{ fontSize: "var(--text-13)" }}>{t("pf.cvParsedNote")}</p>
+
+          {parsedCv.fullName && <div><strong>{t("pf.fullName")}:</strong> {parsedCv.fullName}</div>}
+          {parsedCv.summary && <div><strong>{t("pf.shortBio")}:</strong> {parsedCv.summary}</div>}
+          {parsedCv.languages.length > 0 && <div><strong>{t("pf.languages")}:</strong> {parsedCv.languages.join(", ")}</div>}
+          {parsedCv.targetRoles.length > 0 && <div><strong>{t("pf.targetRoles")}:</strong> {parsedCv.targetRoles.join(", ")}</div>}
+          {parsedCv.yearsExperience > 0 && <div><strong>{t("pf.experience")}:</strong> {parsedCv.yearsExperience} years</div>}
+
+          <div className="row gap-3">
+            <button className="btn btn-sm" onClick={() => setShowParseConfirm(false)}>{t("pf.cancel")}</button>
+            <button className="btn btn-sm btn-primary" onClick={applyParsedData}>{t("pf.applyParsed")}</button>
+          </div>
+        </section>
+      )}
 
       <section style={{ maxWidth: 280 }}>
         <label className="field">
