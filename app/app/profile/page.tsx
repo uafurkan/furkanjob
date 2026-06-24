@@ -17,11 +17,11 @@ export default async function ProfilePage() {
   ]);
 
   const initial = {
-    fullName: profile?.fullName || user.name || DEFAULT_PROFILE.fullName,
-    contactEmail: profile?.contactEmail || user.email || "",
-    languages: profile?.languages || [...DEFAULT_PROFILE.languages],
-    targetRoles: profile?.targetRoles || [...DEFAULT_PROFILE.targetRoles],
-    targetCountries: profile?.targetCountries || [...DEFAULT_PROFILE.targetCountries],
+    fullName: profile?.fullName || "",
+    contactEmail: profile?.contactEmail || "",
+    languages: profile?.languages || [],
+    targetRoles: profile?.targetRoles || [],
+    targetCountries: profile?.targetCountries || [],
     needsVisaSponsorship: profile?.needsVisaSponsorship ?? true,
     relocation: profile?.relocation ?? true,
     shortBio: profile?.shortBio || "",
