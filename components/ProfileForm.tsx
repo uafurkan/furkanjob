@@ -145,16 +145,6 @@ export default function ProfileForm({
           <textarea className="textarea" style={{ minHeight: 90 }} value={shortBio} onChange={(e) => setShortBio(e.target.value)} placeholder={t("pf.shortBioPh")} />
         </label>
 
-        <label className="field" style={{ maxWidth: 280 }}>
-          <span className="field-label">{t("new.applang")}</span>
-          <select className="input" value={appLang} onChange={(e) => setAppLang(e.target.value)}>
-            <option value="auto">{t("new.applang.auto")}</option>
-            {APP_LANGS.map((l) => (
-              <option key={l.code} value={l.code}>{l.label}</option>
-            ))}
-          </select>
-        </label>
-
         <div className="row gap-6 wrap">
           <label className="toggle"><input type="checkbox" checked={needsVisa} onChange={(e) => setNeedsVisa(e.target.checked)} /> {t("pf.needsVisa")}</label>
           <label className="toggle"><input type="checkbox" checked={relocation} onChange={(e) => setRelocation(e.target.checked)} /> {t("pf.relocation")}</label>
@@ -173,6 +163,18 @@ export default function ProfileForm({
             {cv ? <>{t("pf.cvCurrent")}: <b>{cv}</b></> : t("pf.noCv")}
           </span>
         </div>
+      </section>
+
+      <section style={{ maxWidth: 280 }}>
+        <label className="field">
+          <span className="field-label">{t("new.applang")}</span>
+          <select className="input" value={appLang} onChange={(e) => setAppLang(e.target.value)}>
+            <option value="auto">{t("new.applang.auto")}</option>
+            {APP_LANGS.map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+        </label>
       </section>
 
       <div className="row gap-3 wrap">
