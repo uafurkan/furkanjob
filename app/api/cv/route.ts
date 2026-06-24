@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { addCv, getDefaultCv } from "@/lib/db";
-import fs from "node:fs";
-import path from "node:path";
 
 export const runtime = "nodejs";
 
@@ -26,17 +24,14 @@ export async function POST(req: Request) {
     const buf = Buffer.from(await f.arrayBuffer());
     const safeName = f.name.replace(/[^\w.\-]+/g, "_") || "cv.pdf";
 
-    const dir = path.join(process.cwd(), "storage", "cv", user.id);
-    fs.mkdirSync(dir, { recursive: true });
-    const storageKey = path.join("storage", "cv", user.id, `${Date.now()}-${safeName}`);
-    fs.writeFileSync(path.join(process.cwd(), storageKey), buf);
-
+    // Store bytes in the DB — serverless filesystems are read-only / ephemeral.
     const cv = await addCv({
       userId: user.id,
       filename: safeName,
-      storageKey,
+      storageKey: `db:${user.id}/${Date.now()}-${safeName}`,
       mime: f.type || "application/pdf",
       size: buf.length,
+      dataB64: buf.toString("base64"),
       isDefault: true,
     });
 

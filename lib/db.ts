@@ -86,10 +86,13 @@ async function initSchema() {
       storage_key TEXT NOT NULL,
       mime TEXT NOT NULL,
       size INTEGER NOT NULL,
+      data TEXT,
       is_default BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TEXT NOT NULL
     )
   `;
+  // Migration for existing deployments: store CV bytes in DB (serverless FS is read-only/ephemeral).
+  await sql`ALTER TABLE cvs ADD COLUMN IF NOT EXISTS data TEXT`;
   await sql`
     CREATE TABLE IF NOT EXISTS applications (
       id TEXT PRIMARY KEY,
@@ -292,14 +295,22 @@ export async function getDefaultCv(userId: string): Promise<Cv | null> {
   `;
   return rows[0] ? mapCv(rows[0] as Record<string, unknown>) : null;
 }
-export async function addCv(data: Omit<Cv, "id" | "createdAt" | "isDefault"> & { isDefault?: boolean }): Promise<Cv> {
+export async function addCv(
+  data: Omit<Cv, "id" | "createdAt" | "isDefault"> & { isDefault?: boolean; dataB64?: string }
+): Promise<Cv> {
   await sql`UPDATE cvs SET is_default=FALSE WHERE user_id=${data.userId}`;
   const rows = await sql`
-    INSERT INTO cvs (id, user_id, filename, storage_key, mime, size, is_default, created_at)
-    VALUES (${id()}, ${data.userId}, ${data.filename}, ${data.storageKey}, ${data.mime}, ${data.size}, TRUE, ${now()})
+    INSERT INTO cvs (id, user_id, filename, storage_key, mime, size, data, is_default, created_at)
+    VALUES (${id()}, ${data.userId}, ${data.filename}, ${data.storageKey}, ${data.mime}, ${data.size}, ${data.dataB64 ?? null}, TRUE, ${now()})
     RETURNING *
   `;
   return mapCv(rows[0] as Record<string, unknown>);
+}
+// Returns the raw CV bytes from the DB (null if stored only on disk / legacy).
+export async function getCvData(cvId: string): Promise<Buffer | null> {
+  const rows = await sql`SELECT data FROM cvs WHERE id=${cvId} LIMIT 1`;
+  const b64 = rows[0]?.data as string | null | undefined;
+  return b64 ? Buffer.from(b64, "base64") : null;
 }
 
 // ---------- Applications ----------

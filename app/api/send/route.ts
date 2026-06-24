@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import {
-  getProfile, getDefaultCv, getDefaultEmailAccount, updateEmailAccountTokens,
+  getProfile, getDefaultCv, getCvData, getDefaultEmailAccount, updateEmailAccountTokens,
   createApplication, incrementUsage, getUsage,
 } from "@/lib/db";
 import { decrypt, encrypt } from "@/lib/crypto";
@@ -39,8 +39,14 @@ export async function POST(req: Request) {
   const cv = await getDefaultCv(user.id);
   const attachments: Attachment[] = [];
   if (cv) {
-    const abs = resolveCvPath(cv.storageKey);
-    if (fs.existsSync(abs)) attachments.push({ filename: cv.filename, absPath: abs, mime: cv.mime });
+    const bytes = await getCvData(cv.id);
+    if (bytes) {
+      attachments.push({ filename: cv.filename, content: bytes, mime: cv.mime });
+    } else {
+      // Legacy/dev: CV stored on disk rather than in the DB.
+      const abs = resolveCvPath(cv.storageKey);
+      if (fs.existsSync(abs)) attachments.push({ filename: cv.filename, absPath: abs, mime: cv.mime });
+    }
   }
 
   // Choose sending method

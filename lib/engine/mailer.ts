@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import nodemailer from "nodemailer";
 
-export type Attachment = { filename: string; absPath: string; mime?: string };
+export type Attachment = { filename: string; absPath?: string; content?: Buffer; mime?: string };
 
 function b64url(buf: Buffer): string {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -51,7 +51,7 @@ export function buildMime(opts: {
     "",
   ];
   for (const a of attachments) {
-    const data = fs.readFileSync(a.absPath);
+    const data = a.content ?? fs.readFileSync(a.absPath!);
     const mime = a.mime || "application/octet-stream";
     parts.push(
       `--${boundary}`,
@@ -137,7 +137,9 @@ export async function sendViaSmtp(opts: {
       to: opts.to.join(", "),
       subject: opts.subject,
       text: opts.body,
-      attachments: (opts.attachments || []).map((a) => ({ filename: a.filename, path: a.absPath })),
+      attachments: (opts.attachments || []).map((a) =>
+        a.content ? { filename: a.filename, content: a.content } : { filename: a.filename, path: a.absPath }
+      ),
     });
     return { ok: true, messageId: info.messageId };
   } catch (e: any) {
