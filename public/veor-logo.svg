@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 160" width="400" height="160">
+  <rect width="400" height="160" fill="#000000"/>
+
+  <!-- Geometric mark: two overlapping diamonds forming a lens/prism -->
+  <g transform="translate(44, 80)">
+    <!-- Left diamond -->
+    <polygon points="0,-28 24,0 0,28 -24,0" fill="none" stroke="#ffffff" stroke-width="2.2"/>
+    <!-- Right diamond, offset to overlap -->
+    <polygon points="20,-28 44,0 20,28 -4,0" fill="none" stroke="#ffffff" stroke-width="2.2"/>
+    <!-- Shared center fill (intersection) -->
+    <polygon points="20,-18 30,0 20,18 10,0" fill="#ffffff" opacity="0.92"/>
+  </g>
+
+  <!-- Wordmark: VEOR — using geometric letterforms -->
+  <text
+    x="112"
+    y="97"
+    font-family="'Helvetica Neue', 'Arial', sans-serif"
+    font-size="52"
+    font-weight="700"
+    letter-spacing="-1.5"
+    fill="#ffffff"
+    dominant-baseline="middle"
+  >VEOR</text>
+
+  <!-- Tagline -->
+  <text
+    x="113"
+    y="122"
+    font-family="'Helvetica Neue', 'Arial', sans-serif"
+    font-size="11"
+    font-weight="400"
+    letter-spacing="4"
+    fill="#555555"
+    dominant-baseline="middle"
+  >BUILD WHAT MATTERS</text>
+</svg>
