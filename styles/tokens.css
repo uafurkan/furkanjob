@@ -1,0 +1,126 @@
+/* applythatforme — design tokens (DESIGN_BUILD_PROTOCOL §6, filled from the approved Identity Card)
+   Identity: iOS 26/27 Liquid Glass · metaphor "the focusing lens" · achromatic glass over a rich backdrop. */
+
+:root {
+  /* ZEMİN — rich, cool-deep (not flat black, so glass refracts) */
+  --bg-void: #0A0C10;
+  --bg-surface: #12151C;
+  --bg-raised: #1A1F29;
+
+  /* İÇERİK */
+  --content-primary: #F4F7FB;     /* ≥ 7:1 on void */
+  --content-secondary: #AEB7C4;   /* ≥ 4.5:1 */
+  --content-tertiary: #6B7585;    /* ≥18px only */
+  --content-ghost: rgba(244, 247, 251, 0.10); /* decoration only, never text */
+
+  /* ACCENT — restrained system tint; real color comes from refraction */
+  --accent: #6FA8FF;
+  --accent-bright: #9CC4FF;
+  --accent-secondary: #7CE0D3;
+
+  /* SIGNAL */
+  --signal-success: #5FD0A6;
+  --signal-warning: #F2C26B;
+  --signal-error: #F2796B;
+
+  /* IŞIK — derived from accent */
+  --glow-core: rgba(111, 168, 255, 0.55);
+  --glow-halo: rgba(111, 168, 255, 0.18);
+
+  /* CAM — glass material */
+  --glass-fill: rgba(255, 255, 255, 0.06);
+  --glass-fill-strong: rgba(255, 255, 255, 0.10);
+  --glass-stroke: rgba(255, 255, 255, 0.14);
+  --glass-stroke-bright: rgba(255, 255, 255, 0.28);
+  --glass-specular: rgba(255, 255, 255, 0.70);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --glass-shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.55);
+  --glass-blur: 18px;
+  --glass-blur-strong: 30px;
+
+  /* TİPOGRAFİ — next/font sets --font-display/--font-body; system stack is the fallback */
+  --font-display: var(--font-display-var, "SF Pro Display"), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-body: var(--font-body-var, "SF Pro Text"), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Menlo", monospace;
+
+  --text-12: .75rem; --text-14: .875rem; --text-16: 1rem; --text-18: 1.125rem;
+  --text-22: 1.375rem; --text-28: 1.75rem; --text-36: 2.25rem; --text-48: 3rem;
+  --text-64: 4rem; --text-80: 5rem; --text-110: 6.875rem; --text-160: 10rem; --text-240: 15rem;
+
+  /* BOŞLUK */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+  --space-8: 32px; --space-12: 48px; --space-16: 64px; --space-24: 96px; --space-32: 128px;
+  --space-48: 192px; --space-64: 256px; --space-96: 384px;
+
+  /* HAREKET */
+  --ease-standard: cubic-bezier(.16, 1, .3, 1);
+  --ease-emphatic: cubic-bezier(.34, 1.56, .64, 1);
+  --ease-exit: cubic-bezier(.7, 0, .84, 0);
+  --ease-signature: cubic-bezier(.9, .02, .18, 1);
+  --ease-settle: cubic-bezier(.23, .6, .32, .99);
+  --dur-micro: 120ms; --dur-micro-exit: 350ms; --dur-secondary: 500ms;
+  --dur-primary: 1100ms; --dur-page: 900ms;
+
+  /* DİĞER */
+  --radius-subtle: 8px; --radius-soft: 14px; --radius-lg: 22px; --radius-pill: 999px;
+  --focus-ring: 0 0 0 3px var(--bg-void), 0 0 0 5px var(--accent), 0 0 18px var(--glow-core);
+
+  --tabbar-h: 72px;
+  --container: 1120px;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg-void);
+  color: var(--content-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-16);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+/* The rich backdrop the glass refracts — a calm, low-saturation aurora mesh, single atmosphere. */
+.app-backdrop {
+  position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 18% 12%, rgba(111, 168, 255, 0.16), transparent 60%),
+    radial-gradient(55% 45% at 85% 20%, rgba(124, 224, 211, 0.12), transparent 60%),
+    radial-gradient(70% 60% at 70% 95%, rgba(150, 130, 255, 0.10), transparent 65%),
+    radial-gradient(50% 50% at 30% 80%, rgba(255, 180, 120, 0.07), transparent 60%),
+    var(--bg-void);
+}
+/* very low grain to turn flat areas into "material" (protocol §4) */
+.app-grain {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+h1, h2, h3 { font-family: var(--font-display); margin: 0; letter-spacing: -0.02em; line-height: 0.95; }
+a { color: inherit; }
+
+::selection { background: var(--glow-halo); color: var(--content-primary); }
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-subtle);
+}
+
+.unselectable { -webkit-user-select: none; user-select: none; }
+.text-secondary { color: var(--content-secondary); }
+.mono { font-family: var(--font-mono); letter-spacing: .02em; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

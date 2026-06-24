@@ -1,0 +1,121 @@
+// applythatforme.com — data model
+// Dev: SQLite. Prod: switch provider to "postgresql" via DATABASE_URL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  image         String?
+  plan          String   @default("free") // free | pro | team
+  stripeCustomerId String?
+  createdAt     DateTime @default(now())
+
+  profile       Profile?
+  emailAccounts EmailAccount[]
+  cvs           Cv[]
+  applications  Application[]
+  usage         Usage[]
+  subscription  Subscription?
+}
+
+// A connected sending inbox (Google OAuth) or an app-password SMTP account.
+model EmailAccount {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String   // "google" | "smtp"
+  address      String
+  accessToken  String?  // encrypted at rest
+  refreshToken String?  // encrypted at rest
+  expiresAt    Int?     // epoch seconds for the access token
+  scope        String?
+  status       String   @default("connected") // connected | needs_reauth | error
+  isDefault    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, address])
+}
+
+// One-time onboarding answers → reused on every application.
+model Profile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName              String
+  contactEmail          String?
+  phone                 String?
+  languages             String   @default("[]") // JSON array of strings
+  targetRoles           String   @default("[]") // JSON array, e.g. ["Front Desk","Kitchen Serving"]
+  needsVisaSponsorship  Boolean  @default(true)
+  targetCountries       String   @default("[]") // JSON array of ISO-ish names
+  shortBio              String?
+  availability          String?
+  relocation            Boolean  @default(true)
+  tone                  String   @default("warm-professional")
+  includeSignature      Boolean  @default(false) // CLAUDE.md: no signature block
+  defaultCvId           String?
+  completedAt           DateTime?
+  updatedAt             DateTime @updatedAt
+}
+
+model Cv {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename   String
+  storageKey String   // path (dev) or object key (prod)
+  mime       String   @default("application/pdf")
+  size       Int      @default(0)
+  isDefault  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+// Every generated/sent application — powers the dashboard + analytics + metering.
+model Application {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company       String?
+  country       String?
+  positions     String   @default("[]") // JSON array
+  recipients    String   @default("[]") // JSON array of emails
+  emailSource   String   @default("text") // text | page-scrape | web-search | manual | none
+  draftSource   String   @default("template") // template | ai
+  subject       String
+  body          String
+  status        String   @default("draft") // draft | sent | failed
+  providerMsgId String?
+  error         String?
+  createdAt     DateTime @default(now())
+  sentAt        DateTime?
+}
+
+// Monthly metering for plan limits.
+model Usage {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period          String   // "YYYY-MM"
+  applicationsSent Int     @default(0)
+
+  @@unique([userId, period])
+}
+
+model Subscription {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSubId       String?
+  plan              String   @default("free")
+  status            String   @default("inactive")
+  currentPeriodEnd  DateTime?
+}
