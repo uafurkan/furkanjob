@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import { getLang } from "@/lib/i18n-server";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const APP = process.env.NEXT_PUBLIC_APP_NAME || "paply";
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -32,6 +34,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="app-backdrop" aria-hidden />
         <div className="app-grain" aria-hidden />
         <Providers initialLang={lang}>{children}</Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
