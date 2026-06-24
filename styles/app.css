@@ -44,7 +44,7 @@
 
 /* ---------- App shell ---------- */
 .app-shell { min-height: 100dvh; }
-.app-main { padding-top: calc(var(--space-12) + 56px); padding-bottom: var(--space-16); }
+.app-main { padding-top: calc(var(--space-12) + 56px); padding-bottom: var(--space-24); max-width: var(--container); margin: 0 auto; }
 
 /* top bar (desktop) */
 .topbar { position: sticky; top: var(--space-3); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
@@ -65,11 +65,16 @@
 .tab.active .tab-ico { color: var(--accent-bright); }
 
 /* ---------- Generic page ---------- */
-.page-head h1 { font-size: var(--text-36); }
-.page-head p { margin-top: var(--space-2); }
+.page-head { margin-bottom: var(--space-8); }
+.page-head h1 { font-size: var(--text-36); font-weight: 800; margin-bottom: var(--space-3); }
+.page-head p { margin: 0; font-size: var(--text-18); color: var(--content-secondary); }
 .centered-page { min-height: 100dvh; display: grid; place-items: center; padding: var(--space-6); }
 .auth-card { width: 100%; max-width: 420px; }
 .onboarding { padding-top: var(--space-12); padding-bottom: var(--space-24); }
+.form-section { margin-bottom: var(--space-12); }
+.form-section > *:first-child { margin-top: 0; }
+.form-group { margin-bottom: var(--space-6); }
+.form-group label { display: block; margin-bottom: var(--space-3); font-size: var(--text-14); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--content-tertiary); }
 
 /* ---------- Forms ---------- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }

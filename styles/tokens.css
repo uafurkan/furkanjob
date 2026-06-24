@@ -89,10 +89,11 @@ body {
 .app-backdrop {
   position: fixed; inset: 0; z-index: -2; pointer-events: none;
   background:
-    radial-gradient(60% 50% at 18% 12%, rgba(111, 168, 255, 0.16), transparent 60%),
-    radial-gradient(55% 45% at 85% 20%, rgba(124, 224, 211, 0.12), transparent 60%),
-    radial-gradient(70% 60% at 70% 95%, rgba(150, 130, 255, 0.10), transparent 65%),
-    radial-gradient(50% 50% at 30% 80%, rgba(255, 180, 120, 0.07), transparent 60%),
+    radial-gradient(60% 50% at 18% 12%, rgba(111, 168, 255, 0.20), transparent 60%),
+    radial-gradient(55% 45% at 85% 20%, rgba(124, 224, 211, 0.15), transparent 60%),
+    radial-gradient(70% 60% at 70% 95%, rgba(150, 130, 255, 0.12), transparent 65%),
+    radial-gradient(50% 50% at 30% 80%, rgba(111, 168, 255, 0.08), transparent 60%),
+    radial-gradient(80% 80% at 50% 50%, rgba(124, 224, 211, 0.05), transparent 80%),
     var(--bg-void);
 }
 /* very low grain to turn flat areas into "material" (protocol §4) */
