@@ -67,8 +67,8 @@ async function handleSend(req: Request) {
       const applicantName = profile?.fullName || user.name || "Applicant";
       const applicantEmail = profile?.contactEmail || user.email || "";
       const company = (body?.company as string | undefined) || "the company";
-      const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-      const docxBuf = await buildCoverLetterDocx({ applicantName, applicantEmail, company, body: text, date });
+      const language = (body?.language as string | undefined) || "en";
+      const docxBuf = await buildCoverLetterDocx({ applicantName, applicantEmail, company, body: text, language });
       const safeName = (applicantName.replace(/\s+/g, "_") || "Applicant") + "_cover_letter.docx";
       attachments.push({
         filename: safeName,

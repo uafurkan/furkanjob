@@ -151,6 +151,7 @@ export default function NewApplication() {
           to: p.to, subject: p.subject, body: p.body,
           company: p.meta.company, country: p.meta.country, positions: p.meta.positions,
           emailSource: p.meta.emailSource, draftSource: p.meta.draftSource,
+          language: p.meta.language,
           includeCoverLetter,
         }),
       });
