@@ -9,6 +9,7 @@ import { isOverLimit } from "@/lib/plans";
 import {
   sendViaGmailApi, sendViaSmtp, refreshGoogleAccessToken, resolveCvPath, type Attachment, type SendResult,
 } from "@/lib/engine/mailer";
+import { buildCoverLetterDocx } from "@/lib/engine/coverletter";
 import fs from "node:fs";
 
 export const runtime = "nodejs";
@@ -56,6 +57,26 @@ async function handleSend(req: Request) {
       // Legacy/dev: CV stored on disk rather than in the DB.
       const abs = resolveCvPath(cv.storageKey);
       if (fs.existsSync(abs)) attachments.push({ filename: cv.filename, absPath: abs, mime: cv.mime });
+    }
+  }
+
+  // Optional cover letter DOCX
+  const includeCoverLetter = body?.includeCoverLetter === true;
+  if (includeCoverLetter) {
+    try {
+      const applicantName = profile?.fullName || user.name || "Applicant";
+      const applicantEmail = profile?.contactEmail || user.email || "";
+      const company = (body?.company as string | undefined) || "the company";
+      const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      const docxBuf = await buildCoverLetterDocx({ applicantName, applicantEmail, company, body: text, date });
+      const safeName = (applicantName.replace(/\s+/g, "_") || "Applicant") + "_cover_letter.docx";
+      attachments.push({
+        filename: safeName,
+        content: docxBuf,
+        mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+    } catch (e) {
+      console.error("cover letter build failed:", e);
     }
   }
 
@@ -113,7 +134,8 @@ async function handleSend(req: Request) {
 
   if (result.ok) {
     await incrementUsage(user.id);
-    return NextResponse.json({ ok: true, sentTo: recipients, from: fromEmail, cvAttached: attachments.length > 0 });
+    const coverLetterAttached = attachments.some((a) => a.filename.endsWith(".docx"));
+    return NextResponse.json({ ok: true, sentTo: recipients, from: fromEmail, cvAttached: attachments.length > 0, coverLetterAttached });
   }
   return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
 }

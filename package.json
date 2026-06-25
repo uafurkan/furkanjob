@@ -13,6 +13,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "docx": "^9.7.1",
     "fontkit": "^2.0.4",
     "next": "14.2.18",
     "next-auth": "^4.24.11",

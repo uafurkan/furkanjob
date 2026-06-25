@@ -58,6 +58,7 @@ export default function NewApplication() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [includeCoverLetter, setIncludeCoverLetter] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err" | "warn"; text: string } | null>(null);
   const [confirmPending, setConfirmPending] = useState<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
@@ -150,6 +151,7 @@ export default function NewApplication() {
           to: p.to, subject: p.subject, body: p.body,
           company: p.meta.company, country: p.meta.country, positions: p.meta.positions,
           emailSource: p.meta.emailSource, draftSource: p.meta.draftSource,
+          includeCoverLetter,
         }),
       });
       const d = await r.json();
@@ -157,7 +159,8 @@ export default function NewApplication() {
       if (!r.ok) throw new Error(d.error || "Error");
       clearDraft();
       setDraftRestoredAt(null);
-      setMsg({ kind: "ok", text: `${d.sentTo.join(", ")} ${d.cvAttached ? t("new.cvAttached") : t("new.cvNone")}` });
+      const attachLabel = d.coverLetterAttached ? t("new.coverLetterAttached") : d.cvAttached ? t("new.cvAttached") : t("new.cvNone");
+      setMsg({ kind: "ok", text: `${d.sentTo.join(", ")} ${attachLabel}` });
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
     } finally {
@@ -250,16 +253,29 @@ export default function NewApplication() {
             <textarea className="textarea" style={{ minHeight: 260 }} value={body} onChange={(e) => setBody(e.target.value)} />
           </label>
 
-          <div className="row gap-3 wrap" style={{ justifyContent: "space-between" }}>
-            <span className="text-secondary" style={{ fontSize: "var(--text-14)" }}>
-              {res.cv ? <>{t("new.attachment")}: <b>{res.cv.filename}</b></> : <span className="chip-warn">{t("new.noCv")}</span>}
-            </span>
-            <div className="row gap-3">
-              {res.overLimit && <Link href="/app/billing" className="btn btn-sm">{t("new.limitPro")}</Link>}
-              <button className="btn btn-primary" data-loading={sending} onClick={() => res && doSend({ to, subject, body, meta: res })} disabled={sending || res.overLimit}>
-                {sending ? t("new.sending") : t("new.send")}
-              </button>
+          <div className="stack gap-3">
+            <div className="row gap-3 wrap" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <span className="text-secondary" style={{ fontSize: "var(--text-14)" }}>
+                {res.cv ? <>{t("new.attachment")}: <b>{res.cv.filename}</b></> : <span className="chip-warn">{t("new.noCv")}</span>}
+              </span>
+              <div className="row gap-3">
+                {res.overLimit && <Link href="/app/billing" className="btn btn-sm">{t("new.limitPro")}</Link>}
+                <button className="btn btn-primary" data-loading={sending} onClick={() => res && doSend({ to, subject, body, meta: res })} disabled={sending || res.overLimit}>
+                  {sending ? t("new.sending") : t("new.send")}
+                </button>
+              </div>
             </div>
+            <label className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                checked={includeCoverLetter}
+                onChange={(e) => setIncludeCoverLetter(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "var(--accent)" }}
+              />
+              <span style={{ fontSize: "var(--text-13)", color: "var(--text-secondary)" }}>
+                {t("new.coverLetter")}
+              </span>
+            </label>
           </div>
         </section>
       )}
@@ -276,6 +292,12 @@ export default function NewApplication() {
                 <p className="confirm-cv">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                   {confirmPending.meta.cv.filename}
+                </p>
+              )}
+              {includeCoverLetter && (
+                <p className="confirm-cv" style={{ opacity: 0.75 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  cover_letter.docx
                 </p>
               )}
             </div>

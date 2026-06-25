@@ -134,6 +134,9 @@ const en: Dict = {
   "new.applang": "Application language",
   "new.applang.auto": "Auto (match the business)",
   "new.language": "Language",
+  "new.coverLetter": "Also attach a cover letter (.docx)",
+  "new.coverLetterNote": "A Word document formatted as a formal letter — attached alongside your CV.",
+  "new.coverLetterAttached": "(CV + cover letter attached)",
 
   "apps.title": "My applications",
   "apps.empty.title": "No applications yet",
@@ -293,6 +296,9 @@ const tr: Dict = {
   "new.applang": "Başvuru dili",
   "new.applang.auto": "Otomatik (işletmeye göre)",
   "new.language": "Dil",
+  "new.coverLetter": "Ek olarak cover letter (.docx) ekle",
+  "new.coverLetterNote": "Formal mektup formatında bir Word belgesi — CV'nin yanına ek olarak gider.",
+  "new.coverLetterAttached": "(CV + cover letter ekli)",
 
   "apps.title": "Başvurularım",
   "apps.empty.title": "Henüz başvuru yok",
