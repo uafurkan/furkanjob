@@ -9,6 +9,11 @@ export default function Landing() {
     { t: t("landing.f2.t"), d: t("landing.f2.d") },
     { t: t("landing.f3.t"), d: t("landing.f3.d") },
   ];
+  const steps = [
+    { n: t("landing.step1.n"), title: t("landing.step1.t"), d: t("landing.step1.d") },
+    { n: t("landing.step2.n"), title: t("landing.step2.t"), d: t("landing.step2.d") },
+    { n: t("landing.step3.n"), title: t("landing.step3.t"), d: t("landing.step3.d") },
+  ];
 
   return (
     <main className="landing">
@@ -50,6 +55,22 @@ export default function Landing() {
               <p className="text-secondary">Dear Hiring Manager, I require AEWV sponsorship to work in New Zealand…</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="container" style={{ marginTop: "var(--space-16)" }}>
+        <h2 className="section-title" style={{ textAlign: "center", marginBottom: "var(--space-8)", fontSize: "var(--text-24)" }}>
+          {t("landing.steps.title")}
+        </h2>
+        <div className="steps-grid">
+          {steps.map((s, i) => (
+            <div key={i} className="glass card step-card reveal">
+              <span className="step-num">{s.n}</span>
+              <h3 style={{ fontSize: "var(--text-18)", margin: 0 }}>{s.title}</h3>
+              <p className="text-secondary" style={{ margin: 0 }}>{s.d}</p>
+            </div>
+          ))}
         </div>
       </section>
 

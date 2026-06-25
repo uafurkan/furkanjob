@@ -519,6 +519,20 @@
   to   { opacity: 1; transform: scale(1)   translateY(0); }
 }
 
+/* ---------- How it works steps ---------- */
+.steps-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4);
+  counter-reset: step;
+}
+.step-card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
+.step-num {
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: rgba(111,168,255,.16); color: var(--accent-bright);
+  font-size: var(--text-16); font-weight: 700; font-family: var(--font-mono);
+  border: 1px solid rgba(111,168,255,.28);
+  flex-shrink: 0;
+}
+
 /* ---------- Home nudge ---------- */
 .home-nudge {
   display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
@@ -581,6 +595,7 @@
 @media (max-width: 860px) {
   .hero { grid-template-columns: 1fr; gap: var(--space-8); padding-top: var(--space-16); }
   .features { grid-template-columns: 1fr; }
+  .steps-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
   .plans { grid-template-columns: 1fr; }
   .topbar { display: none; }
