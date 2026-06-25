@@ -15,12 +15,22 @@ export const metadata: Metadata = {
     "Paste any hotel or restaurant page. The agent finds the email, writes a tailored visa-sponsorship application, and sends it with your CV from your connected inbox.",
   applicationName: APP,
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: {
+    icon: "/icon.svg",
+    apple: [{ url: "/icons/paply-mono-120.png", sizes: "120x120", type: "image/png" }],
+  },
   openGraph: { title: APP, description: "Paste a page, send the application.", url: BASE, siteName: APP, type: "website" },
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0A0C10",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0A0C10" },
+    { media: "(prefers-color-scheme: light)", color: "#0A0C10" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
