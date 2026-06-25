@@ -4,6 +4,7 @@ import { googleEnabled } from "@/lib/auth";
 import { DEFAULT_PROFILE } from "@/lib/engine/rules";
 import ProfileForm from "@/components/ProfileForm";
 import DocumentsManager from "@/components/DocumentsManager";
+import AccountData from "@/components/AccountData";
 import { getT } from "@/lib/i18n-server";
 import { planInfo } from "@/lib/plans";
 import Link from "next/link";
@@ -101,6 +102,8 @@ export default async function ProfilePage() {
           </div>
         )}
       </section>
+
+      <AccountData />
     </div>
   );
 }

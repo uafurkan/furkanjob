@@ -4,6 +4,7 @@ import { addDocument } from "@/lib/db";
 import { aiAnalyzeVisa, aiEnabled } from "@/lib/engine/ai";
 import { aiTier } from "@/lib/plans";
 import { resolveVisaCountries, sanitizeCountryCodes, visaTypeById } from "@/lib/engine/visa";
+import { rateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -34,6 +35,8 @@ export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const rl = await rateLimit(user.id, "upload");
+    if (!rl.ok) return NextResponse.json({ error: "Çok fazla yükleme. Biraz bekleyin." }, { status: 429 });
 
     const form = await req.formData().catch(() => null);
     const file = form?.get("file");

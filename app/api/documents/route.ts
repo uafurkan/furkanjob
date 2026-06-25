@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { addDocument, listDocuments, deleteDocument } from "@/lib/db";
 import type { Document } from "@/lib/types";
+import { rateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,8 @@ export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const rl = await rateLimit(user.id, "upload");
+    if (!rl.ok) return NextResponse.json({ error: "Çok fazla yükleme. Biraz bekleyin." }, { status: 429 });
 
     const form = await req.formData().catch(() => null);
     const file = form?.get("file");

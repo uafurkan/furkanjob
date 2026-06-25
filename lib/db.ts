@@ -338,6 +338,32 @@ export async function addCv(
   `;
   return mapCv(rows[0] as Record<string, unknown>);
 }
+// All of a user's CVs (newest/default first), without the bytes — for the CV manager.
+export async function listCvs(userId: string): Promise<Cv[]> {
+  const rows = await sql`
+    SELECT id, user_id, filename, storage_key, mime, size, is_default, created_at
+    FROM cvs WHERE user_id=${userId} ORDER BY is_default DESC, created_at DESC
+  `;
+  return rows.map((r) => mapCv(r as Record<string, unknown>));
+}
+export async function getCvForUser(cvId: string, userId: string): Promise<Cv | null> {
+  const rows = await sql`SELECT * FROM cvs WHERE id=${cvId} AND user_id=${userId} LIMIT 1`;
+  return rows[0] ? mapCv(rows[0] as Record<string, unknown>) : null;
+}
+export async function setDefaultCv(cvId: string, userId: string): Promise<void> {
+  await sql`UPDATE cvs SET is_default=FALSE WHERE user_id=${userId}`;
+  await sql`UPDATE cvs SET is_default=TRUE WHERE id=${cvId} AND user_id=${userId}`;
+}
+export async function deleteCv(cvId: string, userId: string): Promise<void> {
+  const wasDefault = await sql`SELECT is_default FROM cvs WHERE id=${cvId} AND user_id=${userId} LIMIT 1`;
+  await sql`DELETE FROM cvs WHERE id=${cvId} AND user_id=${userId}`;
+  // Promote the most recent remaining CV to default if we removed the default one.
+  if (wasDefault[0]?.is_default) {
+    await sql`UPDATE cvs SET is_default=TRUE WHERE id=(
+      SELECT id FROM cvs WHERE user_id=${userId} ORDER BY created_at DESC LIMIT 1
+    )`;
+  }
+}
 // Returns the raw CV bytes from the DB (null if stored only on disk / legacy).
 export async function getCvData(cvId: string): Promise<Buffer | null> {
   try {
@@ -419,6 +445,71 @@ export async function getDocumentsForAttach(ids: string[], userId: string): Prom
     if (found) out.push(found);
   }
   return out;
+}
+
+// ---------- Rate limiting (fixed-window, DB-backed so it works on serverless) ----------
+async function ensureRateTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      key TEXT PRIMARY KEY,
+      count INTEGER NOT NULL DEFAULT 0,
+      expires_at BIGINT NOT NULL
+    )
+  `;
+}
+// Increments the bucket for (userId, action) and returns the new count within the window.
+export async function hitRateLimit(userId: string, action: string, windowSec: number): Promise<number> {
+  try {
+    await ensureRateTable();
+    const bucket = Math.floor(Date.now() / 1000 / windowSec);
+    const key = `${userId}:${action}:${bucket}`;
+    const expires = (bucket + 1) * windowSec;
+    const rows = await sql`
+      INSERT INTO rate_limits (key, count, expires_at) VALUES (${key}, 1, ${expires})
+      ON CONFLICT (key) DO UPDATE SET count = rate_limits.count + 1
+      RETURNING count
+    `;
+    // Opportunistic cleanup of expired buckets (cheap, keeps the table tiny).
+    await sql`DELETE FROM rate_limits WHERE expires_at < ${Math.floor(Date.now() / 1000)}`;
+    return rows[0].count as number;
+  } catch {
+    return 0; // never block the product on a limiter failure
+  }
+}
+
+// ---------- Account data (GDPR/KVKK: export + delete) ----------
+export async function exportUserData(userId: string): Promise<Record<string, unknown>> {
+  const [user, profile, cvs, apps, docs, usageRows, sub] = await Promise.all([
+    findUserById(userId),
+    getProfile(userId),
+    listCvs(userId),
+    listApplications(userId),
+    listDocuments(userId),
+    sql`SELECT period, applications_sent FROM usage WHERE user_id=${userId} ORDER BY period DESC`,
+    sql`SELECT plan, status, current_period_end FROM subscriptions WHERE user_id=${userId} LIMIT 1`,
+  ]);
+  return {
+    exportedAt: now(),
+    user,
+    profile,
+    cvs: cvs.map((c) => ({ filename: c.filename, size: c.size, isDefault: c.isDefault, createdAt: c.createdAt })),
+    documents: docs.map((d) => ({ type: d.type, filename: d.filename, size: d.size, createdAt: d.createdAt })),
+    applications: apps,
+    usage: usageRows,
+    subscription: sub[0] ?? null,
+  };
+}
+export async function deleteUserData(userId: string): Promise<void> {
+  await Promise.all([
+    sql`DELETE FROM applications WHERE user_id=${userId}`,
+    sql`DELETE FROM cvs WHERE user_id=${userId}`,
+    sql`DELETE FROM documents WHERE user_id=${userId}`,
+    sql`DELETE FROM usage WHERE user_id=${userId}`,
+    sql`DELETE FROM profiles WHERE user_id=${userId}`,
+    sql`DELETE FROM email_accounts WHERE user_id=${userId}`,
+    sql`DELETE FROM subscriptions WHERE user_id=${userId}`,
+  ]);
+  await sql`DELETE FROM users WHERE id=${userId}`;
 }
 
 // ---------- Applications ----------

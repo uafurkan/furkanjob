@@ -10,6 +10,8 @@ import {
   sendViaGmailApi, sendViaSmtp, refreshGoogleAccessToken, resolveCvPath, type Attachment, type SendResult,
 } from "@/lib/engine/mailer";
 import { buildCoverLetterDocx } from "@/lib/engine/coverletter";
+import { rateLimit } from "@/lib/ratelimit";
+import { reportError } from "@/lib/observability";
 import fs from "node:fs";
 
 export const runtime = "nodejs";
@@ -19,7 +21,7 @@ export async function POST(req: Request) {
     return await handleSend(req);
   } catch (e: any) {
     // Never leak an HTML 500 page — the client expects JSON.
-    console.error("send route error:", e);
+    await reportError(e, { route: "send" });
     return NextResponse.json({ ok: false, error: e?.message || "Sunucu hatası" }, { status: 500 });
   }
 }
@@ -27,6 +29,9 @@ export async function POST(req: Request) {
 async function handleSend(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const rl = await rateLimit(user.id, "send");
+  if (!rl.ok) return NextResponse.json({ error: "Çok fazla gönderim. Biraz bekleyin." }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
 
   const used = await getUsage(user.id);
   if (isOverLimit(user.plan, used)) {

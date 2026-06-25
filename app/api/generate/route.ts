@@ -4,12 +4,26 @@ import { getProfile, getUsage, getDefaultCv } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
 import { runPipeline } from "@/lib/engine/pipeline";
 import { aiTier, isOverLimit, planInfo } from "@/lib/plans";
+import { rateLimit } from "@/lib/ratelimit";
+import { reportError } from "@/lib/observability";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  try {
+    return await handleGenerate(req);
+  } catch (e: any) {
+    await reportError(e, { route: "generate" });
+    return NextResponse.json({ error: e?.message || "Sunucu hatası" }, { status: 500 });
+  }
+}
+
+async function handleGenerate(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const rl = await rateLimit(user.id, "generate");
+  if (!rl.ok) return NextResponse.json({ error: "Çok fazla istek. Biraz bekleyin." }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
 
   const body = await req.json().catch(() => ({}));
   const text: string = (body?.text || "").toString();

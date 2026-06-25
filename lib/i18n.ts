@@ -166,6 +166,16 @@ const en: Dict = {
   "doc.type.other": "Other",
   "doc.type.visa": "Visa",
 
+  "acct.title": "Your data",
+  "acct.note": "Export everything we hold about you, or permanently delete your account and all its data.",
+  "acct.export": "Export my data (.json)",
+  "acct.exportFailed": "Export failed — please try again.",
+  "acct.delete": "Delete account",
+  "acct.deleteConfirm": "This permanently erases your profile, CV, documents and history. This cannot be undone.",
+  "acct.deleteYes": "Delete everything",
+  "acct.deleteFailed": "Delete failed — please try again.",
+  "acct.cancel": "Cancel",
+
   "apps.title": "My applications",
   "apps.empty.title": "No applications yet",
   "apps.empty.sub": "Create your first — just paste a business page.",
@@ -367,6 +377,16 @@ const tr: Dict = {
   "doc.type.experience": "Deneyim",
   "doc.type.other": "Diğer",
   "doc.type.visa": "Vize",
+
+  "acct.title": "Verilerin",
+  "acct.note": "Hakkında tuttuğumuz her şeyi indir ya da hesabını ve tüm verilerini kalıcı olarak sil.",
+  "acct.export": "Verilerimi indir (.json)",
+  "acct.exportFailed": "İndirme başarısız — tekrar dene.",
+  "acct.delete": "Hesabı sil",
+  "acct.deleteConfirm": "Bu; profilini, CV'ni, belgelerini ve geçmişini kalıcı olarak siler. Geri alınamaz.",
+  "acct.deleteYes": "Her şeyi sil",
+  "acct.deleteFailed": "Silme başarısız — tekrar dene.",
+  "acct.cancel": "İptal",
 
   "apps.title": "Başvurularım",
   "apps.empty.title": "Henüz başvuru yok",
