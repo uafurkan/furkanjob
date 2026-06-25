@@ -50,6 +50,7 @@ export type Profile = {
   visaCountries: string[];        // ISO alpha-2 codes the visa authorizes work in
   completedAt?: string | null;
   updatedAt: string;
+  digestOptOut?: boolean;
 };
 
 export type Document = {

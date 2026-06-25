@@ -36,6 +36,7 @@ export async function POST(req: Request) {
     relocation: b.relocation === undefined ? true : Boolean(b.relocation),
     tone: b.tone?.toString() || "warm-professional",
     includeSignature: Boolean(b.includeSignature),
+    digestOptOut: Boolean(b.digestOptOut),
     applicationLanguage: b.applicationLanguage?.toString() || "auto",
     hasVisa,
     visaType: hasVisa ? (b.visaType?.toString() || null) : null,

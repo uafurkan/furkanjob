@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listUsers, listApplications } from "@/lib/db";
+import { listUsers, listApplications, getProfile } from "@/lib/db";
 import { sendEmail } from "@/lib/notify";
 import { reportError } from "@/lib/observability";
 
@@ -39,7 +39,8 @@ export async function GET(req: Request) {
     let emailed = 0;
     for (const u of users) {
       if (!u.email) continue;
-      const apps = await listApplications(u.id);
+      const [apps, profile] = await Promise.all([listApplications(u.id), getProfile(u.id)]);
+      if (profile?.digestOptOut) continue;
       const recent = apps.filter((a) => new Date(a.createdAt).getTime() >= since && a.status === "sent");
       if (!recent.length) continue; // only nudge users who were actually active
       const companies = recent.map((a) => a.company || "—").filter(Boolean);

@@ -5,7 +5,6 @@ const STATUS: Record<string, string> = { sent: "chip-ok", failed: "chip-warn", d
 export default async function AdminApplications({ searchParams }: { searchParams?: { user?: string; status?: string } }) {
   const [apps, users] = await Promise.all([listAllApplications(500), listUsers()]);
   const emailById = Object.fromEntries(users.map((u) => [u.id, u.email]));
-  const idByEmail = Object.fromEntries(users.map((u) => [u.email.toLowerCase(), u.id]));
 
   const filterUser = searchParams?.user?.toLowerCase() || "";
   const filterStatus = searchParams?.status || "";
