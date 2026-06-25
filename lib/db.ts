@@ -529,6 +529,13 @@ export async function listApplications(userId: string): Promise<Application[]> {
   const rows = await sql`SELECT * FROM applications WHERE user_id=${userId} ORDER BY created_at DESC`;
   return rows.map((r) => mapApplication(r as Record<string, unknown>));
 }
+export async function getApplication(appId: string, userId: string): Promise<Application | null> {
+  const rows = await sql`SELECT * FROM applications WHERE id=${appId} AND user_id=${userId} LIMIT 1`;
+  return rows[0] ? mapApplication(rows[0] as Record<string, unknown>) : null;
+}
+export async function updateApplicationStatus(appId: string, userId: string, status: string): Promise<void> {
+  await sql`UPDATE applications SET status=${status} WHERE id=${appId} AND user_id=${userId}`;
+}
 
 // ---------- Usage ----------
 export async function getUsage(userId: string, period = currentPeriod()): Promise<number> {

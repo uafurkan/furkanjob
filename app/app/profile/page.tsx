@@ -5,6 +5,7 @@ import { DEFAULT_PROFILE } from "@/lib/engine/rules";
 import ProfileForm from "@/components/ProfileForm";
 import DocumentsManager from "@/components/DocumentsManager";
 import AccountData from "@/components/AccountData";
+import ApplicationsBoard from "@/components/ApplicationsBoard";
 import { getT } from "@/lib/i18n-server";
 import { planInfo } from "@/lib/plans";
 import Link from "next/link";
@@ -12,7 +13,7 @@ import Link from "next/link";
 export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
-  const { t, lang } = getT();
+  const { t } = getT();
   const user = (await getCurrentUser())!;
   const [profile, cv, account, apps, used, allDocs, cvs] = await Promise.all([
     getProfile(user.id),
@@ -46,9 +47,6 @@ export default async function ProfilePage() {
     visaCountries: profile?.visaCountries || [],
   };
 
-  const status = (s: string) =>
-    ({ sent: { l: t("apps.status.sent"), c: "chip-ok" }, failed: { l: t("apps.status.failed"), c: "chip-warn" }, draft: { l: t("apps.status.draft"), c: "" } } as Record<string, { l: string; c: string }>)[s] || { l: s, c: "" };
-
   return (
     <div className="stack gap-6">
       <header className="page-head">
@@ -66,7 +64,7 @@ export default async function ProfilePage() {
 
       <DocumentsManager initial={libraryDocs} />
 
-      {/* Applications list */}
+      {/* Applications list + tracking pipeline */}
       <section id="applications" className="stack gap-3">
         <div className="row gap-2" style={{ alignItems: "center" }}>
           <h2 style={{ fontSize: "var(--text-16)", fontWeight: 600, margin: 0 }}>{t("apps.title")}</h2>
@@ -82,27 +80,13 @@ export default async function ProfilePage() {
             <Link href="/app/new" className="btn btn-primary" style={{ alignSelf: "start" }}>{t("apps.new")}</Link>
           </div>
         ) : (
-          <div className="stack gap-3">
-            {apps.map((a) => {
-              const st = status(a.status);
-              return (
-                <div key={a.id} className="glass card app-row">
-                  <div className="stack gap-1">
-                    <div className="row gap-2 wrap">
-                      <b>{a.company || "—"}</b>
-                      <span className={`chip ${st.c}`}>{st.l}</span>
-                      {a.country && <span className="chip">{a.country}</span>}
-                    </div>
-                    <span className="text-secondary" style={{ fontSize: "var(--text-14)" }}>{a.subject}</span>
-                    <span className="mono text-secondary" style={{ fontSize: "var(--text-12)" }}>
-                      → {a.recipients.join(", ") || "—"} · {new Date(a.createdAt).toLocaleString(lang === "tr" ? "tr-TR" : "en-US")}
-                    </span>
-                    {a.error && <span className="chip-warn" style={{ fontSize: "var(--text-12)" }}>{a.error}</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ApplicationsBoard
+            initial={apps.map((a) => ({
+              id: a.id, company: a.company ?? null, country: a.country ?? null, subject: a.subject,
+              recipients: a.recipients, status: a.status, error: a.error ?? null,
+              createdAt: a.createdAt, sentAt: a.sentAt ?? null,
+            }))}
+          />
         )}
       </section>
 

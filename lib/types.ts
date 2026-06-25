@@ -84,7 +84,7 @@ export type Application = {
   draftSource: "template" | "ai";
   subject: string;
   body: string;
-  status: "draft" | "sent" | "failed";
+  status: "draft" | "sent" | "failed" | "replied" | "interview" | "offer" | "rejected";
   providerMsgId?: string | null;
   error?: string | null;
   createdAt: string;

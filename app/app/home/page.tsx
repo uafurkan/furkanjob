@@ -11,7 +11,8 @@ export default async function HomePage() {
   const user = (await getCurrentUser())!;
   const [apps, used] = await Promise.all([listApplications(user.id), getUsage(user.id)]);
   const limit = planInfo(user.plan).monthlyLimit;
-  const sent = apps.filter((a) => a.status === "sent").length;
+  // Anything that left the outbox counts as sent (sent + later pipeline states), excluding draft/failed.
+  const sent = apps.filter((a) => a.status !== "draft" && a.status !== "failed").length;
   const recent = apps.slice(0, 3);
 
   const firstName = (user.name || "").trim().split(/\s+/)[0];

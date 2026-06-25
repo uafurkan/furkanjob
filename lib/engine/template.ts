@@ -107,6 +107,44 @@ const F: Record<AppLang, Frag> = {
   },
 };
 
+// Short, polite follow-up for an application that hasn't had a reply.
+const FOLLOWUP: Record<AppLang, { subject: (c: string) => string; body: (c: string, greeting: string) => string }> = {
+  en: {
+    subject: (c) => `Following up — my application to ${c}`,
+    body: (c, g) => `${g}\n\nI hope you're well. I recently sent an application to ${c} and wanted to follow up in case it was missed. I remain very interested in joining your team and would be glad to provide anything else you need.\n\nThank you for your time and consideration.`,
+  },
+  tr: {
+    subject: (c) => `Takip — ${c} başvurum`,
+    body: (c, g) => `${g}\n\nUmarım iyisinizdir. Kısa süre önce ${c} için bir başvuru gönderdim ve gözden kaçmış olabilir diye takip etmek istedim. Ekibinize katılmaya hâlâ çok istekliyim; ihtiyacınız olan her şeyi memnuniyetle iletirim.\n\nZaman ayırdığınız için teşekkür ederim.`,
+  },
+  es: {
+    subject: (c) => `Seguimiento — mi candidatura a ${c}`,
+    body: (c, g) => `${g}\n\nEspero que se encuentre bien. Hace poco envié una candidatura a ${c} y quería hacer un seguimiento por si no se recibió. Sigo muy interesado en unirme a su equipo y estaré encantado de facilitar cualquier información adicional.\n\nGracias por su tiempo y consideración.`,
+  },
+  fr: {
+    subject: (c) => `Relance — ma candidature chez ${c}`,
+    body: (c, g) => `${g}\n\nJ'espère que vous allez bien. J'ai récemment envoyé une candidature à ${c} et je me permets de la relancer au cas où elle serait passée inaperçue. Je reste très intéressé à rejoindre votre équipe et serai ravi de fournir tout complément nécessaire.\n\nMerci de votre temps et de votre attention.`,
+  },
+  de: {
+    subject: (c) => `Nachfrage — meine Bewerbung bei ${c}`,
+    body: (c, g) => `${g}\n\nich hoffe, es geht Ihnen gut. Kürzlich habe ich eine Bewerbung an ${c} gesendet und möchte nachfragen, falls sie untergegangen ist. Ich bin weiterhin sehr daran interessiert, Ihr Team zu verstärken, und stelle Ihnen gern weitere Unterlagen zur Verfügung.\n\nVielen Dank für Ihre Zeit.`,
+  },
+  it: {
+    subject: (c) => `Sollecito — la mia candidatura presso ${c}`,
+    body: (c, g) => `${g}\n\nSpero stiate bene. Di recente ho inviato una candidatura a ${c} e volevo ricontattarvi nel caso fosse sfuggita. Resto molto interessato a entrare nel vostro team e sarò lieto di fornire qualsiasi ulteriore informazione.\n\nGrazie per il tempo e l'attenzione.`,
+  },
+  pt: {
+    subject: (c) => `Seguimento — a minha candidatura à ${c}`,
+    body: (c, g) => `${g}\n\nEspero que esteja tudo bem. Enviei recentemente uma candidatura à ${c} e queria fazer um seguimento caso tenha passado despercebida. Continuo muito interessado em juntar-me à vossa equipa e terei todo o gosto em fornecer qualquer informação adicional.\n\nObrigado pelo seu tempo e consideração.`,
+  },
+};
+
+export function buildFollowup(company: string, lang: AppLang = "en"): Draft {
+  const f = F[lang] || F.en;
+  const fu = FOLLOWUP[lang] || FOLLOWUP.en;
+  return { subject: fu.subject(company), body: fu.body(company, f.greeting) };
+}
+
 function rolesForApplication(analysis: Analysis, profile: EngineProfile): string[] {
   if (analysis.positions.length) return analysis.positions;
   if (profile.targetRoles.length) return profile.targetRoles;

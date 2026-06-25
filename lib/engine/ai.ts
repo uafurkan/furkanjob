@@ -165,6 +165,34 @@ ${text.slice(0, 4000)}
   };
 }
 
+// ---------- Follow-up generation ----------
+export async function aiFollowup(opts: {
+  company: string;
+  country?: string;
+  roles?: string[];
+  originalSubject?: string;
+  lang: AppLang;
+  tier?: AiTier;
+}): Promise<Draft | null> {
+  if (!aiEnabled()) return null;
+  const langName = APP_LANGS.find((l) => l.code === opts.lang)?.label || "English";
+  const prompt = `Write a SHORT, polite follow-up email for a job application that hasn't received a reply yet.
+
+Context:
+- Company: ${opts.company}
+${opts.country ? `- Country: ${opts.country}\n` : ""}${opts.roles?.length ? `- Roles applied for: ${opts.roles.join(", ")}\n` : ""}${opts.originalSubject ? `- Original subject: ${opts.originalSubject}\n` : ""}
+Write fully IN ${langName}. Return STRICT JSON only: {"subject": "...", "body": "..."}.
+
+Rules:
+- Warm, brief (60-90 words), not pushy. Reference that you applied recently and reiterate genuine interest.
+- Subject: plain text, references the follow-up. NO "SUBJECT:" prefix.
+- NO closing salutation/name/signature block (the Gmail signature is appended automatically).
+- Invent no new facts.`;
+  const parsed = extractJson<Partial<Draft>>(await complete(prompt, 500, opts.tier || "free"));
+  if (parsed?.subject && parsed?.body) return { subject: parsed.subject, body: parsed.body };
+  return null;
+}
+
 // ---------- Draft generation ----------
 export async function aiDraft(
   { text, analysis, profile }: GenerateInput,
