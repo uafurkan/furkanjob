@@ -83,6 +83,8 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   });
 
   const [resending, setResending] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<AppRow | null>(null);
 
   async function resend(a: AppRow) {
     if (!a.body || !a.recipients.length) return;
@@ -128,6 +130,22 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
     } catch {
       setApps(prev);
       setMsg({ kind: "err", text: t("apps.statusFailed") });
+    }
+  }
+
+  async function deleteApp(id: string) {
+    setDeleting(id);
+    setMsg(null);
+    try {
+      const r = await fetch(`/api/applications/${id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error();
+      setApps((prev) => prev.filter((x) => x.id !== id));
+      setDetail(null);
+      setConfirmDelete(null);
+    } catch {
+      setMsg({ kind: "err", text: t("apps.deleteFailed") });
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -306,6 +324,25 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
         </div>
       )}
 
+      {confirmDelete && (
+        <div className="confirm-overlay" onClick={() => !deleting && setConfirmDelete(null)}>
+          <div className="confirm-modal" style={{ maxWidth: 420, width: "92%" }} onClick={(e) => e.stopPropagation()}>
+            <div className="stack gap-3" style={{ padding: "var(--space-4) var(--space-4) var(--space-2)" }}>
+              <p className="confirm-title">{t("apps.deleteConfirm")}</p>
+              <p className="text-secondary" style={{ fontSize: "var(--text-14)" }}>
+                {confirmDelete.company || confirmDelete.subject || "—"}
+              </p>
+            </div>
+            <div className="confirm-actions">
+              <button className="btn" onClick={() => setConfirmDelete(null)} disabled={!!deleting}>{t("new.cancel")}</button>
+              <button className="btn btn-danger" data-loading={deleting === confirmDelete.id} onClick={() => deleteApp(confirmDelete.id)} disabled={!!deleting}>
+                {t("apps.deleteConfirmBtn")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {detail && (
         <div className="confirm-overlay" onClick={() => { setDetail(null); setDetailNotes(""); }}>
           <div className="confirm-modal detail-modal" style={{ maxWidth: 640, width: "94%", maxHeight: "88vh" }} onClick={(e) => e.stopPropagation()}>
@@ -314,7 +351,8 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
                 <span className="detail-company">{detail.company || "—"}</span>
                 {detail.country && <span className="chip" style={{ alignSelf: "start" }}>{detail.country}</span>}
               </div>
-              <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => { setDetail(null); setDetailNotes(""); }}>{t("apps.detail.close")}</button>
+              <button className="btn btn-sm btn-danger" style={{ marginLeft: "auto" }} onClick={() => setConfirmDelete(detail)}>{t("apps.delete")}</button>
+              <button className="btn btn-sm" onClick={() => { setDetail(null); setDetailNotes(""); }}>{t("apps.detail.close")}</button>
             </div>
             <div className="detail-body stack gap-3">
               <div className="detail-meta-grid">

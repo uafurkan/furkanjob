@@ -291,6 +291,10 @@ const en: Dict = {
   "apps.source.none": "None",
   "apps.draft.template": "Smart template",
   "apps.draft.ai": "AI-generated",
+  "apps.delete": "Delete",
+  "apps.deleteConfirm": "Delete this application?",
+  "apps.deleteConfirmBtn": "Yes, delete",
+  "apps.deleteFailed": "Couldn't delete — try again.",
 
   "insights.title": "Insights",
   "insights.responseRate": "Response rate",
@@ -349,6 +353,18 @@ const en: Dict = {
   "billing.opening": "Opening…",
   "billing.manage": "Manage subscription",
   "billing.wallets": "Apple Pay & Google Pay accepted · secured by Stripe",
+
+  "landing.faq.title": "Frequently asked questions",
+  "landing.faq.q1": "Does paply ever invent email addresses?",
+  "landing.faq.a1": "Never. Emails are only extracted from the text you paste, or found on the business's real contact page / search results. If no address is found, you get a clear warning — not a guess.",
+  "landing.faq.q2": "Can you read my Gmail inbox?",
+  "landing.faq.a2": "No. We request send-only access (gmail.send scope). The app can dispatch emails on your behalf but has zero ability to read, scan, or modify any messages in your inbox.",
+  "landing.faq.q3": "What happens if I hit the monthly limit?",
+  "landing.faq.a3": "You'll see a paywall notice before anything is sent. Upgrade to Pro for unlimited applications, or wait for the next calendar month — whichever suits you.",
+  "landing.faq.q4": "Which countries does paply support?",
+  "landing.faq.a4": "New Zealand (AEWV), Australia (TSS 482), United States (H-2B), Canada (LMIA), and the United Kingdom (Skilled Worker). The agent detects the country from the paste and adapts the visa language automatically.",
+  "landing.faq.q5": "Is my CV stored securely?",
+  "landing.faq.a5": "Yes. Your CV is stored encrypted in the database and is only ever attached to emails you explicitly send. You can delete it at any time from your profile page.",
 };
 
 const tr: Dict = {
@@ -637,6 +653,10 @@ const tr: Dict = {
   "apps.source.none": "Yok",
   "apps.draft.template": "Akıllı şablon",
   "apps.draft.ai": "AI üretimi",
+  "apps.delete": "Sil",
+  "apps.deleteConfirm": "Bu başvuruyu sil?",
+  "apps.deleteConfirmBtn": "Evet, sil",
+  "apps.deleteFailed": "Silinemedi — tekrar dene.",
 
   "insights.title": "İçgörüler",
   "insights.responseRate": "Yanıt oranı",
@@ -695,6 +715,18 @@ const tr: Dict = {
   "billing.opening": "Açılıyor…",
   "billing.manage": "Aboneliği yönet",
   "billing.wallets": "Apple Pay & Google Pay kabul edilir · Stripe ile güvenli",
+
+  "landing.faq.title": "Sıkça sorulan sorular",
+  "landing.faq.q1": "paply hiç e-posta adresi uyduruyor mu?",
+  "landing.faq.a1": "Asla. E-postalar yalnızca yapıştırdığın metinden çıkarılır ya da işletmenin gerçek iletişim sayfasında / arama sonuçlarında aranır. Adres bulunamazsa açık bir uyarı alırsın — asla tahmin edilmez.",
+  "landing.faq.q2": "Gmail gelen kutumu okuyabilir misiniz?",
+  "landing.faq.a2": "Hayır. Yalnızca gönderim izni (gmail.send kapsamı) istiyoruz. Uygulama senin adına mail gönderebilir; ancak gelen kutundaki mesajları okuma, tarama veya değiştirme yetkisi sıfırdır.",
+  "landing.faq.q3": "Aylık limite ulaşırsam ne olur?",
+  "landing.faq.a3": "Herhangi bir şey gönderilmeden önce bir paywall bildirimi görürsün. Sınırsız başvuru için Pro'ya geçebilir ya da bir sonraki takvim ayını bekleyebilirsin.",
+  "landing.faq.q4": "paply hangi ülkeleri destekliyor?",
+  "landing.faq.a4": "Yeni Zelanda (AEWV), Avustralya (TSS 482), ABD (H-2B), Kanada (LMIA) ve Birleşik Krallık (Skilled Worker). Ajan ülkeyi yapıştırılan metinden algılar ve vize dilini otomatik olarak uyarlar.",
+  "landing.faq.q5": "CV'm güvenli şekilde saklanıyor mu?",
+  "landing.faq.a5": "Evet. CV'n veritabanında şifreli olarak saklanır ve yalnızca açıkça gönderdiğin maillere eklenir. Profil sayfandan istediğin zaman silebilirsin.",
 };
 
 const DICTS: Record<Lang, Dict> = { en, tr };

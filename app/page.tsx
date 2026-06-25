@@ -4,6 +4,13 @@ import { getT } from "@/lib/i18n-server";
 
 export default function Landing() {
   const { t } = getT();
+  const faqs = [
+    { q: t("landing.faq.q1"), a: t("landing.faq.a1") },
+    { q: t("landing.faq.q2"), a: t("landing.faq.a2") },
+    { q: t("landing.faq.q3"), a: t("landing.faq.a3") },
+    { q: t("landing.faq.q4"), a: t("landing.faq.a4") },
+    { q: t("landing.faq.q5"), a: t("landing.faq.a5") },
+  ];
   const testimonials = [
     { q: t("landing.t1.quote"), n: t("landing.t1.name"), l: t("landing.t1.loc") },
     { q: t("landing.t2.quote"), n: t("landing.t2.name"), l: t("landing.t2.loc") },
@@ -148,6 +155,21 @@ export default function Landing() {
             </ul>
             <Link href="/signin" className="btn btn-primary" style={{ alignSelf: "start" }}>{t("landing.pricing.upgrade")}</Link>
           </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="container" style={{ marginTop: "var(--space-16)" }}>
+        <h2 className="section-title" style={{ textAlign: "center", marginBottom: "var(--space-8)", fontSize: "var(--text-24)" }}>
+          {t("landing.faq.title")}
+        </h2>
+        <div className="faq-list">
+          {faqs.map((f, i) => (
+            <div key={i} className="glass card faq-item reveal">
+              <h3 className="faq-q">{f.q}</h3>
+              <p className="text-secondary faq-a">{f.a}</p>
+            </div>
+          ))}
         </div>
       </section>
 

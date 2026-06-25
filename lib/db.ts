@@ -550,6 +550,9 @@ export async function updateApplicationNotes(appId: string, userId: string, note
   await sql`ALTER TABLE applications ADD COLUMN IF NOT EXISTS notes TEXT`;
   await sql`UPDATE applications SET notes=${notes} WHERE id=${appId} AND user_id=${userId}`;
 }
+export async function deleteApplication(appId: string, userId: string): Promise<void> {
+  await sql`DELETE FROM applications WHERE id=${appId} AND user_id=${userId}`;
+}
 
 // ---------- Usage ----------
 export async function getUsage(userId: string, period = currentPeriod()): Promise<number> {

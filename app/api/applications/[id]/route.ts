@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { updateApplicationStatus, updateApplicationNotes } from "@/lib/db";
+import { updateApplicationStatus, updateApplicationNotes, deleteApplication } from "@/lib/db";
 import { SETTABLE_STATUSES } from "@/lib/applications";
 
 export const runtime = "nodejs";
@@ -22,4 +22,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   await updateApplicationStatus(params.id, user.id, status);
   return NextResponse.json({ ok: true, status });
+}
+
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  await deleteApplication(params.id, user.id);
+  return NextResponse.json({ ok: true });
 }
