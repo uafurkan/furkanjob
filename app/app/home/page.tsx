@@ -11,62 +11,73 @@ export default async function HomePage() {
   const user = (await getCurrentUser())!;
   const [apps, used] = await Promise.all([listApplications(user.id), getUsage(user.id)]);
   const limit = planInfo(user.plan).monthlyLimit;
-  const recent = apps.slice(0, 5);
+  const sent = apps.filter((a) => a.status === "sent").length;
+  const recent = apps.slice(0, 3);
 
-  const status = (s: string) =>
-    ({ sent: { l: t("apps.status.sent"), c: "chip-ok" }, failed: { l: t("apps.status.failed"), c: "chip-warn" }, draft: { l: t("apps.status.draft"), c: "" } } as Record<string, { l: string; c: string }>)[s] || { l: s, c: "" };
+  const firstName = (user.name || "").trim().split(/\s+/)[0];
+  const hello = firstName ? t("home.hello").replace("{name}", firstName) : t("home.helloNoName");
 
   return (
     <div className="stack gap-6">
       <header className="page-head">
-        <h1>paply</h1>
-        <p className="text-secondary">
-          {used}{limit === Infinity ? "" : ` / ${limit}`} {t("apps.thisMonth")} · {user.plan}
-        </p>
+        <h1>{hello}</h1>
+        <p className="text-secondary">{t("home.tagline")}</p>
       </header>
 
-      {/* Quick action */}
-      <Link href="/app/new" className="btn btn-primary" style={{ alignSelf: "start" }}>
-        + {t("nav.new")}
+      {/* Quick stats */}
+      <div className="stat-grid">
+        <div className="glass card stat">
+          <span className="stat-value">
+            {used}{limit === Infinity ? "" : <span className="stat-sub">/{limit}</span>}
+          </span>
+          <span className="stat-label">{t("home.stat.month")}</span>
+        </div>
+        <div className="glass card stat">
+          <span className="stat-value">{sent}</span>
+          <span className="stat-label">{t("home.stat.sent")}</span>
+        </div>
+        <div className="glass card stat">
+          <span className="stat-value" style={{ textTransform: "capitalize" }}>{user.plan}</span>
+          <span className="stat-label">{t("home.stat.plan")}</span>
+        </div>
+      </div>
+
+      {/* Primary action */}
+      <Link href="/app/new" className="glass card home-cta">
+        <div className="stack gap-1">
+          <h2>{t("home.cta.title")}</h2>
+          <p className="text-secondary">{t("home.cta.sub")}</p>
+        </div>
+        <span className="home-cta-arrow" aria-hidden>→</span>
       </Link>
 
-      {/* Recent applications */}
+      {/* Recent activity peek (full list lives in Profile) */}
       <section className="stack gap-3">
         <div className="row gap-2" style={{ alignItems: "center" }}>
-          <h2 style={{ fontSize: "var(--text-16)", fontWeight: 600, margin: 0 }}>{t("apps.title")}</h2>
-          {apps.length > 5 && (
+          <h2 className="section-title">{t("home.recent")}</h2>
+          {apps.length > 0 && (
             <Link href="/app/profile#applications" className="text-secondary" style={{ fontSize: "var(--text-13)", marginLeft: "auto" }}>
-              {t("apps.title")} →
+              {t("home.viewAll")} →
             </Link>
           )}
         </div>
 
         {recent.length === 0 ? (
-          <div className="glass card stack gap-3 empty">
-            <h3>{t("apps.empty.title")}</h3>
-            <p className="text-secondary">{t("apps.empty.sub")}</p>
+          <div className="glass card empty">
+            <p className="text-secondary" style={{ margin: 0 }}>{t("home.recentEmpty")}</p>
           </div>
         ) : (
-          <div className="stack gap-3">
-            {recent.map((a) => {
-              const st = status(a.status);
-              return (
-                <div key={a.id} className="glass card app-row">
-                  <div className="stack gap-1">
-                    <div className="row gap-2 wrap">
-                      <b>{a.company || "—"}</b>
-                      <span className={`chip ${st.c}`}>{st.l}</span>
-                      {a.country && <span className="chip">{a.country}</span>}
-                    </div>
-                    <span className="text-secondary" style={{ fontSize: "var(--text-14)" }}>{a.subject}</span>
-                    <span className="mono text-secondary" style={{ fontSize: "var(--text-12)" }}>
-                      → {a.recipients.join(", ") || "—"} · {new Date(a.createdAt).toLocaleString(lang === "tr" ? "tr-TR" : "en-US")}
-                    </span>
-                    {a.error && <span className="chip-warn" style={{ fontSize: "var(--text-12)" }}>{a.error}</span>}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="stack gap-2">
+            {recent.map((a) => (
+              <Link key={a.id} href="/app/profile#applications" className="home-recent-row">
+                <span className="home-recent-dot" data-status={a.status} aria-hidden />
+                <b>{a.company || "—"}</b>
+                {a.country && <span className="home-recent-sub text-secondary">{a.country}</span>}
+                <span className="home-recent-date">
+                  {new Date(a.createdAt).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US", { day: "2-digit", month: "short" })}
+                </span>
+              </Link>
+            ))}
           </div>
         )}
       </section>

@@ -218,6 +218,40 @@
 .seg { flex: 1; min-height: 40px; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--content-secondary); font-weight: 600; font-size: var(--text-14); cursor: pointer; transition: background var(--dur-micro-exit) var(--ease-settle), color var(--dur-micro-exit) var(--ease-settle); }
 .seg.active { color: #06101f; background: linear-gradient(180deg, var(--accent-bright), var(--accent)); box-shadow: 0 4px 14px var(--glow-halo); }
 
+/* ---------- Home dashboard ---------- */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+.stat { display: flex; flex-direction: column; gap: 4px; padding: var(--space-4); }
+.stat-value { font-family: var(--font-display); font-size: var(--text-28); font-weight: 800; line-height: 1; }
+.stat-sub { font-size: var(--text-16); color: var(--content-tertiary); font-weight: 600; }
+.stat-label { font-size: var(--text-12); color: var(--content-tertiary); text-transform: uppercase; letter-spacing: .05em; }
+
+.home-cta {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+  text-decoration: none; color: inherit;
+  border-color: rgba(111,168,255,.35);
+  box-shadow: var(--glass-shadow), 0 0 32px var(--glow-halo);
+  transition: transform 120ms ease;
+}
+.home-cta:hover { transform: translateY(-1px); }
+.home-cta h2 { font-size: var(--text-18); margin: 0; }
+.home-cta-arrow { font-size: var(--text-28); color: var(--accent-bright); flex-shrink: 0; }
+
+.section-title { font-size: var(--text-16); font-weight: 600; margin: 0; }
+
+.home-recent-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-soft); border: 1px solid var(--glass-stroke);
+  background: rgba(255,255,255,.03); text-decoration: none; color: inherit;
+  transition: background 120ms ease;
+}
+.home-recent-row:hover { background: rgba(255,255,255,.05); }
+.home-recent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--content-tertiary); }
+.home-recent-dot[data-status="sent"] { background: var(--signal-success); }
+.home-recent-dot[data-status="failed"] { background: var(--signal-warning); }
+.home-recent-sub { font-size: var(--text-13); }
+.home-recent-date { margin-left: auto; font-size: var(--text-12); color: var(--content-tertiary); flex-shrink: 0; }
+
 /* ---------- Visa-covered banner (new application) ---------- */
 .visa-banner {
   display: flex; align-items: center; gap: var(--space-3);
