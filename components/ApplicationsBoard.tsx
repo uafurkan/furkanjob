@@ -66,6 +66,39 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
     );
   });
 
+  const [resending, setResending] = useState<string | null>(null);
+
+  async function resend(a: AppRow) {
+    if (!a.body || !a.recipients.length) return;
+    setResending(a.id);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/send", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          to: a.recipients.join(", "),
+          subject: a.subject,
+          body: a.body,
+          company: a.company,
+          country: a.country,
+          emailSource: a.emailSource || "manual",
+          draftSource: a.draftSource || "template",
+          recordApplication: false,
+        }),
+      });
+      const d = await r.json();
+      if (r.status === 402) { setMsg({ kind: "err", text: t("new.limitReached") }); return; }
+      if (!r.ok) throw new Error(d.error || "error");
+      setApps((prev) => prev.map((x) => x.id === a.id ? { ...x, status: "sent", error: null, sentAt: new Date().toISOString() } : x));
+      setMsg({ kind: "ok", text: t("apps.resenOk") });
+    } catch (e: any) {
+      setMsg({ kind: "err", text: e.message });
+    } finally {
+      setResending(null);
+    }
+  }
+
   async function changeStatus(id: string, status: string) {
     const prev = apps;
     setApps((a) => a.map((x) => (x.id === id ? { ...x, status } : x)));
@@ -134,7 +167,7 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   return (
     <div className="stack gap-3">
       {/* Pipeline summary — clickable filter */}
-      <div className="row gap-2 wrap">
+      <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
         <span
           className={`chip${filterStatus === "all" ? " chip-accent" : ""}`}
           style={{ cursor: "pointer" }}
@@ -152,6 +185,14 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
             {label(s)}: <b style={{ marginLeft: 4 }}>{n}</b>
           </span>
         ))}
+        <a
+          href="/api/applications/export"
+          download
+          className="btn btn-sm"
+          style={{ marginLeft: "auto", fontSize: "var(--text-12)", textDecoration: "none" }}
+        >
+          {t("apps.export")}
+        </a>
       </div>
 
       {/* Search */}
@@ -188,7 +229,14 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
                       <option key={s} value={s}>{label(s)}</option>
                     ))}
                   </select>
-                  {due && (
+                  {a.status === "failed" && a.body && (
+                    <button className="btn btn-sm" data-loading={resending === a.id}
+                      onClick={(e) => { e.stopPropagation(); resend(a); }}
+                      style={{ marginLeft: "auto" }}>
+                      {t("apps.resend")}
+                    </button>
+                  )}
+                  {due && a.status !== "failed" && (
                     <button className="btn btn-sm" data-loading={loadingFu === a.id}
                       onClick={(e) => { e.stopPropagation(); openFollowup(a); }}
                       style={{ marginLeft: "auto" }}>

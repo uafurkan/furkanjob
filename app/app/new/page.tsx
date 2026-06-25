@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useT } from "@/components/i18n";
 import { APP_LANGS } from "@/lib/engine/template";
@@ -73,6 +73,24 @@ export default function NewApplication() {
   const [confirmPending, setConfirmPending] = useState<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-focus textarea on mount (not if restoring a draft)
+  useEffect(() => {
+    if (!loadDraft()) textareaRef.current?.focus();
+  }, []);
+
+  // Keyboard shortcut: Cmd/Ctrl+Enter → analyze (or send if result ready)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        if (!analyzing && !sending) analyze();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   // Load the user's document library + CVs (for the attachment pickers).
   useEffect(() => {
@@ -229,7 +247,7 @@ export default function NewApplication() {
       <section className="glass card stack gap-4">
         <label className="field">
           <span className="field-label">{t("new.content")}</span>
-          <textarea className="textarea" placeholder={t("new.placeholder")} value={text} onChange={(e) => setText(e.target.value)} />
+          <textarea ref={textareaRef} className="textarea" placeholder={t("new.placeholder")} value={text} onChange={(e) => setText(e.target.value)} />
           <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("new.urlHint")}</span>
         </label>
 
@@ -257,6 +275,7 @@ export default function NewApplication() {
           <button className="btn btn-primary" data-loading={analyzing || sending} onClick={analyze} disabled={analyzing || sending}>
             {analyzing ? t("new.analyzing") : sending ? t("new.sending") : auto ? t("new.analyzeSend") : t("new.analyze")}
           </button>
+          <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>⌘↵</span>
           {res && <span className="chip">{res.draftSource === "ai" ? t("new.aiLabel") : t("new.tmpl")}</span>}
           {res && <span className="chip">{langLabel(res.language)}</span>}
         </div>
