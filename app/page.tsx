@@ -4,6 +4,11 @@ import { getT } from "@/lib/i18n-server";
 
 export default function Landing() {
   const { t } = getT();
+  const testimonials = [
+    { q: t("landing.t1.quote"), n: t("landing.t1.name"), l: t("landing.t1.loc") },
+    { q: t("landing.t2.quote"), n: t("landing.t2.name"), l: t("landing.t2.loc") },
+    { q: t("landing.t3.quote"), n: t("landing.t3.name"), l: t("landing.t3.loc") },
+  ];
   const features = [
     { t: t("landing.f1.t"), d: t("landing.f1.d") },
     { t: t("landing.f2.t"), d: t("landing.f2.d") },
@@ -69,6 +74,24 @@ export default function Landing() {
               <span className="step-num">{s.n}</span>
               <h3 style={{ fontSize: "var(--text-18)", margin: 0 }}>{s.title}</h3>
               <p className="text-secondary" style={{ margin: 0 }}>{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="container" style={{ marginTop: "var(--space-16)" }}>
+        <h2 className="section-title" style={{ textAlign: "center", marginBottom: "var(--space-8)", fontSize: "var(--text-24)" }}>
+          {t("landing.testimonials.title")}
+        </h2>
+        <div className="testimonials-grid">
+          {testimonials.map((tm, i) => (
+            <div key={i} className="glass card testimonial-card reveal">
+              <p className="testimonial-quote">"{tm.q}"</p>
+              <div className="testimonial-author">
+                <b>{tm.n}</b>
+                <span className="text-secondary">{tm.l}</span>
+              </div>
             </div>
           ))}
         </div>

@@ -528,6 +528,13 @@
 }
 
 /* ---------- How it works steps ---------- */
+.testimonials-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4);
+}
+.testimonial-card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
+.testimonial-quote { font-size: var(--text-15); line-height: 1.6; color: var(--content-secondary); margin: 0; font-style: italic; }
+.testimonial-author { display: flex; flex-direction: column; gap: 2px; margin-top: auto; padding-top: var(--space-3); border-top: 1px solid rgba(255,255,255,.06); font-size: var(--text-13); }
+
 .steps-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4);
   counter-reset: step;
@@ -604,6 +611,7 @@
   .hero { grid-template-columns: 1fr; gap: var(--space-8); padding-top: var(--space-16); }
   .features { grid-template-columns: 1fr; }
   .steps-grid { grid-template-columns: 1fr; }
+  .testimonials-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
   .plans { grid-template-columns: 1fr; }
   .topbar { display: none; }
