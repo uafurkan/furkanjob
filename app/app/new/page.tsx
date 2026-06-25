@@ -209,6 +209,7 @@ export default function NewApplication() {
           <div>
             <h1>{t("new.title")}</h1>
             <p className="text-secondary">{t("new.sub")}</p>
+            <Link href="/app/bulk" className="text-secondary" style={{ fontSize: "var(--text-13)", textDecoration: "none" }}>⚡ {t("new.bulk")} →</Link>
           </div>
           {res && (
             <button className="btn btn-ghost btn-sm draft-discard" onClick={discardDraft} title={t("new.discard")}>
