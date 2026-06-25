@@ -4,12 +4,12 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useT, LangToggle } from "@/components/i18n";
 
-const TABS = [
+const MAIN_TABS = [
   { href: "/app/new", key: "nav.new", icon: IconPlus },
   { href: "/app/applications", key: "nav.applications", icon: IconList },
   { href: "/app/profile", key: "nav.profile", icon: IconUser },
-  { href: "/app/billing", key: "nav.pro", icon: IconSpark },
 ];
+const PRO_TAB = { href: "/app/billing", key: "nav.pro", icon: IconSpark };
 
 export default function AppNav({ name, plan, isAdmin }: { name?: string | null; plan?: string; isAdmin?: boolean }) {
   const path = usePathname();
@@ -24,7 +24,7 @@ export default function AppNav({ name, plan, isAdmin }: { name?: string | null; 
           <span className="brand-dot" /> paply
         </Link>
         <nav className="topnav" aria-label="Menu">
-          {TABS.map((tab) => (
+          {[...MAIN_TABS, PRO_TAB].map((tab) => (
             <Link key={tab.href} href={tab.href} className={`topnav-item${isActive(tab.href) ? " active" : ""}`}>
               <tab.icon /> <span>{t(tab.key)}</span>
             </Link>
@@ -40,14 +40,20 @@ export default function AppNav({ name, plan, isAdmin }: { name?: string | null; 
         </div>
       </header>
 
-      {/* mobile bottom tab bar (iOS 27 liquid glass) */}
-      <nav className="tabbar glass-strong" aria-label="Tabs">
-        {TABS.map((tab) => (
-          <Link key={tab.href} href={tab.href} className={`tab${isActive(tab.href) ? " active" : ""}`}>
-            <span className="tab-ico"><tab.icon /></span>
-            <span className="tab-label">{t(tab.key)}</span>
-          </Link>
-        ))}
+      {/* mobile bottom tab bar (iOS 26 liquid glass: pill + separate circle) */}
+      <nav className="tabbar" aria-label="Tabs">
+        <div className="tab-pill">
+          {MAIN_TABS.map((tab) => (
+            <Link key={tab.href} href={tab.href} className={`tab${isActive(tab.href) ? " active" : ""}`}>
+              <span className="tab-ico"><tab.icon /></span>
+              <span className="tab-label">{t(tab.key)}</span>
+            </Link>
+          ))}
+        </div>
+        <Link href={PRO_TAB.href} className={`tab-circle${isActive(PRO_TAB.href) ? " active" : ""}`}>
+          <span className="tab-ico"><PRO_TAB.icon /></span>
+          <span className="tab-label" style={{ fontSize: 10 }}>{t(PRO_TAB.key)}</span>
+        </Link>
       </nav>
     </>
   );
