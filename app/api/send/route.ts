@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import {
-  getProfile, getDefaultCv, getCvData, getDefaultEmailAccount, updateEmailAccountTokens,
+  getProfile, getDefaultCv, getCvForUser, getCvData, getDefaultEmailAccount, updateEmailAccountTokens,
   createApplication, incrementUsage, getUsage, getDocumentsForAttach,
 } from "@/lib/db";
 import { decrypt, encrypt } from "@/lib/crypto";
@@ -51,8 +51,9 @@ async function handleSend(req: Request) {
   const profile = await getProfile(user.id);
   const fromName = profile?.fullName || user.name || "Applicant";
 
-  // CV attachment
-  const cv = await getDefaultCv(user.id);
+  // CV attachment — a specific CV if chosen, else the default.
+  const cvId = body?.cvId ? String(body.cvId) : null;
+  const cv = (cvId ? await getCvForUser(cvId, user.id) : null) || (await getDefaultCv(user.id));
   const attachments: Attachment[] = [];
   if (cv) {
     const bytes = await getCvData(cv.id);

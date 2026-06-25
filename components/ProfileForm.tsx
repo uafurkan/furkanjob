@@ -31,16 +31,20 @@ type ParsedCv = {
   yearsExperience: number;
 };
 
+type CvItem = { id: string; filename: string; isDefault: boolean };
+
 export default function ProfileForm({
   mode,
   initial,
   cvFilename,
+  initialCvs,
   gmailConnected,
   googleEnabled,
 }: {
   mode: "onboarding" | "edit";
   initial: Initial;
   cvFilename: string | null;
+  initialCvs?: CvItem[];
   gmailConnected: boolean;
   googleEnabled: boolean;
 }) {
@@ -62,7 +66,7 @@ export default function ProfileForm({
   const [shortBio, setShortBio] = useState(initial.shortBio || "");
   const [includeSignature, setIncludeSignature] = useState(initial.includeSignature ?? false);
   const [appLang, setAppLang] = useState(initial.applicationLanguage || "auto");
-  const [cv, setCv] = useState(cvFilename);
+  const [cvs, setCvs] = useState<CvItem[]>(initialCvs || (cvFilename ? [{ id: "", filename: cvFilename, isDefault: true }] : []));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err" | "info"; text: string } | null>(null);
@@ -70,6 +74,13 @@ export default function ProfileForm({
   const [showParseConfirm, setShowParseConfirm] = useState(false);
 
   const split = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
+
+  async function refreshCvs() {
+    try {
+      const r = await fetch("/api/cv");
+      if (r.ok) { const d = await r.json(); setCvs(d.cvs || []); }
+    } catch {}
+  }
 
   async function uploadCv(file: File) {
     setUploading(true);
@@ -82,7 +93,7 @@ export default function ProfileForm({
       const r = await fetch("/api/cv", { method: "POST", body: fd });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || t("pf.uploadFailed"));
-      setCv(d.cv.filename);
+      await refreshCvs();
 
       // Parse CV to extract profile data
       const parseRes = await fetch("/api/cv/parse", { method: "POST", body: fd });
@@ -99,6 +110,20 @@ export default function ProfileForm({
     } finally {
       setUploading(false);
     }
+  }
+
+  async function setDefaultCv(id: string) {
+    setCvs((prev) => prev.map((c) => ({ ...c, isDefault: c.id === id })));
+    try { await fetch(`/api/cv?id=${encodeURIComponent(id)}`, { method: "PATCH" }); } catch { await refreshCvs(); }
+  }
+  async function removeCv(id: string) {
+    const prev = cvs;
+    setCvs((c) => c.filter((x) => x.id !== id));
+    try {
+      const r = await fetch(`/api/cv?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!r.ok) throw new Error();
+      await refreshCvs();
+    } catch { setCvs(prev); }
   }
 
   function applyParsedData() {
@@ -296,15 +321,41 @@ export default function ProfileForm({
       </section>
 
       <section className="glass card stack gap-3">
-        <h3>{t("pf.cv")}</h3>
+        <div className="stack gap-1">
+          <h3>{t("pf.cv")}</h3>
+          <p className="text-secondary" style={{ fontSize: "var(--text-13)", margin: 0 }}>{t("pf.cvNote")}</p>
+        </div>
+
+        {cvs.length > 0 && (
+          <div className="stack gap-2">
+            {cvs.map((c) => (
+              <div key={c.id || c.filename} className="doc-row">
+                {c.isDefault ? (
+                  <span className="doc-type-chip">{t("pf.cvDefault")}</span>
+                ) : c.id ? (
+                  <button type="button" className="chip" style={{ cursor: "pointer" }} onClick={() => setDefaultCv(c.id)}>
+                    {t("pf.cvSetDefault")}
+                  </button>
+                ) : null}
+                <span className="doc-name">{c.filename}</span>
+                {c.id && (
+                  <button type="button" className="doc-del" onClick={() => removeCv(c.id)} aria-label={t("doc.remove")} title={t("doc.remove")}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="row gap-3 wrap">
           <label className="btn btn-sm" data-loading={uploading}>
-            {uploading ? t("pf.uploading") : t("pf.uploadCv")}
+            {uploading ? t("pf.uploading") : cvs.length ? t("pf.addCv") : t("pf.uploadCv")}
             <input type="file" accept="application/pdf" hidden onChange={(e) => e.target.files?.[0] && uploadCv(e.target.files[0])} />
           </label>
-          <span className="text-secondary" style={{ fontSize: "var(--text-14)" }}>
-            {cv ? <>{t("pf.cvCurrent")}: <b>{cv}</b></> : t("pf.noCv")}
-          </span>
+          {cvs.length === 0 && <span className="text-secondary" style={{ fontSize: "var(--text-14)" }}>{t("pf.noCv")}</span>}
         </div>
       </section>
 

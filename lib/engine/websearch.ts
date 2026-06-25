@@ -31,6 +31,24 @@ function origin(url: string): string | null {
   }
 }
 
+// Fetch a page and return readable text (tags/script/style stripped). Used when the user
+// pastes just a URL instead of the business text — we pull the page so the engine has content.
+export async function fetchPageText(url: string): Promise<string> {
+  const html = await fetchText(url);
+  if (!html) return "";
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<\/(p|div|li|h[1-6]|br|tr)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n\s*\n+/g, "\n\n")
+    .trim();
+  return text.slice(0, 8000);
+}
+
 export async function scrapeEmailsFromUrls(urls: string[]): Promise<string[]> {
   const candidates = new Set<string>();
   for (const u of urls.slice(0, 5)) {

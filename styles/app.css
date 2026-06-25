@@ -252,6 +252,18 @@
 .home-recent-sub { font-size: var(--text-13); }
 .home-recent-date { margin-left: auto; font-size: var(--text-12); color: var(--content-tertiary); flex-shrink: 0; }
 
+/* ---------- Duplicate-application banner ---------- */
+.dup-banner {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-soft);
+  border: 1px solid rgba(242,194,107,.34);
+  background: rgba(242,194,107,.08);
+  color: var(--signal-warning);
+  font-size: var(--text-14);
+}
+.dup-banner svg { flex-shrink: 0; }
+
 /* ---------- Visa-covered banner (new application) ---------- */
 .visa-banner {
   display: flex; align-items: center; gap: var(--space-3);

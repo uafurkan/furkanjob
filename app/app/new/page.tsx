@@ -17,6 +17,8 @@ type GenResult = {
   countryCode: string;
   visaCovered: boolean;
   visaLabel: string | null;
+  fetchedUrl?: boolean;
+  duplicate?: { company: string | null; when: string } | null;
   cv: { filename: string } | null;
   overLimit: boolean;
   plan: string;
@@ -64,16 +66,28 @@ export default function NewApplication() {
   const [includeCoverLetter, setIncludeCoverLetter] = useState(false);
   const [docs, setDocs] = useState<{ id: string; type: string; filename: string }[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+  const [cvs, setCvs] = useState<{ id: string; filename: string; isDefault: boolean }[]>([]);
+  const [selectedCv, setSelectedCv] = useState<string>("");
   const [msg, setMsg] = useState<{ kind: "ok" | "err" | "warn"; text: string } | null>(null);
   const [confirmPending, setConfirmPending] = useState<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load the user's document library (for the optional extra-attachment picker).
+  // Load the user's document library + CVs (for the attachment pickers).
   useEffect(() => {
     fetch("/api/documents")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.documents) setDocs(d.documents); })
+      .catch(() => {});
+    fetch("/api/cv")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.cvs) {
+          setCvs(d.cvs);
+          const def = d.cvs.find((c: any) => c.isDefault) || d.cvs[0];
+          if (def) setSelectedCv(def.id);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -167,6 +181,7 @@ export default function NewApplication() {
           language: p.meta.language,
           includeCoverLetter,
           documentIds: selectedDocs,
+          cvId: selectedCv || undefined,
         }),
       });
       const d = await r.json();
@@ -213,6 +228,7 @@ export default function NewApplication() {
         <label className="field">
           <span className="field-label">{t("new.content")}</span>
           <textarea className="textarea" placeholder={t("new.placeholder")} value={text} onChange={(e) => setText(e.target.value)} />
+          <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("new.urlHint")}</span>
         </label>
 
         <div className="row gap-6 wrap">
@@ -255,6 +271,17 @@ export default function NewApplication() {
             <span className={`chip ${res.emailSource === "none" ? "chip-warn" : "chip-ok"}`}>{t("new.mail")}: {srcLabel(res.emailSource)}</span>
           </div>
 
+          {res.duplicate && (
+            <div className="dup-banner reveal">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>
+                {t("new.duplicate").replace("{when}", new Date(res.duplicate.when).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }))}
+              </span>
+            </div>
+          )}
+
           {res.visaCovered && (
             <div className="visa-banner reveal">
               <span className="visa-banner-ico" aria-hidden>
@@ -284,9 +311,21 @@ export default function NewApplication() {
           </label>
 
           <div className="stack gap-3">
+            {cvs.length > 1 && (
+              <label className="field" style={{ maxWidth: 320 }}>
+                <span className="field-label">{t("new.cvSelect")}</span>
+                <select className="input" value={selectedCv} onChange={(e) => setSelectedCv(e.target.value)}>
+                  {cvs.map((c) => (
+                    <option key={c.id} value={c.id}>{c.filename}{c.isDefault ? ` (${t("pf.cvDefault")})` : ""}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="row gap-3 wrap" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <span className="text-secondary" style={{ fontSize: "var(--text-14)" }}>
-                {res.cv ? <>{t("new.attachment")}: <b>{res.cv.filename}</b></> : <span className="chip-warn">{t("new.noCv")}</span>}
+                {cvs.length > 1
+                  ? <>{t("new.attachment")}: <b>{cvs.find((c) => c.id === selectedCv)?.filename || res.cv?.filename}</b></>
+                  : res.cv ? <>{t("new.attachment")}: <b>{res.cv.filename}</b></> : <span className="chip-warn">{t("new.noCv")}</span>}
               </span>
               <div className="row gap-3">
                 {res.overLimit && <Link href="/app/billing" className="btn btn-sm">{t("new.limitPro")}</Link>}

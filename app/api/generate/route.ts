@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { getProfile, getUsage, getDefaultCv } from "@/lib/db";
+import { getProfile, getUsage, getDefaultCv, listApplications } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
 import { runPipeline } from "@/lib/engine/pipeline";
+import { fetchPageText } from "@/lib/engine/websearch";
 import { aiTier, isOverLimit, planInfo } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
 
 export const runtime = "nodejs";
+
+// A single bare URL (no surrounding prose) → we fetch the page so the engine has content.
+function asSingleUrl(s: string): string | null {
+  const t = s.trim();
+  if (/\s/.test(t)) return null;
+  return /^https?:\/\/\S+$/i.test(t) || /^www\.\S+$/i.test(t) ? t : null;
+}
 
 export async function POST(req: Request) {
   try {
@@ -26,8 +34,19 @@ async function handleGenerate(req: Request) {
   if (!rl.ok) return NextResponse.json({ error: "Çok fazla istek. Biraz bekleyin." }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
 
   const body = await req.json().catch(() => ({}));
-  const text: string = (body?.text || "").toString();
+  let text: string = (body?.text || "").toString();
   if (!text.trim()) return NextResponse.json({ error: "İçerik boş." }, { status: 400 });
+
+  // If the user pasted just a URL, pull the page text (keep the URL so email scraping still sees it).
+  let fetchedUrl = false;
+  const url = asSingleUrl(text);
+  if (url) {
+    const pageText = await fetchPageText(url);
+    if (pageText.trim().length > 40) {
+      text = `${pageText}\n\n${url}`;
+      fetchedUrl = true;
+    }
+  }
 
   const used = await getUsage(user.id);
   const overLimit = isOverLimit(user.plan, used);
@@ -50,6 +69,20 @@ async function handleGenerate(req: Request) {
 
   const cv = await getDefaultCv(user.id);
 
+  // Duplicate guard: have we already applied to this company or any of these emails?
+  let duplicate: { company: string | null; when: string } | null = null;
+  try {
+    const prior = await listApplications(user.id);
+    const emailSet = new Set(result.emails.map((e) => e.toLowerCase()));
+    const companyLc = (result.analysis.company || "").trim().toLowerCase();
+    const hit = prior.find(
+      (a) =>
+        (companyLc && (a.company || "").trim().toLowerCase() === companyLc) ||
+        a.recipients.some((r) => emailSet.has(r.toLowerCase()))
+    );
+    if (hit) duplicate = { company: hit.company ?? null, when: hit.createdAt };
+  } catch {}
+
   return NextResponse.json({
     company: result.analysis.company,
     country: result.analysis.country.name,
@@ -63,6 +96,8 @@ async function handleGenerate(req: Request) {
     countryCode: result.analysis.country.code,
     visaCovered: result.visaCovered,
     visaLabel: result.visaLabel,
+    fetchedUrl,
+    duplicate,
     cv: cv ? { filename: cv.filename } : null,
     overLimit,
     plan: user.plan,

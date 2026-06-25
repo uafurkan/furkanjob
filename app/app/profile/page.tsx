@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/session";
-import { getProfile, getDefaultCv, getDefaultEmailAccount, listApplications, getUsage, listDocuments } from "@/lib/db";
+import { getProfile, getDefaultCv, getDefaultEmailAccount, listApplications, getUsage, listDocuments, listCvs } from "@/lib/db";
 import { googleEnabled } from "@/lib/auth";
 import { DEFAULT_PROFILE } from "@/lib/engine/rules";
 import ProfileForm from "@/components/ProfileForm";
@@ -14,14 +14,16 @@ export const metadata = { title: "Profile" };
 export default async function ProfilePage() {
   const { t, lang } = getT();
   const user = (await getCurrentUser())!;
-  const [profile, cv, account, apps, used, allDocs] = await Promise.all([
+  const [profile, cv, account, apps, used, allDocs, cvs] = await Promise.all([
     getProfile(user.id),
     getDefaultCv(user.id),
     getDefaultEmailAccount(user.id),
     listApplications(user.id),
     getUsage(user.id),
     listDocuments(user.id),
+    listCvs(user.id),
   ]);
+  const cvList = cvs.map((c) => ({ id: c.id, filename: c.filename, isDefault: c.isDefault }));
   const libraryDocs = allDocs
     .filter((d) => d.type !== "visa")
     .map((d) => ({ id: d.id, type: d.type, filename: d.filename, size: d.size }));
@@ -57,6 +59,7 @@ export default async function ProfilePage() {
         mode="edit"
         initial={initial}
         cvFilename={cv?.filename || null}
+        initialCvs={cvList}
         gmailConnected={account?.provider === "google"}
         googleEnabled={googleEnabled}
       />
