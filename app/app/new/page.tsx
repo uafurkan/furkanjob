@@ -345,10 +345,15 @@ export default function NewApplication() {
               <span className="text-secondary" style={{ fontSize: "var(--text-12)", marginTop: 4 }}>{t("new.subjectCustom")}</span>
             )}
           </div>
-          <label className="field">
-            <span className="field-label">{t("new.body")}</span>
+          <div className="field">
+            <div className="row gap-2" style={{ alignItems: "center", marginBottom: 6 }}>
+              <span className="field-label" style={{ margin: 0 }}>{t("new.body")}</span>
+              <span className="text-secondary" style={{ fontSize: "var(--text-12)", marginLeft: "auto" }}>
+                {body.trim() ? body.trim().split(/\s+/).length : 0} {t("new.words")}
+              </span>
+            </div>
             <textarea className="textarea" style={{ minHeight: 260 }} value={body} onChange={(e) => setBody(e.target.value)} />
-          </label>
+          </div>
 
           <div className="stack gap-3">
             {cvs.length > 1 && (
