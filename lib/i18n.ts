@@ -39,6 +39,8 @@ const en: Dict = {
   "landing.trust.4": "Emails are never invented. No fake urgency, no hidden fees, no dark patterns.",
   "landing.trust.5": "Payments via Stripe; your card details never touch our servers.",
   "landing.foot.cta": "Start →",
+  "foot.privacy": "Privacy",
+  "foot.terms": "Terms",
 
   "signin.title": "Welcome back",
   "signin.sub": "Connect your inbox, set up your profile once, then just paste.",
@@ -195,6 +197,8 @@ const tr: Dict = {
   "landing.trust.4": "E-posta asla uydurulmaz. Sahte aciliyet, gizli ücret, karanlık kalıp yok.",
   "landing.trust.5": "Ödemeler Stripe ile; kart bilgisi bizim sunucumuza hiç değmez.",
   "landing.foot.cta": "Başla →",
+  "foot.privacy": "Gizlilik",
+  "foot.terms": "Koşullar",
 
   "signin.title": "Tekrar hoş geldin",
   "signin.sub": "Gelen kutunu bağla, profilini bir kez kur, sonra sadece yapıştır.",

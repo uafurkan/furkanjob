@@ -27,7 +27,24 @@
 
 .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-top: var(--space-12); }
 .feature h3 { font-size: var(--text-18); margin-bottom: var(--space-2); }
-.landing-foot { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-16); padding-top: var(--space-6); border-top: 1px solid var(--glass-stroke); }
+.landing-foot { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-16); padding-top: var(--space-6); border-top: 1px solid var(--glass-stroke); flex-wrap: wrap; gap: var(--space-4); }
+.foot-links { display: inline-flex; align-items: center; gap: var(--space-4); }
+.foot-links a:not(.btn) { color: var(--content-secondary); text-decoration: none; font-size: var(--text-14); }
+.foot-links a:not(.btn):hover { color: var(--content-primary); }
+
+/* ---------- Legal pages (privacy / terms) ---------- */
+.legal-page { min-height: 100vh; }
+.legal { max-width: 760px; margin: 0 auto; padding: var(--space-12) var(--space-4) var(--space-16); }
+.legal h1 { font-size: var(--text-36); font-weight: 800; margin-bottom: var(--space-2); }
+.legal-updated { color: var(--content-tertiary); font-size: var(--text-14); margin-bottom: var(--space-8); }
+.legal h2 { font-size: var(--text-20); font-weight: 700; margin: var(--space-8) 0 var(--space-3); }
+.legal p { color: var(--content-secondary); line-height: 1.7; margin: 0 0 var(--space-4); }
+.legal ul { margin: 0 0 var(--space-4); padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
+.legal li { color: var(--content-secondary); line-height: 1.6; }
+.legal strong { color: var(--content-primary); font-weight: 600; }
+.legal code { font-family: var(--font-mono, monospace); font-size: 0.9em; background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 6px; }
+.legal a { color: var(--accent-bright); }
+.legal hr { border: none; border-top: 1px solid var(--glass-stroke); margin: var(--space-8) 0; }
 
 /* ---------- Liquid lens ---------- */
 .lens-stage { position: relative; width: 100%; height: 360px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--glass-shadow-lg); }
@@ -56,13 +73,29 @@
 .topnav-item.active { color: var(--content-primary); background: var(--glass-fill-strong); box-shadow: inset 0 0 0 1px var(--glass-stroke), 0 0 18px var(--glow-halo); }
 .topbar-right { display: flex; align-items: center; gap: var(--space-3); }
 
-/* bottom tab bar (mobile, iOS 27) */
+/* bottom tab bar (mobile, iOS 26 liquid glass) */
 .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 50;
-  display: none; align-items: center; gap: 4px; padding: 8px; border-radius: var(--radius-pill); width: min(420px, calc(100% - 24px)); justify-content: space-between; }
-.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; min-height: 48px; border-radius: var(--radius-lg); color: var(--content-tertiary); text-decoration: none; transition: color var(--dur-micro) var(--ease-emphatic), background var(--dur-micro-exit) var(--ease-settle); }
-.tab-label { font-size: 11px; font-weight: 600; }
-.tab.active { color: var(--content-primary); background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.04)); box-shadow: inset 0 0 0 1px var(--glass-stroke), 0 0 20px var(--glow-halo); }
-.tab.active .tab-ico { color: var(--accent-bright); }
+  display: none; align-items: stretch; gap: 2px; padding: 6px; border-radius: var(--radius-pill); width: min(440px, calc(100% - 28px)); justify-content: space-between; }
+.tab { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 7px 4px 6px; min-height: 52px; border-radius: 18px; color: var(--content-tertiary); text-decoration: none; isolation: isolate;
+  transition: color 220ms var(--ease-emphatic), transform 220ms var(--ease-emphatic); }
+.tab:active { transform: scale(0.93); }
+.tab-ico { display: flex; transition: transform 260ms var(--ease-emphatic); }
+.tab-label { font-size: 11px; font-weight: 600; letter-spacing: -0.01em; transition: opacity 200ms ease; }
+/* active: a clean, contained liquid-glass pill — no blooming halo */
+.tab.active { color: var(--content-primary); }
+.tab.active::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,.05) 55%, rgba(111,168,255,.08) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.30),
+    inset 0 0 0 1px var(--glass-stroke),
+    0 2px 8px rgba(0,0,0,.18);
+  -webkit-backdrop-filter: blur(8px) saturate(1.4);
+  backdrop-filter: blur(8px) saturate(1.4);
+  animation: tab-pop 280ms var(--ease-emphatic);
+}
+.tab.active .tab-ico { color: var(--accent-bright); transform: translateY(-1px); }
+@keyframes tab-pop { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: scale(1); } }
 
 /* ---------- Generic page ---------- */
 .page-head { margin-bottom: var(--space-8); }
