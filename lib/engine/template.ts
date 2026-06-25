@@ -19,10 +19,10 @@ export function autoLangForCountry(code: string): AppLang {
   switch (code) {
     case "ES": return "es";
     case "FR": return "fr";
-    case "DE": return "de";
+    case "DE": case "AT": return "de";
     case "IT": return "it";
     case "PT": case "BR": return "pt";
-    default: return "en"; // NZ/AU/US/CA/UK and unknown
+    default: return "en"; // NZ/AU/US/CA/UK, multilingual (CH), and unknown
   }
 }
 
@@ -36,6 +36,7 @@ type Frag = {
   greeting: string;
   intro: (role: string, company: string) => string;
   visa: (visa: string, country: string, reloc: boolean) => string;
+  visaHeld: (label: string, country: string) => string;
   languages: (langs: string) => string;
   closing: (company: string) => string;
 };
@@ -46,6 +47,7 @@ const F: Record<AppLang, Frag> = {
     greeting: "Dear Hiring Manager,",
     intro: (r, c) => `I am writing to express my strong interest in ${r} position(s) at ${c}. I am an enthusiastic and reliable candidate with a genuine passion for hospitality, and I would be glad to contribute to your team.`,
     visa: (v, c, reloc) => `I would like to be transparent from the outset: I require ${v} to work in ${c}, and I am applying specifically for roles where the employer is able to provide it.${reloc ? " I am available to relocate and" : " I am"} ready to start as soon as the necessary process is completed.`,
+    visaHeld: (label, c) => `I already hold a valid ${label} that authorizes me to work in ${c}, so no sponsorship is required — I am legally able to start immediately, with no visa cost or paperwork for you.`,
     languages: (l) => `Languages: ${l}.`,
     closing: (c) => `Please find my CV attached. I would welcome the opportunity to discuss how I can support ${c}, and I thank you for your time and consideration.`,
   },
@@ -54,6 +56,7 @@ const F: Record<AppLang, Frag> = {
     greeting: "Sayın Yetkili,",
     intro: (r, c) => `${c} bünyesindeki ${r} pozisyon(lar)ına olan güçlü ilgimi belirtmek isterim. Konaklama sektörüne içten bir tutkuyla bağlı, güvenilir ve istekli bir adayım; ekibinize katkı sunmaktan memnuniyet duyarım.`,
     visa: (v, c, reloc) => `Baştan şeffaf olmak isterim: ${c} ülkesinde çalışabilmek için ${v} gerekiyor ve özellikle işverenin bunu sağlayabildiği rollere başvuruyorum.${reloc ? " Taşınmaya açığım ve" : ""} gerekli süreç tamamlanır tamamlanmaz başlamaya hazırım.`,
+    visaHeld: (label, c) => `Hâlihazırda ${c} ülkesinde çalışmama izin veren geçerli bir ${label} sahibiyim; bu nedenle sponsorluğa gerek yok — yasal olarak hemen başlayabilirim, sizin için herhangi bir vize masrafı veya işlemi olmadan.`,
     languages: (l) => `Diller: ${l}.`,
     closing: (c) => `CV'mi ekte bulabilirsiniz. ${c} ekibine nasıl katkı sağlayabileceğimi görüşme fırsatından memnuniyet duyarım; zaman ayırdığınız için teşekkür ederim.`,
   },
@@ -62,6 +65,7 @@ const F: Record<AppLang, Frag> = {
     greeting: "Estimado/a responsable de selección:",
     intro: (r, c) => `Le escribo para expresar mi gran interés en el/los puesto(s) de ${r} en ${c}. Soy un candidato entusiasta y fiable, con verdadera pasión por la hostelería, y me encantaría contribuir a su equipo.`,
     visa: (v, c, reloc) => `Quiero ser transparente desde el principio: necesito ${v} para trabajar en ${c}, y me postulo específicamente a puestos en los que el empleador pueda proporcionarlo.${reloc ? " Estoy disponible para reubicarme y" : " Estoy"} listo para empezar en cuanto se complete el proceso necesario.`,
+    visaHeld: (label, c) => `Ya dispongo de un/a ${label} válido/a que me autoriza a trabajar en ${c}, por lo que no se requiere ningún patrocinio: puedo incorporarme de inmediato y de forma legal, sin coste ni trámites de visado para usted.`,
     languages: (l) => `Idiomas: ${l}.`,
     closing: (c) => `Adjunto mi CV. Estaría encantado de conversar sobre cómo puedo aportar a ${c}, y le agradezco su tiempo y consideración.`,
   },
@@ -70,6 +74,7 @@ const F: Record<AppLang, Frag> = {
     greeting: "Madame, Monsieur,",
     intro: (r, c) => `Je me permets de vous adresser ma candidature pour le(s) poste(s) de ${r} au sein de ${c}. Candidat enthousiaste et fiable, passionné par l'hôtellerie, je serais ravi de contribuer à votre équipe.`,
     visa: (v, c, reloc) => `Je souhaite être transparent dès le départ : j'ai besoin de ${v} pour travailler en ${c}, et je postule spécifiquement aux postes pour lesquels l'employeur peut le fournir.${reloc ? " Je suis disponible pour déménager et" : " Je suis"} prêt à commencer dès que les démarches nécessaires seront terminées.`,
+    visaHeld: (label, c) => `Je dispose déjà d'un(e) ${label} en cours de validité m'autorisant à travailler en ${c} ; aucun parrainage n'est donc nécessaire — je peux commencer immédiatement et en toute légalité, sans frais ni démarches de visa pour vous.`,
     languages: (l) => `Langues : ${l}.`,
     closing: (c) => `Vous trouverez mon CV en pièce jointe. Je serais ravi d'échanger sur ma contribution possible à ${c}, et je vous remercie de votre temps et de votre attention.`,
   },
@@ -78,6 +83,7 @@ const F: Record<AppLang, Frag> = {
     greeting: "Sehr geehrte Damen und Herren,",
     intro: (r, c) => `hiermit bewerbe ich mich mit großem Interesse für die Position(en) als ${r} bei ${c}. Als engagierter und zuverlässiger Kandidat mit echter Leidenschaft für die Gastronomie und Hotellerie würde ich Ihr Team gern unterstützen.`,
     visa: (v, c, reloc) => `Ich möchte von Anfang an transparent sein: Für eine Tätigkeit in ${c} benötige ich ${v} und bewerbe mich gezielt auf Stellen, bei denen der Arbeitgeber dies ermöglichen kann.${reloc ? " Ich bin umzugsbereit und" : " Ich bin"} bereit, sofort nach Abschluss der erforderlichen Schritte zu beginnen.`,
+    visaHeld: (label, c) => `Ich verfüge bereits über eine/n gültige/n ${label}, die/der mich zur Arbeit in ${c} berechtigt; eine Sponsorschaft ist daher nicht erforderlich — ich kann sofort und rechtlich einwandfrei beginnen, ohne Visakosten oder Aufwand für Sie.`,
     languages: (l) => `Sprachen: ${l}.`,
     closing: (c) => `Meinen Lebenslauf finden Sie im Anhang. Über ein Gespräch, wie ich ${c} unterstützen kann, würde ich mich sehr freuen, und ich danke Ihnen für Ihre Zeit.`,
   },
@@ -86,6 +92,7 @@ const F: Record<AppLang, Frag> = {
     greeting: "Gentile Responsabile delle Risorse Umane,",
     intro: (r, c) => `Le scrivo per esprimere il mio vivo interesse per la/le posizione(i) di ${r} presso ${c}. Sono un candidato entusiasta e affidabile, con una genuina passione per l'ospitalità, e sarei lieto di contribuire al vostro team.`,
     visa: (v, c, reloc) => `Desidero essere trasparente fin dall'inizio: per lavorare in ${c} ho bisogno di ${v} e mi candido specificamente per ruoli in cui il datore di lavoro può fornirlo.${reloc ? " Sono disponibile a trasferirmi e" : " Sono"} pronto a iniziare non appena completato l'iter necessario.`,
+    visaHeld: (label, c) => `Possiedo già un/una ${label} valido/a che mi autorizza a lavorare in ${c}, quindi non è necessaria alcuna sponsorizzazione: posso iniziare subito e in modo del tutto legale, senza costi o pratiche di visto per voi.`,
     languages: (l) => `Lingue: ${l}.`,
     closing: (c) => `In allegato trova il mio CV. Sarei lieto di discutere come posso contribuire a ${c} e La ringrazio per il tempo e l'attenzione.`,
   },
@@ -94,6 +101,7 @@ const F: Record<AppLang, Frag> = {
     greeting: "Prezado(a) Responsável de Recrutamento,",
     intro: (r, c) => `Escrevo para expressar o meu grande interesse na(s) vaga(s) de ${r} na ${c}. Sou um candidato entusiasta e confiável, com verdadeira paixão pela hotelaria, e teria muito gosto em contribuir para a sua equipa.`,
     visa: (v, c, reloc) => `Quero ser transparente desde o início: preciso de ${v} para trabalhar em ${c} e candidato-me especificamente a funções em que o empregador o possa providenciar.${reloc ? " Estou disponível para me mudar e" : " Estou"} pronto para começar assim que o processo necessário estiver concluído.`,
+    visaHeld: (label, c) => `Já possuo um(a) ${label} válido(a) que me autoriza a trabalhar em ${c}, pelo que não é necessário qualquer patrocínio — posso começar de imediato e de forma totalmente legal, sem custos ou burocracia de visto para si.`,
     languages: (l) => `Idiomas: ${l}.`,
     closing: (c) => `Em anexo segue o meu CV. Teria todo o gosto em conversar sobre como posso contribuir para ${c} e agradeço o seu tempo e consideração.`,
   },
@@ -105,13 +113,20 @@ function rolesForApplication(analysis: Analysis, profile: EngineProfile): string
   return ["Hospitality"];
 }
 
-export function buildDraft(analysis: Analysis, profile: EngineProfile, lang: AppLang = "en"): Draft {
+export function buildDraft(
+  analysis: Analysis,
+  profile: EngineProfile,
+  lang: AppLang = "en",
+  authorization?: { authorized: boolean; visaLabel?: string | null }
+): Draft {
   const f = F[lang] || F.en;
   const roles = rolesForApplication(analysis, profile);
   const subject = f.subject(roles.join(" / "), analysis.company);
 
   const lines: string[] = [f.greeting, "", f.intro(roles.join(" / "), analysis.company), ""];
-  if (profile.needsVisaSponsorship) {
+  if (authorization?.authorized) {
+    lines.push(f.visaHeld(authorization.visaLabel || analysis.country.visa, analysis.country.name), "");
+  } else if (profile.needsVisaSponsorship) {
     lines.push(f.visa(analysis.country.visa, analysis.country.name, profile.relocation), "");
   }
   if (profile.shortBio) lines.push(profile.shortBio.trim(), "");

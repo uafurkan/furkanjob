@@ -31,6 +31,10 @@ export default async function OnboardingPage() {
     shortBio: profile?.shortBio || "",
     includeSignature: profile?.includeSignature ?? false,
     applicationLanguage: profile?.applicationLanguage || "auto",
+    hasVisa: profile?.hasVisa ?? false,
+    visaType: profile?.visaType || "",
+    visaLabel: profile?.visaLabel || "",
+    visaCountries: profile?.visaCountries || [],
   };
 
   return (

@@ -43,8 +43,23 @@ export type Profile = {
   includeSignature: boolean;
   applicationLanguage: string; // "auto" | en | tr | es | fr | de | it | pt
   defaultCvId?: string | null;
+  // Held-visa intelligence
+  hasVisa: boolean;
+  visaType?: string | null;       // a VISA_TYPES id (eu_work | schengen | es_work | … | custom)
+  visaLabel?: string | null;      // human label, e.g. "Spain work and residence permit"
+  visaCountries: string[];        // ISO alpha-2 codes the visa authorizes work in
   completedAt?: string | null;
   updatedAt: string;
+};
+
+export type Document = {
+  id: string;
+  userId: string;
+  type: "visa" | "certificate" | "diploma" | "experience" | "other";
+  filename: string;
+  mime: string;
+  size: number;
+  createdAt: string;
 };
 
 export type Cv = {

@@ -1,6 +1,6 @@
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import { randomUUID } from "node:crypto";
-import type { Application, Cv, EmailAccount, Plan, Profile, Subscription, User } from "./types";
+import type { Application, Cv, Document, EmailAccount, Plan, Profile, Subscription, User } from "./types";
 
 let _sql: NeonQueryFunction<false, false> | null = null;
 function sql(...args: Parameters<NeonQueryFunction<false, false>>) {
@@ -74,8 +74,24 @@ async function initSchema() {
       include_signature BOOLEAN NOT NULL DEFAULT FALSE,
       application_language TEXT NOT NULL DEFAULT 'auto',
       default_cv_id TEXT,
+      has_visa BOOLEAN NOT NULL DEFAULT FALSE,
+      visa_type TEXT,
+      visa_label TEXT,
+      visa_countries TEXT NOT NULL DEFAULT '[]',
       completed_at TEXT,
       updated_at TEXT NOT NULL
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS documents (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'other',
+      filename TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      data TEXT,
+      created_at TEXT NOT NULL
     )
   `;
   await sql`
@@ -169,6 +185,10 @@ function mapProfile(r: Record<string, unknown>): Profile {
     includeSignature: r.include_signature as boolean,
     applicationLanguage: r.application_language as string,
     defaultCvId: r.default_cv_id as string | null,
+    hasVisa: (r.has_visa as boolean | undefined) ?? false,
+    visaType: (r.visa_type as string | null | undefined) ?? null,
+    visaLabel: (r.visa_label as string | null | undefined) ?? null,
+    visaCountries: parseArr(r.visa_countries),
     completedAt: r.completed_at as string | null, updatedAt: r.updated_at as string,
   };
 }
@@ -264,17 +284,24 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 }
 export async function upsertProfile(userId: string, data: Partial<Profile>): Promise<Profile> {
   const arrStr = (v: unknown) => JSON.stringify(Array.isArray(v) ? v : []);
+  // Self-contained, idempotent migration for held-visa columns (initSchema isn't wired at runtime).
+  await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS has_visa BOOLEAN NOT NULL DEFAULT FALSE`;
+  await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS visa_type TEXT`;
+  await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS visa_label TEXT`;
+  await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS visa_countries TEXT NOT NULL DEFAULT '[]'`;
   const rows = await sql`
     INSERT INTO profiles (id, user_id, full_name, contact_email, phone, languages, target_roles,
       needs_visa_sponsorship, target_countries, short_bio, availability, relocation, tone,
-      include_signature, application_language, default_cv_id, completed_at, updated_at)
+      include_signature, application_language, default_cv_id,
+      has_visa, visa_type, visa_label, visa_countries, completed_at, updated_at)
     VALUES (${id()}, ${userId}, ${data.fullName ?? ""}, ${data.contactEmail ?? null},
       ${data.phone ?? null}, ${arrStr(data.languages)}, ${arrStr(data.targetRoles)},
       ${data.needsVisaSponsorship ?? true}, ${arrStr(data.targetCountries)},
       ${data.shortBio ?? null}, ${data.availability ?? null}, ${data.relocation ?? true},
       ${data.tone ?? "warm-professional"}, ${data.includeSignature ?? false},
       ${data.applicationLanguage ?? "auto"}, ${data.defaultCvId ?? null},
-      ${data.completedAt ?? null}, ${now()})
+      ${data.hasVisa ?? false}, ${data.visaType ?? null}, ${data.visaLabel ?? null},
+      ${arrStr(data.visaCountries)}, ${data.completedAt ?? null}, ${now()})
     ON CONFLICT (user_id) DO UPDATE SET
       full_name=EXCLUDED.full_name, contact_email=EXCLUDED.contact_email,
       phone=EXCLUDED.phone, languages=EXCLUDED.languages, target_roles=EXCLUDED.target_roles,
@@ -282,6 +309,8 @@ export async function upsertProfile(userId: string, data: Partial<Profile>): Pro
       short_bio=EXCLUDED.short_bio, availability=EXCLUDED.availability, relocation=EXCLUDED.relocation,
       tone=EXCLUDED.tone, include_signature=EXCLUDED.include_signature,
       application_language=EXCLUDED.application_language, default_cv_id=EXCLUDED.default_cv_id,
+      has_visa=EXCLUDED.has_visa, visa_type=EXCLUDED.visa_type, visa_label=EXCLUDED.visa_label,
+      visa_countries=EXCLUDED.visa_countries,
       completed_at=EXCLUDED.completed_at, updated_at=EXCLUDED.updated_at
     RETURNING *
   `;
@@ -319,6 +348,66 @@ export async function getCvData(cvId: string): Promise<Buffer | null> {
     // `data` column may not exist on an older schema — caller falls back to disk.
     return null;
   }
+}
+
+// ---------- Documents (extra attachments: visa proof, certificates, diplomas…) ----------
+async function ensureDocumentsTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS documents (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'other',
+      filename TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      data TEXT,
+      created_at TEXT NOT NULL
+    )
+  `;
+}
+function mapDocument(r: Record<string, unknown>): Document {
+  return {
+    id: r.id as string, userId: r.user_id as string, type: r.type as Document["type"],
+    filename: r.filename as string, mime: r.mime as string, size: r.size as number,
+    createdAt: r.created_at as string,
+  };
+}
+export async function addDocument(
+  data: { userId: string; type: Document["type"]; filename: string; mime: string; size: number; dataB64?: string }
+): Promise<Document> {
+  await ensureDocumentsTable();
+  // One document per type per user (latest wins) keeps the profile tidy for now.
+  await sql`DELETE FROM documents WHERE user_id=${data.userId} AND type=${data.type}`;
+  const rows = await sql`
+    INSERT INTO documents (id, user_id, type, filename, mime, size, data, created_at)
+    VALUES (${id()}, ${data.userId}, ${data.type}, ${data.filename}, ${data.mime}, ${data.size}, ${data.dataB64 ?? null}, ${now()})
+    RETURNING *
+  `;
+  return mapDocument(rows[0] as Record<string, unknown>);
+}
+export async function listDocuments(userId: string): Promise<Document[]> {
+  try {
+    await ensureDocumentsTable();
+    const rows = await sql`SELECT id, user_id, type, filename, mime, size, created_at FROM documents WHERE user_id=${userId} ORDER BY created_at DESC`;
+    return rows.map((r) => mapDocument(r as Record<string, unknown>));
+  } catch {
+    return [];
+  }
+}
+export async function getDocumentData(docId: string, userId: string): Promise<{ doc: Document; bytes: Buffer } | null> {
+  try {
+    const rows = await sql`SELECT * FROM documents WHERE id=${docId} AND user_id=${userId} LIMIT 1`;
+    if (!rows[0]) return null;
+    const r = rows[0] as Record<string, unknown>;
+    const b64 = r.data as string | null | undefined;
+    if (!b64) return null;
+    return { doc: mapDocument(r), bytes: Buffer.from(b64, "base64") };
+  } catch {
+    return null;
+  }
+}
+export async function deleteDocument(docId: string, userId: string): Promise<void> {
+  await sql`DELETE FROM documents WHERE id=${docId} AND user_id=${userId}`;
 }
 
 // ---------- Applications ----------

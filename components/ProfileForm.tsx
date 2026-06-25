@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useT } from "@/components/i18n";
 import { APP_LANGS } from "@/lib/engine/template";
+import { VISA_TYPES, resolveVisaCountries, countryName } from "@/lib/engine/visa";
 
 type Initial = {
   fullName?: string;
@@ -16,6 +17,10 @@ type Initial = {
   shortBio?: string;
   includeSignature?: boolean;
   applicationLanguage?: string;
+  hasVisa?: boolean;
+  visaType?: string;
+  visaLabel?: string;
+  visaCountries?: string[];
 };
 
 type ParsedCv = {
@@ -47,6 +52,12 @@ export default function ProfileForm({
   const [targetRoles, setTargetRoles] = useState((initial.targetRoles || []).join(", "));
   const [targetCountries, setTargetCountries] = useState((initial.targetCountries || []).join(", "));
   const [needsVisa, setNeedsVisa] = useState(initial.needsVisaSponsorship ?? true);
+  const [hasVisa, setHasVisa] = useState(initial.hasVisa ?? false);
+  const [visaType, setVisaType] = useState(initial.visaType || "");
+  const [visaLabel, setVisaLabel] = useState(initial.visaLabel || "");
+  const [visaCountries, setVisaCountries] = useState<string[]>(initial.visaCountries || []);
+  const [visaUploading, setVisaUploading] = useState(false);
+  const [visaDoc, setVisaDoc] = useState<string | null>(null);
   const [relocation, setRelocation] = useState(initial.relocation ?? true);
   const [shortBio, setShortBio] = useState(initial.shortBio || "");
   const [includeSignature, setIncludeSignature] = useState(initial.includeSignature ?? false);
@@ -101,6 +112,46 @@ export default function ProfileForm({
     setMsg({ kind: "ok", text: t("pf.profileUpdated") });
   }
 
+  function selectVisaType(typeId: string) {
+    setVisaType(typeId);
+    const preset = VISA_TYPES.find((v) => v.id === typeId);
+    if (preset && typeId !== "custom") {
+      setVisaCountries(preset.countries.slice());
+      if (!visaLabel.trim()) setVisaLabel(preset.label);
+    }
+  }
+
+  function toggleVisaCountry(code: string) {
+    setVisaCountries((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
+  }
+
+  async function uploadVisa(file: File) {
+    setVisaUploading(true);
+    setMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/visa", { method: "POST", body: fd });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || t("pf.uploadFailed"));
+      setVisaDoc(d.document?.filename || file.name);
+      if (d.suggestion) {
+        if (d.suggestion.visaType) setVisaType(d.suggestion.visaType);
+        if (d.suggestion.label) setVisaLabel(d.suggestion.label);
+        if (Array.isArray(d.suggestion.countries) && d.suggestion.countries.length) {
+          setVisaCountries(d.suggestion.countries);
+        }
+        setMsg({ kind: "info", text: t("pf.visaSuggested") });
+      } else {
+        setMsg({ kind: "ok", text: t("pf.visaUploaded") });
+      }
+    } catch (e: any) {
+      setMsg({ kind: "err", text: e.message });
+    } finally {
+      setVisaUploading(false);
+    }
+  }
+
   async function save() {
     if (!fullName.trim()) return setMsg({ kind: "err", text: t("pf.nameRequired") });
     setSaving(true);
@@ -113,6 +164,7 @@ export default function ProfileForm({
           fullName, contactEmail,
           languages: split(languages), targetRoles: split(targetRoles), targetCountries: split(targetCountries),
           needsVisaSponsorship: needsVisa, relocation, shortBio, includeSignature, applicationLanguage: appLang,
+          hasVisa, visaType, visaLabel, visaCountries,
         }),
       });
       const d = await r.json();
@@ -193,9 +245,54 @@ export default function ProfileForm({
 
         <div className="row gap-6 wrap">
           <label className="toggle"><input type="checkbox" checked={needsVisa} onChange={(e) => setNeedsVisa(e.target.checked)} /> {t("pf.needsVisa")}</label>
+          <label className="toggle"><input type="checkbox" checked={hasVisa} onChange={(e) => setHasVisa(e.target.checked)} /> {t("pf.hasVisa")}</label>
           <label className="toggle"><input type="checkbox" checked={relocation} onChange={(e) => setRelocation(e.target.checked)} /> {t("pf.relocation")}</label>
           <label className="toggle"><input type="checkbox" checked={includeSignature} onChange={(e) => setIncludeSignature(e.target.checked)} /> {t("pf.includeSignature")}</label>
         </div>
+
+        {hasVisa && (
+          <div className="visa-panel stack gap-4">
+            <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("pf.visaNote")}</span>
+
+            <div className="form-grid">
+              <label className="field">
+                <span className="field-label">{t("pf.visaType")}</span>
+                <select className="input" value={visaType} onChange={(e) => selectVisaType(e.target.value)}>
+                  <option value="">{t("pf.visaTypePick")}</option>
+                  {VISA_TYPES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">{t("pf.visaLabel")}</span>
+                <input className="input" value={visaLabel} onChange={(e) => setVisaLabel(e.target.value)} placeholder="Spain work and residence permit" />
+              </label>
+            </div>
+
+            <div className="stack gap-2">
+              <span className="field-label">{t("pf.visaCountries")}</span>
+              {visaCountries.length ? (
+                <div className="row gap-2 wrap">
+                  {visaCountries.map((c) => (
+                    <button type="button" key={c} className="chip chip-accent visa-chip" onClick={() => toggleVisaCountry(c)} title={t("pf.cancel")}>
+                      {countryName(c)} <span aria-hidden>✕</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("pf.visaCountriesEmpty")}</span>
+              )}
+            </div>
+
+            <div className="row gap-3 wrap">
+              <label className="btn btn-sm" data-loading={visaUploading}>
+                {visaUploading ? t("pf.uploading") : t("pf.visaUpload")}
+                <input type="file" accept="application/pdf,image/*" hidden onChange={(e) => e.target.files?.[0] && uploadVisa(e.target.files[0])} />
+              </label>
+              {visaDoc && <span className="text-secondary" style={{ fontSize: "var(--text-13)" }}>{t("pf.cvCurrent")}: <b>{visaDoc}</b></span>}
+              <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("pf.visaUploadNote")}</span>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="glass card stack gap-3">

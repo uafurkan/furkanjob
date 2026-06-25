@@ -19,6 +19,9 @@ export function toEngineProfile(profile: Profile | null, user: User | null): Eng
       includeSignature: profile.includeSignature,
       tone: profile.tone,
       applicationLanguage: profile.applicationLanguage || "auto",
+      hasVisa: profile.hasVisa ?? false,
+      visaLabel: profile.visaLabel,
+      visaCountries: profile.visaCountries || [],
     };
   }
   return {
@@ -35,5 +38,8 @@ export function toEngineProfile(profile: Profile | null, user: User | null): Eng
     includeSignature: DEFAULT_PROFILE.includeSignature,
     tone: DEFAULT_PROFILE.tone,
     applicationLanguage: DEFAULT_PROFILE.applicationLanguage,
+    hasVisa: false,
+    visaLabel: null,
+    visaCountries: [],
   };
 }

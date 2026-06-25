@@ -3,6 +3,7 @@ import { analyze, detectTextLang, countryByCode, type Analysis } from "./detect"
 import { findEmails } from "./websearch";
 import { buildDraft, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
 import { aiAnalyze, aiDraft, aiEnabled, type AiTier } from "./ai";
+import { isVisaCovered } from "./visa";
 import type { Draft, EngineProfile } from "./types";
 
 export type PipelineResult = {
@@ -12,6 +13,9 @@ export type PipelineResult = {
   draft: Draft;
   draftSource: "ai" | "template";
   language: AppLang;
+  // True when the user holds a visa that already authorizes work in the detected country.
+  visaCovered: boolean;
+  visaLabel: string | null;
 };
 
 export async function runPipeline(opts: {
@@ -68,14 +72,19 @@ export async function runPipeline(opts: {
     emailSource = found.source;
   }
 
+  // Held-visa intelligence: does the user already hold a visa that authorizes work here?
+  const visaCovered = Boolean(profile.hasVisa) && isVisaCovered(profile.visaCountries, analysis.country.code);
+  const visaLabel = visaCovered ? profile.visaLabel || null : null;
+  const authorization = { authorized: visaCovered, visaLabel };
+
   // Draft: AI when configured (tier picks the model), else the smart multilingual template.
   let draft: Draft | null = null;
   let draftSource: "ai" | "template" = "template";
   if (aiEnabled()) {
-    draft = await aiDraft({ text, analysis, profile }, language, tier);
+    draft = await aiDraft({ text, analysis, profile }, language, tier, authorization);
     if (draft) draftSource = "ai";
   }
-  if (!draft) draft = buildDraft(analysis, profile, language);
+  if (!draft) draft = buildDraft(analysis, profile, language, authorization);
 
-  return { analysis, emails, emailSource, draft, draftSource, language };
+  return { analysis, emails, emailSource, draft, draftSource, language, visaCovered, visaLabel };
 }

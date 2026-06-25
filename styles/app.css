@@ -218,6 +218,36 @@
 .seg { flex: 1; min-height: 40px; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--content-secondary); font-weight: 600; font-size: var(--text-14); cursor: pointer; transition: background var(--dur-micro-exit) var(--ease-settle), color var(--dur-micro-exit) var(--ease-settle); }
 .seg.active { color: #06101f; background: linear-gradient(180deg, var(--accent-bright), var(--accent)); box-shadow: 0 4px 14px var(--glow-halo); }
 
+/* ---------- Visa-covered banner (new application) ---------- */
+.visa-banner {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-soft);
+  border: 1px solid rgba(95,208,166,.34);
+  background: linear-gradient(180deg, rgba(95,208,166,.12), rgba(95,208,166,.05));
+  color: var(--content-primary);
+  font-size: var(--text-14);
+}
+.visa-banner-ico {
+  flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 9px;
+  display: grid; place-items: center;
+  color: var(--signal-success);
+  background: rgba(95,208,166,.16);
+  border: 1px solid rgba(95,208,166,.3);
+}
+
+/* ---------- Held-visa panel ---------- */
+.visa-panel {
+  padding: var(--space-4);
+  border-radius: var(--radius-soft);
+  border: 1px solid var(--glass-stroke);
+  background: rgba(255,255,255,.03);
+  border-left: 2px solid var(--accent);
+}
+.visa-chip { cursor: pointer; border: 1px solid rgba(111,168,255,.4); }
+.visa-chip:hover { background: rgba(111,168,255,.16); }
+
 /* ---------- Connected account (Gmail) ---------- */
 .account-connected {
   display: flex; align-items: center; gap: var(--space-3);

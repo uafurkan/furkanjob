@@ -97,7 +97,7 @@ export async function aiAnalyze(text: string, tier: AiTier = "free"): Promise<Ai
 Return STRICT JSON ONLY, no prose, exactly these keys:
 {
   "company": "the clean human brand name only (deduplicate repeated logo text, drop street address, menu items, taglines and 'Website by ...')",
-  "countryCode": "ISO-ish code: one of NZ, AU, US, CA, UK — or XX if genuinely unknown. Infer from postal address, phone country/area code, email TLD (.co.nz, .com.au, .co.uk, .ca), and city names.",
+  "countryCode": "ISO 3166-1 alpha-2 code for the destination country: one of NZ, AU, US, CA, UK, DE, ES, FR, IT, NL, PT, IE, AT, CH, GR, SE, DK, NO — or XX if genuinely unknown. Infer from postal address, phone country/area code, email TLD (.co.nz, .com.au, .co.uk, .ca, .de, .es, .fr, .it, .nl, .pt), and city names.",
   "language": "the language the application email should be written in to best match this business: one of en, tr, es, fr, de, it, pt",
   "positions": ["1-3 realistic hospitality roles to apply for, inferred from the venue type (hotel/restaurant/cafe/bar) if none are explicitly advertised"]
 }
@@ -125,12 +125,59 @@ ${text.slice(0, 6000)}
   };
 }
 
+// ---------- Visa document understanding ----------
+export type AiVisaAnalysis = {
+  visaTypeId?: string; // matches a VISA_TYPES id (eu_work | schengen | es_work | ... | custom)
+  label?: string;      // human label, e.g. "Spain work and residence permit"
+  countries?: string[]; // ISO alpha-2 codes the visa authorizes work in
+};
+
+export async function aiAnalyzeVisa(text: string, tier: AiTier = "free"): Promise<AiVisaAnalysis | null> {
+  if (!aiEnabled()) return null;
+  const prompt = `You read a residence/work visa or permit document (OCR/extracted text, possibly messy) and return which countries it authorizes the holder to WORK in.
+
+Return STRICT JSON ONLY, exactly these keys:
+{
+  "visaTypeId": "one of: eu_work, schengen, es_work, de_work, fr_work, it_work, nl_work, pt_work, ie_work, uk_work, us_work, ca_work, au_work, nz_work, custom",
+  "label": "a short human label for the visa, e.g. 'Spain work and residence permit' or 'EU Blue Card'",
+  "countries": ["ISO 3166-1 alpha-2 codes the document grants WORK rights in"]
+}
+
+Guidance:
+- A single-country national work/residence permit → that country's *_work id and just that country code (e.g. Spain → es_work, ["ES"]).
+- An EU Blue Card or EU long-term work permit → eu_work.
+- A Schengen visa (short-stay) → schengen, but only if it actually conveys work rights; otherwise still report it as schengen and let the user decide.
+- If unsure of the exact preset, use "custom" and still fill countries with your best read.
+- Output codes only for countries genuinely indicated by the document. Invent nothing.
+
+Document text:
+"""
+${text.slice(0, 4000)}
+"""`;
+  const parsed = extractJson<AiVisaAnalysis>(await complete(prompt, 300, tier));
+  if (!parsed) return null;
+  return {
+    visaTypeId: typeof parsed.visaTypeId === "string" ? parsed.visaTypeId.trim() : undefined,
+    label: typeof parsed.label === "string" && parsed.label.trim() ? parsed.label.trim().slice(0, 80) : undefined,
+    countries: Array.isArray(parsed.countries)
+      ? parsed.countries.filter((x): x is string => typeof x === "string").map((x) => x.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2)).filter(Boolean)
+      : undefined,
+  };
+}
+
 // ---------- Draft generation ----------
-export async function aiDraft({ text, analysis, profile }: GenerateInput, lang: AppLang = "en", tier: AiTier = "free"): Promise<Draft | null> {
+export async function aiDraft(
+  { text, analysis, profile }: GenerateInput,
+  lang: AppLang = "en",
+  tier: AiTier = "free",
+  authorization?: { authorized: boolean; visaLabel?: string | null }
+): Promise<Draft | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
 
-  const sponsorship = profile.needsVisaSponsorship
+  const sponsorship = authorization?.authorized
+    ? `IMPORTANT — the applicant ALREADY HOLDS a valid ${authorization.visaLabel || "work authorization"} that permits them to work in ${analysis.country.name}. They do NOT need any sponsorship. State this clearly and positively as a major advantage: they are legally able to start without the employer arranging or paying for a visa, and they are immediately available. Do NOT ask for sponsorship.`
+    : profile.needsVisaSponsorship
     ? `The applicant REQUIRES visa sponsorship to work in ${analysis.country.name} (${analysis.country.visa}). State this transparently and confidently — never apologetically.`
     : `The applicant does not need visa sponsorship; do not mention visas.`;
 

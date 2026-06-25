@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { getProfile, upsertProfile } from "@/lib/db";
+import { sanitizeCountryCodes } from "@/lib/engine/visa";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,9 @@ export async function POST(req: Request) {
   const asArray = (v: any): string[] =>
     Array.isArray(v) ? v.map(String).map((s) => s.trim()).filter(Boolean) : [];
 
+  const hasVisa = Boolean(b.hasVisa);
+  const visaCountries = hasVisa ? sanitizeCountryCodes(b.visaCountries) : [];
+
   const profile = await upsertProfile(user.id, {
     fullName: (b.fullName || user.name || "").toString().trim(),
     contactEmail: b.contactEmail?.toString().trim() || user.email,
@@ -33,6 +37,10 @@ export async function POST(req: Request) {
     tone: b.tone?.toString() || "warm-professional",
     includeSignature: Boolean(b.includeSignature),
     applicationLanguage: b.applicationLanguage?.toString() || "auto",
+    hasVisa,
+    visaType: hasVisa ? (b.visaType?.toString() || null) : null,
+    visaLabel: hasVisa ? (b.visaLabel?.toString().trim().slice(0, 80) || null) : null,
+    visaCountries,
     completedAt: new Date().toISOString(),
   });
 

@@ -15,6 +15,11 @@ export type EngineProfile = {
   includeSignature: boolean;
   tone: string;
   applicationLanguage: string; // "auto" | en | tr | es | fr | de | it | pt
+  // Held-visa intelligence: if the destination falls within visaCountries, the draft
+  // states existing work authorization instead of asking for sponsorship.
+  hasVisa?: boolean;
+  visaLabel?: string | null;
+  visaCountries?: string[];
 };
 
 export type Draft = { subject: string; body: string };

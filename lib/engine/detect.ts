@@ -53,6 +53,85 @@ const COUNTRY_RULES: (CountryRule & { test: RegExp })[] = [
     visa: "Skilled Worker visa (employer sponsorship)",
     test: /\b(united kingdom|england|scotland|london|manchester|\.co\.uk|\bgbp\b|£)\b/i,
   },
+  // ---- Europe (EU/EEA/Schengen destinations) ----
+  {
+    code: "DE",
+    name: "Germany",
+    visa: "EU work visa / employer sponsorship (e.g. EU Blue Card)",
+    test: /\b(germany|deutschland|german|berlin|munich|münchen|hamburg|frankfurt|cologne|köln|\.de\b)\b/i,
+  },
+  {
+    code: "ES",
+    name: "Spain",
+    visa: "Spanish work / residence authorization (employer sponsorship)",
+    test: /\b(spain|españa|spanish|madrid|barcelona|valencia|seville|sevilla|malaga|málaga|\.es\b)\b/i,
+  },
+  {
+    code: "FR",
+    name: "France",
+    visa: "French work visa / employer sponsorship",
+    test: /\b(france|french|paris|lyon|marseille|bordeaux|nice|toulouse|\.fr\b)\b/i,
+  },
+  {
+    code: "IT",
+    name: "Italy",
+    visa: "Italian work visa (nulla osta / employer sponsorship)",
+    test: /\b(italy|italia|italian|rome|roma|milan|milano|venice|venezia|florence|firenze|naples|napoli|\.it\b)\b/i,
+  },
+  {
+    code: "NL",
+    name: "the Netherlands",
+    visa: "Dutch work permit (GVVA / employer sponsorship)",
+    test: /\b(netherlands|holland|dutch|amsterdam|rotterdam|the hague|den haag|utrecht|eindhoven|\.nl\b)\b/i,
+  },
+  {
+    code: "PT",
+    name: "Portugal",
+    visa: "Portuguese work / residence visa (employer sponsorship)",
+    test: /\b(portugal|portuguese|lisbon|lisboa|porto|algarve|madeira|\.pt\b)\b/i,
+  },
+  {
+    code: "IE",
+    name: "Ireland",
+    visa: "Irish Employment Permit (employer sponsorship)",
+    test: /\b(ireland|irish|dublin|cork|galway|\.ie\b)\b/i,
+  },
+  {
+    code: "AT",
+    name: "Austria",
+    visa: "Austrian work permit (Rot-Weiß-Rot / employer sponsorship)",
+    test: /\b(austria|österreich|austrian|vienna|wien|salzburg|innsbruck|graz|\.at\b)\b/i,
+  },
+  {
+    code: "CH",
+    name: "Switzerland",
+    visa: "Swiss work permit (employer sponsorship)",
+    test: /\b(switzerland|schweiz|suisse|swiss|zurich|zürich|geneva|genève|basel|bern|lausanne|\.ch\b)\b/i,
+  },
+  {
+    code: "GR",
+    name: "Greece",
+    visa: "Greek work / residence permit (employer sponsorship)",
+    test: /\b(greece|hellas|greek|athens|athína|thessaloniki|crete|santorini|mykonos|\.gr\b)\b/i,
+  },
+  {
+    code: "SE",
+    name: "Sweden",
+    visa: "Swedish work permit (employer sponsorship)",
+    test: /\b(sweden|sverige|swedish|stockholm|gothenburg|göteborg|malmö|\.se\b)\b/i,
+  },
+  {
+    code: "DK",
+    name: "Denmark",
+    visa: "Danish work permit (employer sponsorship)",
+    test: /\b(denmark|danmark|danish|copenhagen|københavn|aarhus|\.dk\b)\b/i,
+  },
+  {
+    code: "NO",
+    name: "Norway",
+    visa: "Norwegian residence permit for work (employer sponsorship)",
+    test: /\b(norway|norge|norwegian|oslo|bergen|trondheim|\.no\b)\b/i,
+  },
 ];
 
 export function detectCountry(text: string): CountryRule {

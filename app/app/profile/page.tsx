@@ -32,6 +32,10 @@ export default async function ProfilePage() {
     shortBio: profile?.shortBio || "",
     includeSignature: profile?.includeSignature ?? false,
     applicationLanguage: profile?.applicationLanguage || "auto",
+    hasVisa: profile?.hasVisa ?? false,
+    visaType: profile?.visaType || "",
+    visaLabel: profile?.visaLabel || "",
+    visaCountries: profile?.visaCountries || [],
   };
 
   const status = (s: string) =>

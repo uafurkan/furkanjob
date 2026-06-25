@@ -14,6 +14,9 @@ type GenResult = {
   body: string;
   draftSource: "ai" | "template";
   language: string;
+  countryCode: string;
+  visaCovered: boolean;
+  visaLabel: string | null;
   cv: { filename: string } | null;
   overLimit: boolean;
   plan: string;
@@ -240,6 +243,21 @@ export default function NewApplication() {
             ))}
             <span className={`chip ${res.emailSource === "none" ? "chip-warn" : "chip-ok"}`}>{t("new.mail")}: {srcLabel(res.emailSource)}</span>
           </div>
+
+          {res.visaCovered && (
+            <div className="visa-banner reveal">
+              <span className="visa-banner-ico" aria-hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </span>
+              <span>
+                {t("new.visaCovered")
+                  .replace("{visa}", res.visaLabel || t("new.visaGeneric"))
+                  .replace("{country}", res.country)}
+              </span>
+            </div>
+          )}
 
           <label className="field">
             <span className="field-label">{t("new.to")}</span>
