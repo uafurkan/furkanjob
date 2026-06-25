@@ -59,6 +59,7 @@ export default function NewApplication() {
   const [auto, setAuto] = useState(false);
   const [language, setLanguage] = useState("auto");
   const [analyzing, setAnalyzing] = useState(false);
+  const [stage, setStage] = useState<string | null>(null);
   const [res, setRes] = useState<GenResult | null>(null);
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
@@ -154,8 +155,10 @@ export default function NewApplication() {
   async function analyze() {
     if (!text.trim()) return setMsg({ kind: "warn", text: t("new.pasteFirst") });
     setAnalyzing(true);
+    setStage(t("new.stage.analyzing"));
     setMsg(null);
     setRes(null);
+    const stageTimer = setTimeout(() => setStage(t("new.stage.drafting")), 2200);
     try {
       const r = await fetch("/api/generate", {
         method: "POST",
@@ -180,7 +183,9 @@ export default function NewApplication() {
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
     } finally {
+      clearTimeout(stageTimer);
       setAnalyzing(false);
+      setStage(null);
     }
   }
 
@@ -273,7 +278,7 @@ export default function NewApplication() {
 
         <div className="row gap-3 wrap">
           <button className="btn btn-primary" data-loading={analyzing || sending} onClick={analyze} disabled={analyzing || sending}>
-            {analyzing ? t("new.analyzing") : sending ? t("new.sending") : auto ? t("new.analyzeSend") : t("new.analyze")}
+            {analyzing ? (stage || t("new.analyzing")) : sending ? t("new.sending") : auto ? t("new.analyzeSend") : t("new.analyze")}
           </button>
           <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>⌘↵</span>
           {res && <span className="chip">{res.draftSource === "ai" ? t("new.aiLabel") : t("new.tmpl")}</span>}
@@ -339,6 +344,15 @@ export default function NewApplication() {
                   >B</button>
                 </div>
               )}
+              <span
+                className="text-secondary"
+                style={{
+                  fontSize: "var(--text-12)", marginLeft: "auto",
+                  color: subject.length > 60 ? "var(--signal-warning)" : undefined,
+                }}
+              >
+                {subject.length}
+              </span>
             </div>
             <input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} />
             {res?.subjectB && subject !== res.subject && subject !== res.subjectB && (
