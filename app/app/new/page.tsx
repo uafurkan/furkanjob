@@ -19,7 +19,7 @@ type GenResult = {
   visaCovered: boolean;
   visaLabel: string | null;
   fetchedUrl?: boolean;
-  duplicate?: { company: string | null; when: string } | null;
+  duplicate?: { id: string; company: string | null; when: string } | null;
   cv: { filename: string } | null;
   overLimit: boolean;
   plan: string;
@@ -305,6 +305,9 @@ export default function NewApplication() {
               <span>
                 {t("new.duplicate").replace("{when}", new Date(res.duplicate.when).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }))}
               </span>
+              <Link href="/app/profile#applications" className="btn btn-sm" style={{ marginLeft: "auto", fontSize: "var(--text-12)" }}>
+                {t("new.duplicateView")}
+              </Link>
             </div>
           )}
 

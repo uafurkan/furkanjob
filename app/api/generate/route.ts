@@ -80,7 +80,7 @@ async function handleGenerate(req: Request) {
   ]);
 
   // Duplicate guard: have we already applied to this company or any of these emails?
-  let duplicate: { company: string | null; when: string } | null = null;
+  let duplicate: { id: string; company: string | null; when: string } | null = null;
   try {
     const prior = await listApplications(user.id);
     const emailSet = new Set(result.emails.map((e) => e.toLowerCase()));
@@ -90,7 +90,7 @@ async function handleGenerate(req: Request) {
         (companyLc && (a.company || "").trim().toLowerCase() === companyLc) ||
         a.recipients.some((r) => emailSet.has(r.toLowerCase()))
     );
-    if (hit) duplicate = { company: hit.company ?? null, when: hit.createdAt };
+    if (hit) duplicate = { id: hit.id, company: hit.company ?? null, when: hit.createdAt };
   } catch {}
 
   return NextResponse.json({

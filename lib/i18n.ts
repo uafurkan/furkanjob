@@ -196,6 +196,7 @@ const en: Dict = {
   "new.extraDocs": "Attach extra documents",
   "new.urlHint": "Tip: you can paste just the business's URL — paply fetches the page for you.",
   "new.duplicate": "You already applied to this business (on {when}). You can still send again.",
+  "new.duplicateView": "View →",
   "new.cvSelect": "CV to attach",
   "new.bulk": "Bulk apply",
 
@@ -540,6 +541,7 @@ const tr: Dict = {
   "new.extraDocs": "Ek belge iliştir",
   "new.urlHint": "İpucu: sadece işletmenin URL'sini de yapıştırabilirsin — paply sayfayı senin için çeker.",
   "new.duplicate": "Bu işletmeye zaten başvurdun ({when}). Yine de tekrar gönderebilirsin.",
+  "new.duplicateView": "Görüntüle →",
   "new.cvSelect": "Eklenecek CV",
   "new.bulk": "Toplu başvuru",
 
