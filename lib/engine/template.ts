@@ -18,11 +18,11 @@ export const APP_LANGS: { code: AppLang; label: string }[] = [
 export function autoLangForCountry(code: string): AppLang {
   switch (code) {
     case "ES": return "es";
-    case "FR": return "fr";
-    case "DE": case "AT": return "de";
+    case "FR": case "BE": return "fr";
+    case "DE": case "AT": case "CH": case "CZ": case "PL": return "de";
     case "IT": return "it";
     case "PT": case "BR": return "pt";
-    default: return "en"; // NZ/AU/US/CA/UK, multilingual (CH), and unknown
+    default: return "en"; // NZ/AU/US/CA/UK, multilingual, Scandinavian (EN widely used), and unknown
   }
 }
 

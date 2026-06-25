@@ -97,7 +97,7 @@ export async function aiAnalyze(text: string, tier: AiTier = "free"): Promise<Ai
 Return STRICT JSON ONLY, no prose, exactly these keys:
 {
   "company": "the clean human brand name only (deduplicate repeated logo text, drop street address, menu items, taglines and 'Website by ...')",
-  "countryCode": "ISO 3166-1 alpha-2 code for the destination country: one of NZ, AU, US, CA, UK, DE, ES, FR, IT, NL, PT, IE, AT, CH, GR, SE, DK, NO — or XX if genuinely unknown. Infer from postal address, phone country/area code, email TLD (.co.nz, .com.au, .co.uk, .ca, .de, .es, .fr, .it, .nl, .pt), and city names.",
+  "countryCode": "ISO 3166-1 alpha-2 code for the destination country: one of NZ, AU, US, CA, UK, DE, ES, FR, IT, NL, PT, IE, AT, CH, GR, SE, DK, NO, BE, FI, CZ, PL — or XX if genuinely unknown. Infer from postal address, phone country/area code, email TLD (.co.nz, .com.au, .co.uk, .ca, .de, .es, .fr, .it, .nl, .pt, .be, .fi, .cz, .pl), and city names.",
   "language": "the language the application email should be written in to best match this business: one of en, tr, es, fr, de, it, pt",
   "positions": ["1-3 realistic hospitality roles to apply for, inferred from the venue type (hotel/restaurant/cafe/bar) if none are explicitly advertised"]
 }

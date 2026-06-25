@@ -132,6 +132,30 @@ const COUNTRY_RULES: (CountryRule & { test: RegExp })[] = [
     visa: "Norwegian residence permit for work (employer sponsorship)",
     test: /\b(norway|norge|norwegian|oslo|bergen|trondheim|\.no\b)\b/i,
   },
+  {
+    code: "BE",
+    name: "Belgium",
+    visa: "Belgian work permit (employer sponsorship)",
+    test: /\b(belgium|belgique|belgie|belgian|brussels|bruxelles|brussel|antwerp|antwerpen|ghent|gent|bruges|brugge|\.be\b)\b/i,
+  },
+  {
+    code: "FI",
+    name: "Finland",
+    visa: "Finnish residence permit for work (employer sponsorship)",
+    test: /\b(finland|suomi|finnish|helsinki|tampere|turku|oulu|\.fi\b)\b/i,
+  },
+  {
+    code: "CZ",
+    name: "Czech Republic",
+    visa: "Czech work permit (employer sponsorship)",
+    test: /\b(czech republic|česká republika|czech|prague|praha|brno|ostrava|\.cz\b)\b/i,
+  },
+  {
+    code: "PL",
+    name: "Poland",
+    visa: "Polish work permit (employer sponsorship)",
+    test: /\b(poland|polska|polish|warsaw|warszawa|kraków|wrocław|gdansk|\.pl\b)\b/i,
+  },
 ];
 
 export function detectCountry(text: string): CountryRule {
@@ -147,13 +171,18 @@ export function countryByCode(code: string): CountryRule {
 }
 
 const POSITION_RULES: { test: RegExp; label: string }[] = [
-  { test: /\bfront desk|receptionist|front office\b/i, label: "Front Desk" },
-  { test: /\bkitchen|chef|cook|kitchen hand|commis\b/i, label: "Kitchen" },
-  { test: /\bwait(er|ress)|server|serving|food service|f&b\b/i, label: "Food & Beverage Service" },
-  { test: /\bhousekeep|room attendant|cleaner\b/i, label: "Housekeeping" },
-  { test: /\bbarista|cafe\b/i, label: "Barista" },
-  { test: /\bbartender|bar staff\b/i, label: "Bar" },
-  { test: /\bconcierge\b/i, label: "Concierge" },
+  { test: /\bfront desk|receptionist|front office|check.in|guest service/i, label: "Front Desk" },
+  { test: /\bkitchen|chef|cook|kitchen hand|commis|sous chef|prep cook|dishwasher|kitchen porter/i, label: "Kitchen" },
+  { test: /\bwait(er|ress)|server|serving|food service|f&b|dining room|table service/i, label: "Food & Beverage Service" },
+  { test: /\bhousekeep|room attendant|cleaner|laundry|turndown/i, label: "Housekeeping" },
+  { test: /\bbarista|coffee|café\b/i, label: "Barista" },
+  { test: /\bbartender|bar staff|bar\b|cocktail|mixologist/i, label: "Bar" },
+  { test: /\bconcierge|guest relations|guest experience/i, label: "Concierge" },
+  { test: /\bmanager|management|supervisor|head of|general manager/i, label: "Management" },
+  { test: /\bnight auditor|night shift|night manager/i, label: "Night Auditor" },
+  { test: /\breservations|booking(s)?\b/i, label: "Reservations" },
+  { test: /\bporter|bellhop|valet|doorman|luggage/i, label: "Porter / Valet" },
+  { test: /\bevent|banquet|function|catering/i, label: "Events / Banquet" },
 ];
 
 export function detectPositions(text: string): string[] {
