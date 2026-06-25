@@ -60,6 +60,7 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"date" | "company" | "status">("date");
 
   const copyBody = useCallback(async (text: string) => {
     await navigator.clipboard.writeText(text);

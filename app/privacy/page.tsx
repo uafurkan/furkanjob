@@ -8,7 +8,7 @@ export const metadata = {
 };
 
 const UPDATED = "2026-06-25";
-const CONTACT = "furkanhlkk@gmail.com";
+const CONTACT = "privacy@paply.me";
 
 export default function PrivacyPage() {
   const lang = getLang();
