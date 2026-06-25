@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfile } from "@/lib/db";
 import { isAdminEmail } from "@/lib/admin";
 import AppNav from "@/components/nav/AppNav";
+import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -15,6 +16,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
     <div className="app-shell">
       <AppNav name={user.name} plan={user.plan} isAdmin={isAdminEmail(user.email)} />
       <main className="app-main container">{children}</main>
+      <KeyboardShortcuts />
     </div>
   );
 }
