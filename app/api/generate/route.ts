@@ -4,6 +4,7 @@ import { getProfile, getUsage, getDefaultCv, listApplications } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
 import { runPipeline } from "@/lib/engine/pipeline";
 import { fetchPageText } from "@/lib/engine/websearch";
+import { aiSubjectVariant } from "@/lib/engine/ai";
 import { aiTier, isOverLimit, planInfo } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
@@ -67,7 +68,16 @@ async function handleGenerate(req: Request) {
     },
   });
 
-  const cv = await getDefaultCv(user.id);
+  const [cv, subjectB] = await Promise.all([
+    getDefaultCv(user.id),
+    aiSubjectVariant(
+      result.draft.subject,
+      result.analysis.company,
+      result.analysis.positions,
+      result.language as any,
+      aiTier(user.plan)
+    ).catch(() => null),
+  ]);
 
   // Duplicate guard: have we already applied to this company or any of these emails?
   let duplicate: { company: string | null; when: string } | null = null;
@@ -90,6 +100,7 @@ async function handleGenerate(req: Request) {
     emails: result.emails,
     emailSource: result.emailSource,
     subject: result.draft.subject,
+    subjectB: subjectB || null,
     body: result.draft.body,
     draftSource: result.draftSource,
     language: result.language,

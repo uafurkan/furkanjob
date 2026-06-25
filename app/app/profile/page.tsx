@@ -160,6 +160,8 @@ export default async function ProfilePage() {
               id: a.id, company: a.company ?? null, country: a.country ?? null, subject: a.subject,
               recipients: a.recipients, status: a.status, error: a.error ?? null,
               createdAt: a.createdAt, sentAt: a.sentAt ?? null,
+              body: a.body, positions: a.positions,
+              emailSource: a.emailSource, draftSource: a.draftSource,
             }))}
           />
           </>

@@ -11,6 +11,7 @@ type GenResult = {
   emails: string[];
   emailSource: "text" | "page-scrape" | "web-search" | "none";
   subject: string;
+  subjectB?: string | null;
   body: string;
   draftSource: "ai" | "template";
   language: string;
@@ -302,10 +303,29 @@ export default function NewApplication() {
             <span className="field-label">{t("new.to")}</span>
             <input className="input" value={to} onChange={(e) => setTo(e.target.value)} placeholder="name@business.com" />
           </label>
-          <label className="field">
-            <span className="field-label">{t("new.subject")}</span>
+          <div className="field">
+            <div className="row gap-2" style={{ alignItems: "center", marginBottom: 6 }}>
+              <span className="field-label" style={{ margin: 0 }}>{t("new.subject")}</span>
+              {res?.subjectB && (
+                <div className="ab-toggle">
+                  <button
+                    type="button"
+                    className={`ab-btn${subject === res.subject ? " ab-active" : ""}`}
+                    onClick={() => setSubject(res.subject)}
+                  >A</button>
+                  <button
+                    type="button"
+                    className={`ab-btn${subject === res.subjectB ? " ab-active" : ""}`}
+                    onClick={() => setSubject(res.subjectB!)}
+                  >B</button>
+                </div>
+              )}
+            </div>
             <input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </label>
+            {res?.subjectB && subject !== res.subject && subject !== res.subjectB && (
+              <span className="text-secondary" style={{ fontSize: "var(--text-12)", marginTop: 4 }}>{t("new.subjectCustom")}</span>
+            )}
+          </div>
           <label className="field">
             <span className="field-label">{t("new.body")}</span>
             <textarea className="textarea" style={{ minHeight: 260 }} value={body} onChange={(e) => setBody(e.target.value)} />

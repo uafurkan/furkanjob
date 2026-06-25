@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useT } from "@/components/i18n";
 import { SETTABLE_STATUSES, PIPELINE_STATUSES, STATUS_CLASS, isFollowupDue } from "@/lib/applications";
 
@@ -13,6 +13,10 @@ export type AppRow = {
   error: string | null;
   createdAt: string;
   sentAt: string | null;
+  body?: string;
+  positions?: string[];
+  emailSource?: string;
+  draftSource?: string;
 };
 
 type Followup = {
@@ -20,15 +24,47 @@ type Followup = {
   inReplyToId: string | null; threadId: string | null; sending: boolean;
 };
 
+function mdToHtml(md: string): string {
+  return md
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/\n\n+/g, "</p><p>")
+    .replace(/\n/g, "<br>")
+    .replace(/^/, "<p>").replace(/$/, "</p>");
+}
+
 export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   const { t, lang } = useT();
   const [apps, setApps] = useState<AppRow[]>(initial);
   const [fu, setFu] = useState<Followup | null>(null);
   const [loadingFu, setLoadingFu] = useState<string | null>(null);
+  const [detail, setDetail] = useState<AppRow | null>(null);
+  const [copied, setCopied] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+
+  const copyBody = useCallback(async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }, []);
 
   const label = (s: string) => t(`apps.status.${s}`);
   const counts = PIPELINE_STATUSES.map((s) => ({ s, n: apps.filter((a) => a.status === s).length }));
+
+  const visible = apps.filter((a) => {
+    if (filterStatus !== "all" && a.status !== filterStatus) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      (a.company || "").toLowerCase().includes(q) ||
+      (a.country || "").toLowerCase().includes(q) ||
+      a.subject.toLowerCase().includes(q) ||
+      a.recipients.some((r) => r.toLowerCase().includes(q))
+    );
+  });
 
   async function changeStatus(id: string, status: string) {
     const prev = apps;
@@ -97,18 +133,47 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
 
   return (
     <div className="stack gap-3">
-      {/* Pipeline summary */}
+      {/* Pipeline summary — clickable filter */}
       <div className="row gap-2 wrap">
-        {counts.map(({ s, n }) => (
-          <span key={s} className={`chip ${STATUS_CLASS[s] || ""}`}>{label(s)}: <b style={{ marginLeft: 4 }}>{n}</b></span>
+        <span
+          className={`chip${filterStatus === "all" ? " chip-accent" : ""}`}
+          style={{ cursor: "pointer" }}
+          onClick={() => setFilterStatus("all")}
+        >
+          {t("apps.filter.all")}: <b style={{ marginLeft: 4 }}>{apps.length}</b>
+        </span>
+        {counts.filter(({ n }) => n > 0).map(({ s, n }) => (
+          <span
+            key={s}
+            className={`chip ${filterStatus === s ? "chip-accent" : STATUS_CLASS[s] || ""}`}
+            style={{ cursor: "pointer" }}
+            onClick={() => setFilterStatus((prev) => (prev === s ? "all" : s))}
+          >
+            {label(s)}: <b style={{ marginLeft: 4 }}>{n}</b>
+          </span>
         ))}
       </div>
 
+      {/* Search */}
+      <input
+        className="input"
+        placeholder={t("apps.search")}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{ fontSize: "var(--text-14)" }}
+      />
+
+      {visible.length === 0 && (search || filterStatus !== "all") && (
+        <p className="text-secondary" style={{ fontSize: "var(--text-14)", textAlign: "center", padding: "var(--space-4) 0" }}>
+          {t("apps.noResults")}
+        </p>
+      )}
+
       <div className="stack gap-3">
-        {apps.map((a) => {
+        {visible.map((a) => {
           const due = isFollowupDue(a.status, a.sentAt, a.createdAt);
           return (
-            <div key={a.id} className="glass card app-row">
+            <div key={a.id} className="glass card app-row" style={{ cursor: "pointer" }} onClick={() => setDetail(a)}>
               <div className="stack gap-2" style={{ width: "100%" }}>
                 <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
                   <b>{a.company || "—"}</b>
@@ -116,14 +181,17 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
                   <select
                     className={`status-select ${STATUS_CLASS[a.status] || ""}`}
                     value={SETTABLE_STATUSES.includes(a.status as any) ? a.status : "sent"}
-                    onChange={(e) => changeStatus(a.id, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => { e.stopPropagation(); changeStatus(a.id, e.target.value); }}
                   >
                     {SETTABLE_STATUSES.map((s) => (
                       <option key={s} value={s}>{label(s)}</option>
                     ))}
                   </select>
                   {due && (
-                    <button className="btn btn-sm" data-loading={loadingFu === a.id} onClick={() => openFollowup(a)} style={{ marginLeft: "auto" }}>
+                    <button className="btn btn-sm" data-loading={loadingFu === a.id}
+                      onClick={(e) => { e.stopPropagation(); openFollowup(a); }}
+                      style={{ marginLeft: "auto" }}>
                       {t("apps.followup")}
                     </button>
                   )}
@@ -161,6 +229,56 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
               <button className="btn btn-primary" data-loading={fu.sending} onClick={sendFollowup} disabled={fu.sending}>
                 {t("apps.followupSend")}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detail && (
+        <div className="confirm-overlay" onClick={() => setDetail(null)}>
+          <div className="confirm-modal detail-modal" style={{ maxWidth: 640, width: "94%", maxHeight: "88vh" }} onClick={(e) => e.stopPropagation()}>
+            <div className="detail-header">
+              <div className="stack gap-1">
+                <span className="detail-company">{detail.company || "—"}</span>
+                {detail.country && <span className="chip" style={{ alignSelf: "start" }}>{detail.country}</span>}
+              </div>
+              <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => setDetail(null)}>{t("apps.detail.close")}</button>
+            </div>
+            <div className="detail-body stack gap-3">
+              <div className="detail-meta-grid">
+                <span className="field-label">{t("apps.detail.to")}</span>
+                <span className="mono" style={{ fontSize: "var(--text-13)" }}>{detail.recipients.join(", ") || "—"}</span>
+                <span className="field-label">{t("new.subject")}</span>
+                <span style={{ fontSize: "var(--text-14)" }}>{detail.subject}</span>
+                {detail.sentAt && <>
+                  <span className="field-label">{t("apps.detail.sent")}</span>
+                  <span style={{ fontSize: "var(--text-13)" }}>{new Date(detail.sentAt).toLocaleString(lang === "tr" ? "tr-TR" : "en-US")}</span>
+                </>}
+                {detail.positions && detail.positions.length > 0 && <>
+                  <span className="field-label">{t("apps.detail.positions")}</span>
+                  <div className="row gap-1 wrap">{detail.positions.map((p) => <span key={p} className="chip">{p}</span>)}</div>
+                </>}
+                {detail.emailSource && <>
+                  <span className="field-label">{t("apps.detail.source")}</span>
+                  <span className="chip">{t(`apps.source.${detail.emailSource}`)}</span>
+                </>}
+                {detail.draftSource && <>
+                  <span className="field-label">{t("apps.detail.draft")}</span>
+                  <span className="chip">{t(`apps.draft.${detail.draftSource}`)}</span>
+                </>}
+              </div>
+              {detail.body && (
+                <div className="stack gap-2">
+                  <div className="row gap-2" style={{ alignItems: "center" }}>
+                    <span className="field-label">{t("apps.detail.body")}</span>
+                    <button className="btn btn-sm" style={{ marginLeft: "auto", fontSize: "var(--text-12)" }}
+                      onClick={() => copyBody(detail.body || "")}>
+                      {copied ? t("apps.detail.copied") : t("apps.detail.copy")}
+                    </button>
+                  </div>
+                  <div className="detail-body-text" dangerouslySetInnerHTML={{ __html: mdToHtml(detail.body) }} />
+                </div>
+              )}
             </div>
           </div>
         </div>

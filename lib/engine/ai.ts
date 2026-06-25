@@ -193,6 +193,31 @@ Rules:
   return null;
 }
 
+// ---------- Alternative subject variant ----------
+export async function aiSubjectVariant(
+  subject: string,
+  company: string,
+  positions: string[],
+  lang: AppLang = "en",
+  tier: AiTier = "free"
+): Promise<string | null> {
+  if (!aiEnabled()) return null;
+  const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
+  const prompt = `A job applicant is sending an application email to "${company}" for roles: ${positions.join(", ") || "hospitality"}.
+The original subject line is: "${subject}"
+
+Write ONE alternative subject line that takes a different angle (e.g., if the original is specific/formal, make this one warmer/shorter, or vice-versa). Write fully IN ${langName}. Return STRICT JSON only: {"subject": "..."}.
+
+Rules:
+- Plain text, no "SUBJECT:" prefix.
+- No more than 10 words.
+- Don't repeat the original word-for-word.
+- Invent nothing not implied by the roles or company.`;
+  const parsed = extractJson<{ subject?: string }>(await complete(prompt, 80, tier));
+  if (parsed?.subject && typeof parsed.subject === "string") return parsed.subject.trim().slice(0, 160);
+  return null;
+}
+
 // ---------- Draft generation ----------
 export async function aiDraft(
   { text, analysis, profile }: GenerateInput,
