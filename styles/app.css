@@ -58,9 +58,9 @@
 /* Intro paragraph */
 .legal-intro {
   background: rgba(255,255,255,.04); border: 1px solid var(--glass-stroke);
-  border-left: 3px solid var(--accent); border-radius: 0 var(--radius-soft) var(--radius-soft) 0;
-  padding: var(--space-4) var(--space-5); margin-bottom: var(--space-8);
-  color: var(--content-secondary); line-height: 1.7; font-size: var(--text-15);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-6); margin-bottom: var(--space-4);
+  color: var(--content-secondary); line-height: 1.75; font-size: var(--text-15);
 }
 
 /* Each section as a glass card */
