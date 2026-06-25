@@ -71,17 +71,24 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   const label = (s: string) => t(`apps.status.${s}`);
   const counts = PIPELINE_STATUSES.map((s) => ({ s, n: apps.filter((a) => a.status === s).length }));
 
-  const visible = apps.filter((a) => {
-    if (filterStatus !== "all" && a.status !== filterStatus) return false;
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      (a.company || "").toLowerCase().includes(q) ||
-      (a.country || "").toLowerCase().includes(q) ||
-      a.subject.toLowerCase().includes(q) ||
-      a.recipients.some((r) => r.toLowerCase().includes(q))
-    );
-  });
+  const visible = apps
+    .filter((a) => {
+      if (filterStatus !== "all" && a.status !== filterStatus) return false;
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        (a.company || "").toLowerCase().includes(q) ||
+        (a.country || "").toLowerCase().includes(q) ||
+        a.subject.toLowerCase().includes(q) ||
+        a.recipients.some((r) => r.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === "company") return (a.company || "").localeCompare(b.company || "");
+      if (sortBy === "status") return a.status.localeCompare(b.status);
+      // date: newest first (default)
+      return new Date(b.sentAt || b.createdAt).getTime() - new Date(a.sentAt || a.createdAt).getTime();
+    });
 
   const [resending, setResending] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -230,14 +237,26 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
         </a>
       </div>
 
-      {/* Search */}
-      <input
-        className="input"
-        placeholder={t("apps.search")}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{ fontSize: "var(--text-14)" }}
-      />
+      {/* Search + sort */}
+      <div className="row gap-2">
+        <input
+          className="input"
+          placeholder={t("apps.search")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ fontSize: "var(--text-14)", flex: 1 }}
+        />
+        <select
+          className="input"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as "date" | "company" | "status")}
+          style={{ flex: "0 0 auto", fontSize: "var(--text-13)" }}
+        >
+          <option value="date">{t("apps.sort.date")}</option>
+          <option value="company">{t("apps.sort.company")}</option>
+          <option value="status">{t("apps.sort.status")}</option>
+        </select>
+      </div>
 
       {visible.length === 0 && (search || filterStatus !== "all") && (
         <p className="text-secondary" style={{ fontSize: "var(--text-14)", textAlign: "center", padding: "var(--space-4) 0" }}>

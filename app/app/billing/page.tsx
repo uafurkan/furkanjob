@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getUsage } from "@/lib/db";
 import { PLANS, planInfo } from "@/lib/plans";
 import UpgradeButton from "@/components/UpgradeButton";
+import ShareButton from "@/components/ShareButton";
 import { getT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Pro" };
@@ -55,6 +56,14 @@ export default async function BillingPage() {
           )}
           <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("billing.wallets")}</span>
         </div>
+      </div>
+
+      <div className="glass card stack gap-3">
+        <div className="stack gap-1">
+          <h3>{t("billing.share.title")}</h3>
+          <p className="text-secondary" style={{ fontSize: "var(--text-13)", margin: 0 }}>{t("billing.share.sub")}</p>
+        </div>
+        <ShareButton />
       </div>
     </div>
   );
