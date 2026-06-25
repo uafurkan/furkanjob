@@ -519,6 +519,13 @@
   to   { opacity: 1; transform: scale(1)   translateY(0); }
 }
 
+/* ---------- Home nudge ---------- */
+.home-nudge {
+  display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--accent);
+}
+
 /* ---------- A/B Subject Toggle ---------- */
 .ab-toggle {
   display: inline-flex; border-radius: 8px; overflow: hidden;

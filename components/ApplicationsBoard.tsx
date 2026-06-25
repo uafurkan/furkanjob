@@ -25,6 +25,19 @@ type Followup = {
   inReplyToId: string | null; threadId: string | null; sending: boolean;
 };
 
+function timeSince(dateStr: string | null, lang: string): string {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return lang === "tr" ? "Bugün" : "Today";
+  if (days === 1) return lang === "tr" ? "Dün" : "Yesterday";
+  if (days < 7) return lang === "tr" ? `${days} gün önce` : `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return lang === "tr" ? `${weeks} hafta önce` : `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  return lang === "tr" ? `${months} ay önce` : `${months}mo ago`;
+}
+
 function mdToHtml(md: string): string {
   return md
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -248,9 +261,17 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
                   )}
                 </div>
                 <span className="text-secondary" style={{ fontSize: "var(--text-14)" }}>{a.subject}</span>
-                <span className="mono text-secondary" style={{ fontSize: "var(--text-12)" }}>
-                  → {a.recipients.join(", ") || "—"} · {new Date(a.createdAt).toLocaleString(lang === "tr" ? "tr-TR" : "en-US")}
-                </span>
+                <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
+                  <span className="mono text-secondary" style={{ fontSize: "var(--text-12)" }}>
+                    → {a.recipients.join(", ") || "—"}
+                  </span>
+                  <span className="text-secondary" style={{ fontSize: "var(--text-12)", marginLeft: "auto" }}>
+                    {timeSince(a.sentAt || a.createdAt, lang)}
+                  </span>
+                  {a.notes && (
+                    <span title={a.notes} style={{ fontSize: 14, lineHeight: 1, opacity: .7 }}>📝</span>
+                  )}
+                </div>
                 {a.error && <span className="chip-warn" style={{ fontSize: "var(--text-12)" }}>{a.error}</span>}
               </div>
             </div>

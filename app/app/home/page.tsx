@@ -1,22 +1,42 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
-import { listApplications, getUsage } from "@/lib/db";
+import { listApplications, getUsage, getProfile, getDefaultCv, getDefaultEmailAccount } from "@/lib/db";
 import { planInfo } from "@/lib/plans";
 import { getT } from "@/lib/i18n-server";
+import { isFollowupDue } from "@/lib/applications";
+import { computeInsights } from "@/lib/applications";
 
 export const metadata = { title: "Home" };
 
 export default async function HomePage() {
   const { t, lang } = getT();
   const user = (await getCurrentUser())!;
-  const [apps, used] = await Promise.all([listApplications(user.id), getUsage(user.id)]);
+  const [apps, used, profile, cv, account] = await Promise.all([
+    listApplications(user.id),
+    getUsage(user.id),
+    getProfile(user.id),
+    getDefaultCv(user.id),
+    getDefaultEmailAccount(user.id),
+  ]);
   const limit = planInfo(user.plan).monthlyLimit;
-  // Anything that left the outbox counts as sent (sent + later pipeline states), excluding draft/failed.
   const sent = apps.filter((a) => a.status !== "draft" && a.status !== "failed").length;
   const recent = apps.slice(0, 3);
+  const followupDue = apps.filter((a) => isFollowupDue(a.status, a.sentAt ?? null, a.createdAt)).length;
 
   const firstName = (user.name || "").trim().split(/\s+/)[0];
   const hello = firstName ? t("home.hello").replace("{name}", firstName) : t("home.helloNoName");
+
+  // Contextual nudges — ordered by importance
+  const nudges: { key: string; href: string; cta: string }[] = [];
+  if (!cv) nudges.push({ key: "home.nudge.cv", href: "/app/profile", cta: t("home.nudge.ctaProfile") });
+  if (!account?.provider) nudges.push({ key: "home.nudge.gmail", href: "/app/profile", cta: t("home.nudge.ctaProfile") });
+  if (!profile?.fullName) nudges.push({ key: "home.nudge.profile", href: "/app/profile", cta: t("home.nudge.ctaProfile") });
+  if (followupDue > 0) nudges.push({ key: "home.nudge.followup", href: "/app/profile#applications", cta: t("home.nudge.ctaApps") });
+
+  // Response rate (only if ≥ 3 dispatched applications to be meaningful)
+  const ins = computeInsights(apps);
+  const showRate = ins.dispatched >= 3;
+  const responsePct = Math.round(ins.responseRate * 100);
 
   return (
     <div className="stack gap-6">
@@ -37,11 +57,26 @@ export default async function HomePage() {
           <span className="stat-value">{sent}</span>
           <span className="stat-label">{t("home.stat.sent")}</span>
         </div>
-        <div className="glass card stat">
-          <span className="stat-value" style={{ textTransform: "capitalize" }}>{user.plan}</span>
-          <span className="stat-label">{t("home.stat.plan")}</span>
-        </div>
+        {showRate ? (
+          <div className="glass card stat">
+            <span className="stat-value">{responsePct}<span className="stat-sub">%</span></span>
+            <span className="stat-label">{t("home.stat.responseRate")}</span>
+          </div>
+        ) : (
+          <div className="glass card stat">
+            <span className="stat-value" style={{ textTransform: "capitalize" }}>{user.plan}</span>
+            <span className="stat-label">{t("home.stat.plan")}</span>
+          </div>
+        )}
       </div>
+
+      {/* Contextual nudges (top 2 max) */}
+      {nudges.slice(0, 2).map((n) => (
+        <div key={n.key} className="glass card home-nudge">
+          <span style={{ fontSize: "var(--text-14)" }}>{t(n.key)}</span>
+          <Link href={n.href} className="btn btn-sm" style={{ whiteSpace: "nowrap" }}>{n.cta}</Link>
+        </div>
+      ))}
 
       {/* Primary action */}
       <Link href="/app/new" className="glass card home-cta">
