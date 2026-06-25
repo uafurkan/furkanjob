@@ -42,11 +42,11 @@ export default function Landing() {
           <div className="hero-scene">
             <div className="scene-side scene-raw">
               <div className="scene-tag">{t("landing.scene.pasted")}</div>
-              <p>Lakeside Suites, Queenstown. Front desk &amp; kitchen roles. careers@example-hotel.co.nz</p>
+              <p>Aurelia Bay Hotel, Lindravale, New Zealand. Front desk &amp; kitchen roles. careers@example-hotel.co.nz</p>
             </div>
             <div className="scene-side scene-out">
               <div className="scene-tag">{t("landing.scene.application")}</div>
-              <p><b>Front Desk / Kitchen — Lakeside Suites</b></p>
+              <p><b>Front Desk / Kitchen — Aurelia Bay Hotel</b></p>
               <p className="text-secondary">Dear Hiring Manager, I require AEWV sponsorship to work in New Zealand…</p>
             </div>
           </div>
