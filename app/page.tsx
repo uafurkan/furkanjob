@@ -97,6 +97,37 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section className="container" style={{ marginTop: "var(--space-16)" }}>
+        <h2 className="section-title" style={{ textAlign: "center", marginBottom: "var(--space-8)", fontSize: "var(--text-24)" }}>
+          {t("landing.pricing.title")}
+        </h2>
+        <div className="plans landing-plans">
+          <div className="glass card stack gap-3">
+            <h3>{t("landing.pricing.free")}</h3>
+            <p className="plan-price">{t("landing.pricing.freePrice")}</p>
+            <ul className="plan-list text-secondary">
+              <li>{t("landing.pricing.freeLine1")}</li>
+              <li>{t("landing.pricing.freeLine2")}</li>
+              <li>{t("landing.pricing.freeLine3")}</li>
+              <li>{t("landing.pricing.freeLine4")}</li>
+            </ul>
+            <Link href="/signin" className="btn" style={{ alignSelf: "start" }}>{t("landing.pricing.cta")}</Link>
+          </div>
+          <div className="glass glass-strong card stack gap-3 plan-featured">
+            <h3>{t("landing.pricing.pro")}</h3>
+            <p className="plan-price">{t("landing.pricing.proPrice")}</p>
+            <ul className="plan-list text-secondary">
+              <li>{t("landing.pricing.proLine1")}</li>
+              <li>{t("landing.pricing.proLine2")}</li>
+              <li>{t("landing.pricing.proLine3")}</li>
+              <li>{t("landing.pricing.proLine4")}</li>
+            </ul>
+            <Link href="/signin" className="btn btn-primary" style={{ alignSelf: "start" }}>{t("landing.pricing.upgrade")}</Link>
+          </div>
+        </div>
+      </section>
+
       <footer className="landing-foot container text-secondary">
         <span>
           <a href="https://paply.me" style={{ textDecoration: "none", color: "inherit" }}>paply.me</a> &nbsp;·&nbsp;
