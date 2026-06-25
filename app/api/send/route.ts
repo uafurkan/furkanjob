@@ -55,6 +55,7 @@ async function handleSend(req: Request) {
   const inReplyTo: string | undefined = body?.inReplyToId ? String(body.inReplyToId) : undefined;
   const threadId: string | null = body?.threadId ? String(body.threadId) : null;
   const recordApplication = body?.recordApplication !== false;
+  const ccSelf: boolean = body?.ccSelf === true;
 
   const profile = await getProfile(user.id);
   const fromName = profile?.fullName || user.name || "Applicant";
@@ -111,6 +112,7 @@ async function handleSend(req: Request) {
   const account = await getDefaultEmailAccount(user.id);
   let result: SendResult;
   let fromEmail = account?.address || process.env.SMTP_USER || user.email;
+  const ccAddresses: string[] | undefined = ccSelf && fromEmail ? [fromEmail] : undefined;
 
   if (account?.provider === "google" && account.refreshToken) {
     let accessToken = decrypt(account.accessToken);
@@ -131,14 +133,14 @@ async function handleSend(req: Request) {
       result = { ok: false, error: "Gmail erişimi yenilenemedi. Lütfen Gmail'i tekrar bağla." };
     } else {
       result = await sendViaGmailApi({
-        accessToken, fromName, fromEmail, to: recipients, subject, body: text, attachments,
+        accessToken, fromName, fromEmail, to: recipients, cc: ccAddresses, subject, body: text, attachments,
         messageId: outMessageId, inReplyTo, references: inReplyTo, threadId,
       });
     }
   } else if (process.env.SMTP_APP_PASSWORD) {
     fromEmail = process.env.SMTP_USER || fromEmail;
     result = await sendViaSmtp({
-      user: fromEmail, pass: process.env.SMTP_APP_PASSWORD, fromName, to: recipients, subject, body: text, attachments,
+      user: fromEmail, pass: process.env.SMTP_APP_PASSWORD, fromName, to: recipients, cc: ccAddresses, subject, body: text, attachments,
       messageId: outMessageId, inReplyTo, references: inReplyTo,
     });
   } else {

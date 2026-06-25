@@ -14,6 +14,7 @@ export function buildMime(opts: {
   fromName: string;
   fromEmail: string;
   to: string[];
+  cc?: string[];
   subject: string;
   body: string;
   attachments?: Attachment[];
@@ -21,7 +22,7 @@ export function buildMime(opts: {
   inReplyTo?: string;   // the original Message-ID this is a reply to
   references?: string;  // thread references chain
 }): string {
-  const { fromName, fromEmail, to, subject, body, attachments = [], messageId, inReplyTo, references } = opts;
+  const { fromName, fromEmail, to, cc, subject, body, attachments = [], messageId, inReplyTo, references } = opts;
   // RFC 2047 encode the subject so non-ASCII (e.g. Hülako) survives.
   const encSubject = `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`;
   const headersBase = [
@@ -30,6 +31,7 @@ export function buildMime(opts: {
     `Subject: ${encSubject}`,
     "MIME-Version: 1.0",
   ];
+  if (cc?.length) headersBase.push(`Cc: ${cc.join(", ")}`);
   if (messageId) headersBase.push(`Message-ID: ${messageId}`);
   if (inReplyTo) headersBase.push(`In-Reply-To: ${inReplyTo}`);
   if (references) headersBase.push(`References: ${references}`);
@@ -104,6 +106,7 @@ export async function sendViaGmailApi(opts: {
   fromName: string;
   fromEmail: string;
   to: string[];
+  cc?: string[];
   subject: string;
   body: string;
   attachments?: Attachment[];
@@ -136,6 +139,7 @@ export async function sendViaSmtp(opts: {
   pass: string;
   fromName: string;
   to: string[];
+  cc?: string[];
   subject: string;
   body: string;
   attachments?: Attachment[];
@@ -148,6 +152,7 @@ export async function sendViaSmtp(opts: {
     const info = await transport.sendMail({
       from: `${opts.fromName} <${opts.user}>`,
       to: opts.to.join(", "),
+      cc: opts.cc?.join(", "),
       subject: opts.subject,
       text: opts.body,
       messageId: opts.messageId,

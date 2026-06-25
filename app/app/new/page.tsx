@@ -66,6 +66,7 @@ export default function NewApplication() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [includeCoverLetter, setIncludeCoverLetter] = useState(false);
+  const [ccSelf, setCcSelf] = useState(false);
   const [docs, setDocs] = useState<{ id: string; type: string; filename: string }[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [cvs, setCvs] = useState<{ id: string; filename: string; isDefault: boolean }[]>([]);
@@ -204,6 +205,7 @@ export default function NewApplication() {
           emailSource: p.meta.emailSource, draftSource: p.meta.draftSource,
           language: p.meta.language,
           includeCoverLetter,
+          ccSelf,
           documentIds: selectedDocs,
           cvId: selectedCv || undefined,
         }),
@@ -405,6 +407,18 @@ export default function NewApplication() {
               />
               <span style={{ fontSize: "var(--text-13)", color: "var(--text-secondary)" }}>
                 {t("new.coverLetter")}
+              </span>
+            </label>
+
+            <label className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                checked={ccSelf}
+                onChange={(e) => setCcSelf(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "var(--accent)" }}
+              />
+              <span style={{ fontSize: "var(--text-13)", color: "var(--text-secondary)" }}>
+                {t("new.ccSelf")}
               </span>
             </label>
 
