@@ -298,6 +298,7 @@ const en: Dict = {
   "pf.visaSuggestAdd": "Add",
 
   "home.stat.responseRate": "Response rate",
+  "home.breakdown.title": "Applications by country",
   "home.nudge.cv": "Upload your CV — it's attached to every application you send.",
   "home.nudge.gmail": "Connect Gmail to send applications from your own inbox.",
   "home.nudge.profile": "Add your name and bio to personalise every application.",
@@ -629,6 +630,7 @@ const tr: Dict = {
   "pf.visaSuggestAdd": "Ekle",
 
   "home.stat.responseRate": "Yanıt oranı",
+  "home.breakdown.title": "Ülkeye göre başvurular",
   "home.nudge.cv": "CV'ni yükle — gönderdiğin her başvuruya eklenir.",
   "home.nudge.gmail": "Kendi gelen kutundan göndermek için Gmail'i bağla.",
   "home.nudge.profile": "İsim ve biyografini ekle — her başvuru kişiselleşir.",

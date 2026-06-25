@@ -86,6 +86,27 @@ export default async function HomePage() {
         <span className="home-cta-arrow" aria-hidden>→</span>
       </Link>
 
+      {/* Country / role breakdown (only once there's enough data) */}
+      {ins.byCountry.length >= 2 && (
+        <section className="glass card stack gap-3">
+          <h2 className="section-title" style={{ margin: 0 }}>{t("home.breakdown.title")}</h2>
+          <div className="stack gap-2">
+            {ins.byCountry.map((row) => {
+              const pct = Math.round((row.count / ins.dispatched) * 100);
+              return (
+                <div key={row.name} className="breakdown-row">
+                  <span className="breakdown-label">{row.name}</span>
+                  <div className="breakdown-track">
+                    <div className="breakdown-bar" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="breakdown-val">{row.count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Recent activity peek (full list lives in Profile) */}
       <section className="stack gap-3">
         <div className="row gap-2" style={{ alignItems: "center" }}>
