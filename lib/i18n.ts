@@ -6,6 +6,7 @@ export const DEFAULT_LANG: Lang = "en";
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  "nav.home": "Home",
   "nav.new": "New",
   "nav.applications": "Applications",
   "nav.profile": "Profile",
@@ -164,6 +165,7 @@ const en: Dict = {
 };
 
 const tr: Dict = {
+  "nav.home": "Ana sayfa",
   "nav.new": "Yeni",
   "nav.applications": "Başvurular",
   "nav.profile": "Profil",

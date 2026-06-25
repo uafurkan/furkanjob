@@ -1,38 +1,17 @@
-import { getCurrentUser } from "@/lib/session";
-import { getProfile, getDefaultCv, getDefaultEmailAccount, listApplications, getUsage } from "@/lib/db";
-import { googleEnabled } from "@/lib/auth";
-import { DEFAULT_PROFILE } from "@/lib/engine/rules";
-import ProfileForm from "@/components/ProfileForm";
-import { getT } from "@/lib/i18n-server";
-import { planInfo } from "@/lib/plans";
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/session";
+import { listApplications, getUsage } from "@/lib/db";
+import { planInfo } from "@/lib/plans";
+import { getT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Profile" };
+export const metadata = { title: "Home" };
 
-export default async function ProfilePage() {
+export default async function HomePage() {
   const { t, lang } = getT();
   const user = (await getCurrentUser())!;
-  const [profile, cv, account, apps, used] = await Promise.all([
-    getProfile(user.id),
-    getDefaultCv(user.id),
-    getDefaultEmailAccount(user.id),
-    listApplications(user.id),
-    getUsage(user.id),
-  ]);
+  const [apps, used] = await Promise.all([listApplications(user.id), getUsage(user.id)]);
   const limit = planInfo(user.plan).monthlyLimit;
-
-  const initial = {
-    fullName: profile?.fullName || "",
-    contactEmail: profile?.contactEmail || "",
-    languages: profile?.languages || [],
-    targetRoles: profile?.targetRoles || [],
-    targetCountries: profile?.targetCountries || [],
-    needsVisaSponsorship: profile?.needsVisaSponsorship ?? true,
-    relocation: profile?.relocation ?? true,
-    shortBio: profile?.shortBio || "",
-    includeSignature: profile?.includeSignature ?? false,
-    applicationLanguage: profile?.applicationLanguage || "auto",
-  };
+  const recent = apps.slice(0, 5);
 
   const status = (s: string) =>
     ({ sent: { l: t("apps.status.sent"), c: "chip-ok" }, failed: { l: t("apps.status.failed"), c: "chip-warn" }, draft: { l: t("apps.status.draft"), c: "" } } as Record<string, { l: string; c: string }>)[s] || { l: s, c: "" };
@@ -40,35 +19,36 @@ export default async function ProfilePage() {
   return (
     <div className="stack gap-6">
       <header className="page-head">
-        <h1>{t("nav.profile")}</h1>
-        <p className="text-secondary">{t("pf.profile")}</p>
+        <h1>paply</h1>
+        <p className="text-secondary">
+          {used}{limit === Infinity ? "" : ` / ${limit}`} {t("apps.thisMonth")} · {user.plan}
+        </p>
       </header>
-      <ProfileForm
-        mode="edit"
-        initial={initial}
-        cvFilename={cv?.filename || null}
-        gmailConnected={account?.provider === "google"}
-        googleEnabled={googleEnabled}
-      />
 
-      {/* Applications list */}
-      <section id="applications" className="stack gap-3">
+      {/* Quick action */}
+      <Link href="/app/new" className="btn btn-primary" style={{ alignSelf: "start" }}>
+        + {t("nav.new")}
+      </Link>
+
+      {/* Recent applications */}
+      <section className="stack gap-3">
         <div className="row gap-2" style={{ alignItems: "center" }}>
           <h2 style={{ fontSize: "var(--text-16)", fontWeight: 600, margin: 0 }}>{t("apps.title")}</h2>
-          <span className="text-secondary" style={{ fontSize: "var(--text-13)", marginLeft: "auto" }}>
-            {used}{limit === Infinity ? "" : ` / ${limit}`} {t("apps.thisMonth")}
-          </span>
+          {apps.length > 5 && (
+            <Link href="/app/profile#applications" className="text-secondary" style={{ fontSize: "var(--text-13)", marginLeft: "auto" }}>
+              {t("apps.title")} →
+            </Link>
+          )}
         </div>
 
-        {apps.length === 0 ? (
+        {recent.length === 0 ? (
           <div className="glass card stack gap-3 empty">
             <h3>{t("apps.empty.title")}</h3>
             <p className="text-secondary">{t("apps.empty.sub")}</p>
-            <Link href="/app/new" className="btn btn-primary" style={{ alignSelf: "start" }}>{t("apps.new")}</Link>
           </div>
         ) : (
           <div className="stack gap-3">
-            {apps.map((a) => {
+            {recent.map((a) => {
               const st = status(a.status);
               return (
                 <div key={a.id} className="glass card app-row">
