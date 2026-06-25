@@ -37,6 +37,7 @@ export async function POST(req: Request) {
     tone: b.tone?.toString() || "warm-professional",
     includeSignature: Boolean(b.includeSignature),
     digestOptOut: Boolean(b.digestOptOut),
+    reminderOptOut: Boolean(b.reminderOptOut),
     applicationLanguage: b.applicationLanguage?.toString() || "auto",
     hasVisa,
     visaType: hasVisa ? (b.visaType?.toString() || null) : null,

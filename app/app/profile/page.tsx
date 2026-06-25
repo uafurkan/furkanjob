@@ -43,6 +43,7 @@ export default async function ProfilePage() {
     shortBio: profile?.shortBio || "",
     includeSignature: profile?.includeSignature ?? false,
     digestOptOut: profile?.digestOptOut ?? false,
+    reminderOptOut: profile?.reminderOptOut ?? false,
     applicationLanguage: profile?.applicationLanguage || "auto",
     hasVisa: profile?.hasVisa ?? false,
     visaType: profile?.visaType || "",

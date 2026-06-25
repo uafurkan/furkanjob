@@ -51,6 +51,7 @@ export type Profile = {
   completedAt?: string | null;
   updatedAt: string;
   digestOptOut?: boolean;
+  reminderOptOut?: boolean;
 };
 
 export type Document = {

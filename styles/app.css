@@ -603,6 +603,13 @@
 .detail-body-text p { margin: 0 0 .9em; }
 .detail-body-text p:last-child { margin-bottom: 0; }
 
+/* ---------- Sparkline (7-day bar chart) ---------- */
+.spark-row { display: flex; gap: var(--space-2); align-items: flex-end; height: 72px; }
+.spark-col { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); flex: 1; height: 100%; }
+.spark-bar-wrap { flex: 1; display: flex; align-items: flex-end; width: 100%; }
+.spark-bar { width: 100%; min-height: 3px; border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: linear-gradient(180deg, var(--accent) 0%, rgba(111,168,255,.4) 100%); transition: height .3s var(--ease-settle); }
+.spark-label { font-size: 10px; color: var(--content-tertiary); letter-spacing: .02em; white-space: nowrap; }
+
 /* ---------- FAQ ---------- */
 .faq-list { display: flex; flex-direction: column; gap: var(--space-3); max-width: 760px; margin: 0 auto; }
 .faq-item { gap: var(--space-2); }

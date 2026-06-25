@@ -17,6 +17,7 @@ type Initial = {
   shortBio?: string;
   includeSignature?: boolean;
   digestOptOut?: boolean;
+  reminderOptOut?: boolean;
   applicationLanguage?: string;
   hasVisa?: boolean;
   visaType?: string;
@@ -67,6 +68,7 @@ export default function ProfileForm({
   const [shortBio, setShortBio] = useState(initial.shortBio || "");
   const [includeSignature, setIncludeSignature] = useState(initial.includeSignature ?? false);
   const [digestOptOut, setDigestOptOut] = useState(initial.digestOptOut ?? false);
+  const [reminderOptOut, setReminderOptOut] = useState(initial.reminderOptOut ?? false);
   const [appLang, setAppLang] = useState(initial.applicationLanguage || "auto");
   const [cvs, setCvs] = useState<CvItem[]>(initialCvs || (cvFilename ? [{ id: "", filename: cvFilename, isDefault: true }] : []));
   const [saving, setSaving] = useState(false);
@@ -190,7 +192,7 @@ export default function ProfileForm({
         body: JSON.stringify({
           fullName, contactEmail,
           languages: split(languages), targetRoles: split(targetRoles), targetCountries: split(targetCountries),
-          needsVisaSponsorship: needsVisa, relocation, shortBio, includeSignature, digestOptOut,
+          needsVisaSponsorship: needsVisa, relocation, shortBio, includeSignature, digestOptOut, reminderOptOut,
           applicationLanguage: appLang, hasVisa, visaType, visaLabel, visaCountries,
         }),
       });
@@ -295,6 +297,7 @@ export default function ProfileForm({
           <label className="toggle"><input type="checkbox" checked={relocation} onChange={(e) => setRelocation(e.target.checked)} /> {t("pf.relocation")}</label>
           <label className="toggle"><input type="checkbox" checked={includeSignature} onChange={(e) => setIncludeSignature(e.target.checked)} /> {t("pf.includeSignature")}</label>
           <label className="toggle"><input type="checkbox" checked={digestOptOut} onChange={(e) => setDigestOptOut(e.target.checked)} /> {t("pf.digestOptOut")}</label>
+          <label className="toggle"><input type="checkbox" checked={reminderOptOut} onChange={(e) => setReminderOptOut(e.target.checked)} /> {t("pf.reminderOptOut")}</label>
         </div>
 
         {hasVisa && (

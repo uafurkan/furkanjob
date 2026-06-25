@@ -123,6 +123,7 @@ const en: Dict = {
   "pf.visaSuggested": "Visa read — review the suggested type and countries below.",
   "pf.includeSignature": "Add a signature block (default: off)",
   "pf.digestOptOut": "Unsubscribe from weekly activity digest emails",
+  "pf.reminderOptOut": "Unsubscribe from follow-up reminder emails",
   "pf.cv": "CV",
   "pf.cvNote": "Add more than one — e.g. a barista CV and a front-desk CV. Pick which to attach on each application.",
   "pf.cvDefault": "Default",
@@ -318,6 +319,7 @@ const en: Dict = {
 
   "home.stat.responseRate": "Response rate",
   "home.breakdown.title": "Applications by country",
+  "home.week.title": "This week",
   "home.nudge.cv": "Upload your CV — it's attached to every application you send.",
   "home.nudge.gmail": "Connect Gmail to send applications from your own inbox.",
   "home.nudge.profile": "Add your name and bio to personalise every application.",
@@ -486,6 +488,7 @@ const tr: Dict = {
   "pf.visaSuggested": "Vize okundu — aşağıdaki önerilen tipi ve ülkeleri kontrol et.",
   "pf.includeSignature": "İmza bloğu ekle (varsayılan: kapalı)",
   "pf.digestOptOut": "Haftalık özet e-postalarından çık",
+  "pf.reminderOptOut": "Takip hatırlatma e-postalarından çık",
   "pf.cv": "CV",
   "pf.cvNote": "Birden fazla ekleyebilirsin — ör. barista CV'si ve resepsiyon CV'si. Her başvuruda hangisinin ekleneceğini seçersin.",
   "pf.cvDefault": "Varsayılan",
@@ -681,6 +684,7 @@ const tr: Dict = {
 
   "home.stat.responseRate": "Yanıt oranı",
   "home.breakdown.title": "Ülkeye göre başvurular",
+  "home.week.title": "Bu hafta",
   "home.nudge.cv": "CV'ni yükle — gönderdiğin her başvuruya eklenir.",
   "home.nudge.gmail": "Kendi gelen kutundan göndermek için Gmail'i bağla.",
   "home.nudge.profile": "İsim ve biyografini ekle — her başvuru kişiselleşir.",

@@ -37,6 +37,18 @@ export default async function HomePage() {
   const showRate = ins.dispatched >= 3;
   const responsePct = Math.round(ins.responseRate * 100);
 
+  // Last 7 days sparkline (count by day)
+  const now7 = Date.now();
+  const days7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now7 - (6 - i) * 86400000);
+    const key = d.toISOString().slice(0, 10);
+    return {
+      label: d.toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US", { weekday: "short" }),
+      count: apps.filter((a) => (a.sentAt || a.createdAt).startsWith(key) && a.status !== "draft" && a.status !== "failed").length,
+    };
+  });
+  const maxDay = Math.max(...days7.map((d) => d.count), 1);
+
   return (
     <div className="stack gap-6">
       <header className="page-head">
@@ -103,6 +115,27 @@ export default async function HomePage() {
                 </div>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {/* 7-day sparkline — only when there's been activity */}
+      {sent >= 2 && (
+        <section className="glass card stack gap-3">
+          <h2 className="section-title" style={{ margin: 0 }}>{t("home.week.title")}</h2>
+          <div className="spark-row">
+            {days7.map((d, i) => (
+              <div key={i} className="spark-col">
+                <div className="spark-bar-wrap">
+                  <div
+                    className="spark-bar"
+                    style={{ height: `${Math.round((d.count / maxDay) * 100)}%` }}
+                    title={`${d.count}`}
+                  />
+                </div>
+                <span className="spark-label">{d.label}</span>
+              </div>
+            ))}
           </div>
         </section>
       )}

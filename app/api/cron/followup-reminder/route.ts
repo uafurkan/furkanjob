@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listUsers, listApplications } from "@/lib/db";
+import { listUsers, listApplications, getProfile } from "@/lib/db";
 import { isFollowupDue } from "@/lib/applications";
 import { sendEmail } from "@/lib/notify";
 import { reportError } from "@/lib/observability";
@@ -48,7 +48,8 @@ export async function GET(req: Request) {
     let emailed = 0;
     for (const u of users) {
       if (!u.email) continue;
-      const apps = await listApplications(u.id);
+      const [apps, profile] = await Promise.all([listApplications(u.id), getProfile(u.id)]);
+      if (profile?.reminderOptOut) continue;
       const due = apps.filter((a) => isFollowupDue(a.status, a.sentAt ?? null, a.createdAt));
       if (!due.length) continue;
       const companies = due.map((a) => a.company || "—");
