@@ -51,6 +51,7 @@ export async function POST(req: Request) {
       mime: f.type || "application/octet-stream",
       size: buf.length,
       dataB64: buf.toString("base64"),
+      replace: true, // a user has one visa proof; uploading a new one supersedes the old
     });
 
     // AI suggestion (PDF only — images would need vision, which we don't run here).

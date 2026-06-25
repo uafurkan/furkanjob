@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import {
   getProfile, getDefaultCv, getCvData, getDefaultEmailAccount, updateEmailAccountTokens,
-  createApplication, incrementUsage, getUsage,
+  createApplication, incrementUsage, getUsage, getDocumentsForAttach,
 } from "@/lib/db";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { isOverLimit } from "@/lib/plans";
@@ -60,8 +60,20 @@ async function handleSend(req: Request) {
     }
   }
 
+  // Optional extra attachments selected from the user's document library.
+  const documentIds: string[] = Array.isArray(body?.documentIds)
+    ? body.documentIds.map((s: unknown) => String(s)).filter(Boolean).slice(0, 8)
+    : [];
+  if (documentIds.length) {
+    const docs = await getDocumentsForAttach(documentIds, user.id);
+    for (const { doc, bytes } of docs) {
+      attachments.push({ filename: doc.filename, content: bytes, mime: doc.mime });
+    }
+  }
+
   // Optional cover letter DOCX
   const includeCoverLetter = body?.includeCoverLetter === true;
+  let coverLetterAttached = false;
   if (includeCoverLetter) {
     try {
       const applicantName = profile?.fullName || user.name || "Applicant";
@@ -75,6 +87,7 @@ async function handleSend(req: Request) {
         content: docxBuf,
         mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       });
+      coverLetterAttached = true;
     } catch (e) {
       console.error("cover letter build failed:", e);
     }
@@ -134,7 +147,6 @@ async function handleSend(req: Request) {
 
   if (result.ok) {
     await incrementUsage(user.id);
-    const coverLetterAttached = attachments.some((a) => a.filename.endsWith(".docx"));
     return NextResponse.json({ ok: true, sentTo: recipients, from: fromEmail, cvAttached: attachments.length > 0, coverLetterAttached });
   }
   return NextResponse.json({ ok: false, error: result.error }, { status: 502 });

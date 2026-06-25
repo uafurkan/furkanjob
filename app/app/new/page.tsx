@@ -62,10 +62,20 @@ export default function NewApplication() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [includeCoverLetter, setIncludeCoverLetter] = useState(false);
+  const [docs, setDocs] = useState<{ id: string; type: string; filename: string }[]>([]);
+  const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [msg, setMsg] = useState<{ kind: "ok" | "err" | "warn"; text: string } | null>(null);
   const [confirmPending, setConfirmPending] = useState<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load the user's document library (for the optional extra-attachment picker).
+  useEffect(() => {
+    fetch("/api/documents")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.documents) setDocs(d.documents); })
+      .catch(() => {});
+  }, []);
 
   // Restore draft on mount
   useEffect(() => {
@@ -156,6 +166,7 @@ export default function NewApplication() {
           emailSource: p.meta.emailSource, draftSource: p.meta.draftSource,
           language: p.meta.language,
           includeCoverLetter,
+          documentIds: selectedDocs,
         }),
       });
       const d = await r.json();
@@ -295,6 +306,29 @@ export default function NewApplication() {
                 {t("new.coverLetter")}
               </span>
             </label>
+
+            {docs.length > 0 && (
+              <div className="stack gap-2">
+                <span className="field-label">{t("new.extraDocs")}</span>
+                {docs.map((d) => {
+                  const checked = selectedDocs.includes(d.id);
+                  return (
+                    <label key={d.id} className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) =>
+                          setSelectedDocs((prev) => (e.target.checked ? [...prev, d.id] : prev.filter((x) => x !== d.id)))
+                        }
+                        style={{ width: 16, height: 16, accentColor: "var(--accent)" }}
+                      />
+                      <span className="doc-type-chip">{t(`doc.type.${d.type}`)}</span>
+                      <span style={{ fontSize: "var(--text-13)", color: "var(--content-secondary)" }}>{d.filename}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -319,6 +353,12 @@ export default function NewApplication() {
                   cover_letter.docx
                 </p>
               )}
+              {docs.filter((d) => selectedDocs.includes(d.id)).map((d) => (
+                <p key={d.id} className="confirm-cv" style={{ opacity: 0.75 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  {d.filename}
+                </p>
+              ))}
             </div>
             <div className="confirm-actions">
               <button className="btn" onClick={() => setConfirmPending(null)}>{t("new.cancel")}</button>

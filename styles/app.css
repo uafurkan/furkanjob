@@ -271,6 +271,29 @@
   border: 1px solid rgba(95,208,166,.3);
 }
 
+/* ---------- Document library ---------- */
+.doc-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-soft); border: 1px solid var(--glass-stroke);
+  background: rgba(255,255,255,.03);
+}
+.doc-type-chip {
+  flex-shrink: 0;
+  padding: 2px 9px; border-radius: var(--radius-pill);
+  font-size: var(--text-12); font-weight: 600; color: var(--accent-bright);
+  background: var(--glow-halo); border: 1px solid rgba(111,168,255,.3);
+}
+.doc-name { font-size: var(--text-13); color: var(--content-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-del {
+  margin-left: auto; flex-shrink: 0;
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border: 1px solid var(--glass-stroke); border-radius: 8px;
+  background: transparent; color: var(--content-tertiary); cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.doc-del:hover { color: var(--signal-error); border-color: rgba(242,121,107,.4); }
+
 /* ---------- Held-visa panel ---------- */
 .visa-panel {
   padding: var(--space-4);

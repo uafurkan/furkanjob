@@ -373,11 +373,12 @@ function mapDocument(r: Record<string, unknown>): Document {
   };
 }
 export async function addDocument(
-  data: { userId: string; type: Document["type"]; filename: string; mime: string; size: number; dataB64?: string }
+  data: { userId: string; type: Document["type"]; filename: string; mime: string; size: number; dataB64?: string; replace?: boolean }
 ): Promise<Document> {
   await ensureDocumentsTable();
-  // One document per type per user (latest wins) keeps the profile tidy for now.
-  await sql`DELETE FROM documents WHERE user_id=${data.userId} AND type=${data.type}`;
+  // `replace` keeps a single document of this type (used for the visa proof); otherwise the
+  // library allows multiple (e.g. several certificates).
+  if (data.replace) await sql`DELETE FROM documents WHERE user_id=${data.userId} AND type=${data.type}`;
   const rows = await sql`
     INSERT INTO documents (id, user_id, type, filename, mime, size, data, created_at)
     VALUES (${id()}, ${data.userId}, ${data.type}, ${data.filename}, ${data.mime}, ${data.size}, ${data.dataB64 ?? null}, ${now()})
@@ -408,6 +409,16 @@ export async function getDocumentData(docId: string, userId: string): Promise<{ 
 }
 export async function deleteDocument(docId: string, userId: string): Promise<void> {
   await sql`DELETE FROM documents WHERE id=${docId} AND user_id=${userId}`;
+}
+// Fetch several owned documents (with bytes) for attaching to an email.
+export async function getDocumentsForAttach(ids: string[], userId: string): Promise<{ doc: Document; bytes: Buffer }[]> {
+  if (!ids.length) return [];
+  const out: { doc: Document; bytes: Buffer }[] = [];
+  for (const docId of ids.slice(0, 8)) {
+    const found = await getDocumentData(docId, userId);
+    if (found) out.push(found);
+  }
+  return out;
 }
 
 // ---------- Applications ----------

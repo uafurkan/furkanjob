@@ -1,8 +1,9 @@
 import { getCurrentUser } from "@/lib/session";
-import { getProfile, getDefaultCv, getDefaultEmailAccount, listApplications, getUsage } from "@/lib/db";
+import { getProfile, getDefaultCv, getDefaultEmailAccount, listApplications, getUsage, listDocuments } from "@/lib/db";
 import { googleEnabled } from "@/lib/auth";
 import { DEFAULT_PROFILE } from "@/lib/engine/rules";
 import ProfileForm from "@/components/ProfileForm";
+import DocumentsManager from "@/components/DocumentsManager";
 import { getT } from "@/lib/i18n-server";
 import { planInfo } from "@/lib/plans";
 import Link from "next/link";
@@ -12,13 +13,17 @@ export const metadata = { title: "Profile" };
 export default async function ProfilePage() {
   const { t, lang } = getT();
   const user = (await getCurrentUser())!;
-  const [profile, cv, account, apps, used] = await Promise.all([
+  const [profile, cv, account, apps, used, allDocs] = await Promise.all([
     getProfile(user.id),
     getDefaultCv(user.id),
     getDefaultEmailAccount(user.id),
     listApplications(user.id),
     getUsage(user.id),
+    listDocuments(user.id),
   ]);
+  const libraryDocs = allDocs
+    .filter((d) => d.type !== "visa")
+    .map((d) => ({ id: d.id, type: d.type, filename: d.filename, size: d.size }));
   const limit = planInfo(user.plan).monthlyLimit;
 
   const initial = {
@@ -54,6 +59,8 @@ export default async function ProfilePage() {
         gmailConnected={account?.provider === "google"}
         googleEnabled={googleEnabled}
       />
+
+      <DocumentsManager initial={libraryDocs} />
 
       {/* Applications list */}
       <section id="applications" className="stack gap-3">
