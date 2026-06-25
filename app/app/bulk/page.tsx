@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useT } from "@/components/i18n";
 
@@ -43,6 +43,7 @@ export default function BulkApply() {
   const [language, setLanguage] = useState("auto");
   const [items, setItems] = useState<Item[]>([]);
   const [running, setRunning] = useState(false);
+  const stopRef = useRef(false);
 
   function update(id: number, patch: Partial<Item>) {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -97,17 +98,27 @@ export default function BulkApply() {
     const queued: Item[] = parsed.map((input, i) => ({ id: i, input, status: "queued", to: "", subject: "", body: "" }));
     setItems(queued);
     setRunning(true);
+    stopRef.current = false;
     for (const base of queued) {
+      if (stopRef.current) {
+        update(base.id, { status: "skipped", error: t("bulk.stopped") });
+        continue;
+      }
       update(base.id, { status: "analyzing" });
       let it = await analyzeItem(base);
       setItems((prev) => prev.map((x) => (x.id === it.id ? it : x)));
-      if (auto && it.status === "drafted" && !it.overLimit && it.to.trim()) {
+      if (!stopRef.current && auto && it.status === "drafted" && !it.overLimit && it.to.trim()) {
         update(it.id, { status: "sending" });
         it = await sendItem(it);
         setItems((prev) => prev.map((x) => (x.id === it.id ? it : x)));
       }
     }
     setRunning(false);
+    stopRef.current = false;
+  }
+
+  function stop() {
+    stopRef.current = true;
   }
 
   async function sendOne(id: number) {
@@ -162,7 +173,10 @@ export default function BulkApply() {
           <button className="btn btn-primary" data-loading={running} onClick={run} disabled={running || !raw.trim()}>
             {running ? `${counts.done}/${counts.total}` : t("bulk.run")}
           </button>
-          {items.length > 0 && (
+          {running && (
+            <button className="btn btn-danger btn-sm" onClick={stop}>{t("bulk.stop")}</button>
+          )}
+          {!running && items.length > 0 && (
             <span className="chip chip-ok">{t("bulk.sentCount").replace("{n}", String(counts.sent))}</span>
           )}
         </div>

@@ -3,8 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { listApplications, getUsage, getProfile, getDefaultCv, getDefaultEmailAccount } from "@/lib/db";
 import { planInfo } from "@/lib/plans";
 import { getT } from "@/lib/i18n-server";
-import { isFollowupDue } from "@/lib/applications";
-import { computeInsights } from "@/lib/applications";
+import { isFollowupDue, computeInsights } from "@/lib/applications";
 
 export const metadata = { title: "Home" };
 
