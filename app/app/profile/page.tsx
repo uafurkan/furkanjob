@@ -7,6 +7,7 @@ import DocumentsManager from "@/components/DocumentsManager";
 import AccountData from "@/components/AccountData";
 import ApplicationsBoard from "@/components/ApplicationsBoard";
 import { computeInsights } from "@/lib/applications";
+import { computeProfileScore } from "@/lib/profile-score";
 import { getT } from "@/lib/i18n-server";
 import { planInfo } from "@/lib/plans";
 import Link from "next/link";
@@ -48,12 +49,31 @@ export default async function ProfilePage() {
     visaCountries: profile?.visaCountries || [],
   };
 
+  const score = computeProfileScore(profile, cvList.length, account?.provider === "google");
+
   return (
     <div className="stack gap-6">
       <header className="page-head">
         <h1>{t("nav.profile")}</h1>
         <p className="text-secondary">{t("pf.profile")}</p>
       </header>
+
+      {score.pct < 100 && (
+        <div className="glass card stack gap-3">
+          <div className="row gap-2" style={{ alignItems: "baseline" }}>
+            <h3 style={{ margin: 0 }}>{t("score.title")}</h3>
+            <span className="text-secondary" style={{ marginLeft: "auto", fontSize: "var(--text-13)" }}>{score.pct}%</span>
+          </div>
+          <span className="score-bar"><span className="score-fill" style={{ width: `${score.pct}%` }} /></span>
+          <div className="row gap-2 wrap">
+            <span className="text-secondary" style={{ fontSize: "var(--text-13)" }}>{t("score.missing")}:</span>
+            {score.missing.map((k) => (
+              <span key={k} className="chip">{t(`score.${k}`)}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <ProfileForm
         mode="edit"
         initial={initial}

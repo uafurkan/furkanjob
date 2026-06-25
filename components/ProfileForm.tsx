@@ -263,6 +263,25 @@ export default function ProfileForm({
           </label>
         </div>
 
+        {hasVisa && (() => {
+          const have = new Set(split(targetCountries).map((s) => s.toLowerCase()));
+          const sugg = visaCountries.map((c) => countryName(c)).filter((n) => !have.has(n.toLowerCase()));
+          if (sugg.length === 0 || sugg.length > 6) return null;
+          return (
+            <div className="row gap-2 wrap" style={{ marginTop: "calc(-1 * var(--space-2))" }}>
+              <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("pf.visaSuggest")}</span>
+              {sugg.map((n) => <span key={n} className="chip">{n}</span>)}
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => setTargetCountries([...new Set([...split(targetCountries), ...sugg])].join(", "))}
+              >
+                {t("pf.visaSuggestAdd")}
+              </button>
+            </div>
+          );
+        })()}
+
         <label className="field">
           <span className="field-label">{t("pf.shortBio")}</span>
           <textarea className="textarea" style={{ minHeight: 90 }} value={shortBio} onChange={(e) => setShortBio(e.target.value)} placeholder={t("pf.shortBioPh")} />

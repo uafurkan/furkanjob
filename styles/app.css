@@ -252,6 +252,10 @@
 .home-recent-sub { font-size: var(--text-13); }
 .home-recent-date { margin-left: auto; font-size: var(--text-12); color: var(--content-tertiary); flex-shrink: 0; }
 
+/* ---------- Profile completeness ---------- */
+.score-bar { display: block; width: 100%; height: 9px; border-radius: var(--radius-pill); background: rgba(255,255,255,.06); overflow: hidden; }
+.score-fill { display: block; height: 100%; border-radius: var(--radius-pill); background: linear-gradient(90deg, var(--accent), var(--accent-bright)); transition: width 400ms var(--ease-emphatic, ease); }
+
 /* ---------- Insights ---------- */
 .insights-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
 .insight-bar-row { display: flex; align-items: center; gap: var(--space-2); }
