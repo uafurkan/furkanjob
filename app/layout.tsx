@@ -27,10 +27,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0A0C10" },
-    { media: "(prefers-color-scheme: light)", color: "#0A0C10" },
-  ],
+  // Single, media-less theme-color: updated iOS Chrome (and Safari/Android) tint the
+  // top/bottom browser bars to this. Media-scoped tags are ignored by iOS Chrome, so we
+  // use one plain value (our void background is the same in light & dark anyway).
+  themeColor: "#0A0C10",
+  colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
