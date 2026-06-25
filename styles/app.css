@@ -271,6 +271,16 @@
   border: 1px solid rgba(95,208,166,.3);
 }
 
+/* ---------- Loading skeleton ---------- */
+.skeleton-line {
+  border-radius: var(--radius-soft);
+  background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.10), rgba(255,255,255,.05));
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton-line { animation: none; } }
+
 /* ---------- Document library ---------- */
 .doc-row {
   display: flex; align-items: center; gap: var(--space-3);
