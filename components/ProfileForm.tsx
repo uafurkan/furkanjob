@@ -131,7 +131,20 @@ export default function ProfileForm({
       <section className="glass card stack gap-4">
         <h3>{t("pf.account")}</h3>
         {gmailConnected ? (
-          <span className="chip chip-ok">{t("pf.gmailConnected")}</span>
+          <div className="account-connected">
+            <span className="account-badge" aria-hidden>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z" />
+                <path d="M3.5 7l8.5 6 8.5-6" />
+              </svg>
+            </span>
+            <div className="account-info">
+              <span className="account-status">
+                <span className="account-dot" /> {t("pf.gmailConnected.title")}
+              </span>
+              <span className="account-sub">{t("pf.gmailConnected.note")}</span>
+            </div>
+          </div>
         ) : googleEnabled ? (
           <div className="stack gap-2">
             <button className="btn" onClick={() => signIn("google", { callbackUrl: mode === "onboarding" ? "/onboarding" : "/app/profile" })}>

@@ -59,6 +59,8 @@ const en: Dict = {
 
   "pf.account": "Sending account",
   "pf.gmailConnected": "Gmail connected — applications are sent from your own inbox",
+  "pf.gmailConnected.title": "Gmail connected",
+  "pf.gmailConnected.note": "Applications are sent from your own inbox · send-only access",
   "pf.connectGmail": "Connect Gmail",
   "pf.connectNote": "If you don't connect, an SMTP fallback (App Password) is used.",
   "pf.scopeNote": "We request send-only access (gmail.send). We never read your inbox.",
@@ -221,6 +223,8 @@ const tr: Dict = {
 
   "pf.account": "Gönderim hesabı",
   "pf.gmailConnected": "Gmail bağlı — başvurular senin gelen kutundan gider",
+  "pf.gmailConnected.title": "Gmail bağlı",
+  "pf.gmailConnected.note": "Başvurular senin gelen kutundan gider · yalnızca gönderme izni",
   "pf.connectGmail": "Gmail'i bağla",
   "pf.connectNote": "Bağlamazsan SMTP fallback (App Password) kullanılır.",
   "pf.scopeNote": "Yalnızca gönderme izni (gmail.send) isteriz. Gelen kutunu asla okumayız.",
