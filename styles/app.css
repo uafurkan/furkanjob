@@ -252,6 +252,15 @@
 .home-recent-sub { font-size: var(--text-13); }
 .home-recent-date { margin-left: auto; font-size: var(--text-12); color: var(--content-tertiary); flex-shrink: 0; }
 
+/* ---------- Insights ---------- */
+.insights-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+.insight-bar-row { display: flex; align-items: center; gap: var(--space-2); }
+.insight-bar-name { font-size: var(--text-13); color: var(--content-secondary); width: 38%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.insight-bar-track { flex: 1; height: 7px; border-radius: var(--radius-pill); background: rgba(255,255,255,.06); overflow: hidden; }
+.insight-bar-fill { display: block; height: 100%; border-radius: var(--radius-pill); background: linear-gradient(90deg, var(--accent), var(--accent-bright)); }
+.insight-bar-num { font-size: var(--text-12); color: var(--content-tertiary); min-width: 34px; text-align: right; }
+@media (max-width: 640px) { .insights-cols { grid-template-columns: 1fr; } }
+
 /* ---------- Application status pill-select ---------- */
 .status-select {
   appearance: none; -webkit-appearance: none;

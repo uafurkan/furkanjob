@@ -201,6 +201,12 @@ const en: Dict = {
   "apps.followupSent": "Follow-up sent.",
   "apps.thisMonth": "this month",
 
+  "insights.title": "Insights",
+  "insights.responseRate": "Response rate",
+  "insights.byCountry": "By country",
+  "insights.byRole": "By role",
+  "insights.note": "Response rate counts applications that reached any reply (replied, interview, offer or rejected). Update statuses to keep this accurate.",
+
   "home.hello": "Hi, {name}",
   "home.helloNoName": "Welcome back",
   "home.tagline": "Paste a page, send the application.",
@@ -428,6 +434,12 @@ const tr: Dict = {
   "apps.followupSend": "Takip gönder",
   "apps.followupSent": "Takip maili gönderildi.",
   "apps.thisMonth": "bu ay",
+
+  "insights.title": "İçgörüler",
+  "insights.responseRate": "Yanıt oranı",
+  "insights.byCountry": "Ülkeye göre",
+  "insights.byRole": "Role göre",
+  "insights.note": "Yanıt oranı, herhangi bir dönüş alan başvuruları sayar (yanıt, mülakat, teklif veya ret). Doğru kalması için durumları güncel tut.",
 
   "home.hello": "Merhaba, {name}",
   "home.helloNoName": "Tekrar hoş geldin",
