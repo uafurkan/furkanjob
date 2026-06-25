@@ -15,7 +15,10 @@ export type AppRow = {
   sentAt: string | null;
 };
 
-type Followup = { app: AppRow; to: string; subject: string; body: string; language: string; sending: boolean };
+type Followup = {
+  app: AppRow; to: string; subject: string; body: string; language: string;
+  inReplyToId: string | null; threadId: string | null; sending: boolean;
+};
 
 export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   const { t, lang } = useT();
@@ -54,7 +57,10 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "error");
-      setFu({ app, to: (d.to || []).join(", "), subject: d.subject, body: d.body, language: d.language || "en", sending: false });
+      setFu({
+        app, to: (d.to || []).join(", "), subject: d.subject, body: d.body, language: d.language || "en",
+        inReplyToId: d.inReplyToId || null, threadId: d.threadId || null, sending: false,
+      });
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message || t("apps.statusFailed") });
     } finally {
@@ -73,6 +79,7 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
           to: fu.to, subject: fu.subject, body: fu.body,
           company: fu.app.company, country: fu.app.country, language: fu.language,
           emailSource: "manual", draftSource: "template",
+          inReplyToId: fu.inReplyToId, threadId: fu.threadId, recordApplication: false,
         }),
       });
       const d = await r.json();

@@ -123,6 +123,8 @@ async function initSchema() {
       body TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'draft',
       provider_msg_id TEXT,
+      message_id TEXT,
+      thread_id TEXT,
       error TEXT,
       created_at TEXT NOT NULL,
       sent_at TEXT
@@ -214,7 +216,10 @@ function mapApplication(r: Record<string, unknown>): Application {
     draftSource: r.draft_source as Application["draftSource"],
     subject: r.subject as string, body: r.body as string,
     status: r.status as Application["status"],
-    providerMsgId: r.provider_msg_id as string | null, error: r.error as string | null,
+    providerMsgId: r.provider_msg_id as string | null,
+    messageId: (r.message_id as string | null | undefined) ?? null,
+    threadId: (r.thread_id as string | null | undefined) ?? null,
+    error: r.error as string | null,
     createdAt: r.created_at as string, sentAt: r.sent_at as string | null,
   };
 }
@@ -514,13 +519,17 @@ export async function deleteUserData(userId: string): Promise<void> {
 
 // ---------- Applications ----------
 export async function createApplication(data: Omit<Application, "id" | "createdAt">): Promise<Application> {
+  // Idempotent migration for threading columns (initSchema isn't wired at runtime).
+  await sql`ALTER TABLE applications ADD COLUMN IF NOT EXISTS message_id TEXT`;
+  await sql`ALTER TABLE applications ADD COLUMN IF NOT EXISTS thread_id TEXT`;
   const rows = await sql`
     INSERT INTO applications (id, user_id, company, country, positions, recipients, email_source,
-      draft_source, subject, body, status, provider_msg_id, error, created_at, sent_at)
+      draft_source, subject, body, status, provider_msg_id, message_id, thread_id, error, created_at, sent_at)
     VALUES (${id()}, ${data.userId}, ${data.company ?? null}, ${data.country ?? null},
       ${JSON.stringify(data.positions)}, ${JSON.stringify(data.recipients)},
       ${data.emailSource}, ${data.draftSource}, ${data.subject}, ${data.body},
-      ${data.status}, ${data.providerMsgId ?? null}, ${data.error ?? null}, ${now()}, ${data.sentAt ?? null})
+      ${data.status}, ${data.providerMsgId ?? null}, ${data.messageId ?? null}, ${data.threadId ?? null},
+      ${data.error ?? null}, ${now()}, ${data.sentAt ?? null})
     RETURNING *
   `;
   return mapApplication(rows[0] as Record<string, unknown>);

@@ -86,6 +86,8 @@ export type Application = {
   body: string;
   status: "draft" | "sent" | "failed" | "replied" | "interview" | "offer" | "rejected";
   providerMsgId?: string | null;
+  messageId?: string | null; // RFC 2822 Message-ID we set on the outgoing email (for threading follow-ups)
+  threadId?: string | null;  // Gmail thread id returned on send
   error?: string | null;
   createdAt: string;
   sentAt?: string | null;

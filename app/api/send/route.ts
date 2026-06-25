@@ -12,6 +12,7 @@ import {
 import { buildCoverLetterDocx } from "@/lib/engine/coverletter";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 
 export const runtime = "nodejs";
@@ -47,6 +48,13 @@ async function handleSend(req: Request) {
 
   if (!recipients.length) return NextResponse.json({ error: "Alıcı e-posta yok." }, { status: 400 });
   if (!subject || !text) return NextResponse.json({ error: "Konu veya metin boş." }, { status: 400 });
+
+  // Threading: our own Message-ID for this email; optional reply-to a prior application's email.
+  const mailDomain = (process.env.NEXT_PUBLIC_BASE_URL || "https://paply.me").replace(/^https?:\/\//, "").replace(/\/.*$/, "") || "paply.me";
+  const outMessageId = `<${randomUUID()}@${mailDomain}>`;
+  const inReplyTo: string | undefined = body?.inReplyToId ? String(body.inReplyToId) : undefined;
+  const threadId: string | null = body?.threadId ? String(body.threadId) : null;
+  const recordApplication = body?.recordApplication !== false;
 
   const profile = await getProfile(user.id);
   const fromName = profile?.fullName || user.name || "Applicant";
@@ -124,36 +132,45 @@ async function handleSend(req: Request) {
     } else {
       result = await sendViaGmailApi({
         accessToken, fromName, fromEmail, to: recipients, subject, body: text, attachments,
+        messageId: outMessageId, inReplyTo, references: inReplyTo, threadId,
       });
     }
   } else if (process.env.SMTP_APP_PASSWORD) {
     fromEmail = process.env.SMTP_USER || fromEmail;
     result = await sendViaSmtp({
       user: fromEmail, pass: process.env.SMTP_APP_PASSWORD, fromName, to: recipients, subject, body: text, attachments,
+      messageId: outMessageId, inReplyTo, references: inReplyTo,
     });
   } else {
     result = { ok: false, error: "Gönderim yöntemi yok: Gmail bağla veya SMTP_APP_PASSWORD ayarla." };
   }
 
-  await createApplication({
-    userId: user.id,
-    company: body?.company || null,
-    country: body?.country || null,
-    positions: Array.isArray(body?.positions) ? body.positions : [],
-    recipients,
-    emailSource: body?.emailSource || "manual",
-    draftSource: body?.draftSource || "template",
-    subject,
-    body: text,
-    status: result.ok ? "sent" : "failed",
-    providerMsgId: result.ok ? result.messageId : null,
-    error: result.ok ? null : result.error,
-    sentAt: result.ok ? new Date().toISOString() : null,
-  });
+  const resultThreadId = result.ok ? (result.threadId ?? threadId) : null;
+
+  // Follow-ups (recordApplication=false) nudge an existing application — no new pipeline row.
+  if (recordApplication) {
+    await createApplication({
+      userId: user.id,
+      company: body?.company || null,
+      country: body?.country || null,
+      positions: Array.isArray(body?.positions) ? body.positions : [],
+      recipients,
+      emailSource: body?.emailSource || "manual",
+      draftSource: body?.draftSource || "template",
+      subject,
+      body: text,
+      status: result.ok ? "sent" : "failed",
+      providerMsgId: result.ok ? result.messageId : null,
+      messageId: result.ok ? outMessageId : null,
+      threadId: resultThreadId,
+      error: result.ok ? null : result.error,
+      sentAt: result.ok ? new Date().toISOString() : null,
+    });
+  }
 
   if (result.ok) {
     await incrementUsage(user.id);
-    return NextResponse.json({ ok: true, sentTo: recipients, from: fromEmail, cvAttached: attachments.length > 0, coverLetterAttached });
+    return NextResponse.json({ ok: true, sentTo: recipients, from: fromEmail, cvAttached: attachments.length > 0, coverLetterAttached, threaded: Boolean(inReplyTo || threadId) });
   }
   return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
 }

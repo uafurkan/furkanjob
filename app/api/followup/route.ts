@@ -36,13 +36,18 @@ export async function POST(req: Request) {
         tier: aiTier(user.plan),
       })) || buildFollowup(company, lang);
 
+    // Thread the follow-up under the original email: reuse "Re: <original subject>" and pass the ids.
+    const reSubject = /^re:/i.test(app.subject.trim()) ? app.subject : `Re: ${app.subject}`;
+
     return NextResponse.json({
-      subject: draft.subject,
+      subject: reSubject,
       body: draft.body,
       to: app.recipients,
       company: app.company,
       country: app.country,
       language: lang,
+      inReplyToId: app.messageId || null,
+      threadId: app.threadId || null,
     });
   } catch (e: any) {
     await reportError(e, { route: "followup" });

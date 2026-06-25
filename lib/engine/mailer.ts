@@ -17,8 +17,11 @@ export function buildMime(opts: {
   subject: string;
   body: string;
   attachments?: Attachment[];
+  messageId?: string;   // our own Message-ID (so follow-ups can reference it)
+  inReplyTo?: string;   // the original Message-ID this is a reply to
+  references?: string;  // thread references chain
 }): string {
-  const { fromName, fromEmail, to, subject, body, attachments = [] } = opts;
+  const { fromName, fromEmail, to, subject, body, attachments = [], messageId, inReplyTo, references } = opts;
   // RFC 2047 encode the subject so non-ASCII (e.g. Hülako) survives.
   const encSubject = `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`;
   const headersBase = [
@@ -27,6 +30,9 @@ export function buildMime(opts: {
     `Subject: ${encSubject}`,
     "MIME-Version: 1.0",
   ];
+  if (messageId) headersBase.push(`Message-ID: ${messageId}`);
+  if (inReplyTo) headersBase.push(`In-Reply-To: ${inReplyTo}`);
+  if (references) headersBase.push(`References: ${references}`);
 
   if (!attachments.length) {
     return [
@@ -91,7 +97,7 @@ export async function refreshGoogleAccessToken(refreshToken: string): Promise<st
   }
 }
 
-export type SendResult = { ok: true; messageId: string } | { ok: false; error: string };
+export type SendResult = { ok: true; messageId: string; threadId?: string | null } | { ok: false; error: string };
 
 export async function sendViaGmailApi(opts: {
   accessToken: string;
@@ -101,21 +107,25 @@ export async function sendViaGmailApi(opts: {
   subject: string;
   body: string;
   attachments?: Attachment[];
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string;
+  threadId?: string | null; // append to an existing Gmail thread
 }): Promise<SendResult> {
-  const { accessToken, ...mimeOpts } = opts;
+  const { accessToken, threadId, ...mimeOpts } = opts;
   const raw = b64url(Buffer.from(buildMime(mimeOpts), "utf8"));
   try {
     const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ raw }),
+      body: JSON.stringify(threadId ? { raw, threadId } : { raw }),
     });
     if (!res.ok) {
       const t = await res.text();
       return { ok: false, error: `Gmail API ${res.status}: ${t.slice(0, 200)}` };
     }
-    const data = (await res.json()) as { id?: string };
-    return { ok: true, messageId: data.id || "sent" };
+    const data = (await res.json()) as { id?: string; threadId?: string };
+    return { ok: true, messageId: data.id || "sent", threadId: data.threadId || null };
   } catch (e: any) {
     return { ok: false, error: e?.message || "gmail send failed" };
   }
@@ -129,6 +139,9 @@ export async function sendViaSmtp(opts: {
   subject: string;
   body: string;
   attachments?: Attachment[];
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string;
 }): Promise<SendResult> {
   try {
     const transport = nodemailer.createTransport({ service: "gmail", auth: { user: opts.user, pass: opts.pass } });
@@ -137,6 +150,9 @@ export async function sendViaSmtp(opts: {
       to: opts.to.join(", "),
       subject: opts.subject,
       text: opts.body,
+      messageId: opts.messageId,
+      inReplyTo: opts.inReplyTo,
+      references: opts.references,
       attachments: (opts.attachments || []).map((a) =>
         a.content ? { filename: a.filename, content: a.content } : { filename: a.filename, path: a.absPath }
       ),
