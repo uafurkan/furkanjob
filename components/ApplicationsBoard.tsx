@@ -17,6 +17,7 @@ export type AppRow = {
   positions?: string[];
   emailSource?: string;
   draftSource?: string;
+  notes?: string | null;
 };
 
 type Followup = {
@@ -40,6 +41,8 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   const [fu, setFu] = useState<Followup | null>(null);
   const [loadingFu, setLoadingFu] = useState<string | null>(null);
   const [detail, setDetail] = useState<AppRow | null>(null);
+  const [detailNotes, setDetailNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
   const [copied, setCopied] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [search, setSearch] = useState("");
@@ -214,7 +217,7 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
         {visible.map((a) => {
           const due = isFollowupDue(a.status, a.sentAt, a.createdAt);
           return (
-            <div key={a.id} className="glass card app-row" style={{ cursor: "pointer" }} onClick={() => setDetail(a)}>
+            <div key={a.id} className="glass card app-row" style={{ cursor: "pointer" }} onClick={() => { setDetail(a); setDetailNotes(a.notes || ""); }}>
               <div className="stack gap-2" style={{ width: "100%" }}>
                 <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
                   <b>{a.company || "—"}</b>
@@ -283,14 +286,14 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
       )}
 
       {detail && (
-        <div className="confirm-overlay" onClick={() => setDetail(null)}>
+        <div className="confirm-overlay" onClick={() => { setDetail(null); setDetailNotes(""); }}>
           <div className="confirm-modal detail-modal" style={{ maxWidth: 640, width: "94%", maxHeight: "88vh" }} onClick={(e) => e.stopPropagation()}>
             <div className="detail-header">
               <div className="stack gap-1">
                 <span className="detail-company">{detail.company || "—"}</span>
                 {detail.country && <span className="chip" style={{ alignSelf: "start" }}>{detail.country}</span>}
               </div>
-              <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => setDetail(null)}>{t("apps.detail.close")}</button>
+              <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => { setDetail(null); setDetailNotes(""); }}>{t("apps.detail.close")}</button>
             </div>
             <div className="detail-body stack gap-3">
               <div className="detail-meta-grid">
@@ -327,6 +330,37 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
                   <div className="detail-body-text" dangerouslySetInnerHTML={{ __html: mdToHtml(detail.body) }} />
                 </div>
               )}
+              <div className="stack gap-2">
+                <span className="field-label">{t("apps.detail.notes")}</span>
+                <textarea
+                  className="textarea"
+                  style={{ minHeight: 80, fontSize: "var(--text-13)" }}
+                  placeholder={t("apps.detail.notesPlaceholder")}
+                  value={detailNotes}
+                  onChange={(e) => setDetailNotes(e.target.value)}
+                />
+                <button
+                  className="btn btn-sm"
+                  data-loading={savingNotes}
+                  style={{ alignSelf: "flex-end" }}
+                  onClick={async () => {
+                    setSavingNotes(true);
+                    try {
+                      await fetch(`/api/applications/${detail.id}`, {
+                        method: "PATCH",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ notes: detailNotes }),
+                      });
+                      setApps((prev) => prev.map((x) => x.id === detail.id ? { ...x, notes: detailNotes } : x));
+                      setDetail({ ...detail, notes: detailNotes });
+                    } finally {
+                      setSavingNotes(false);
+                    }
+                  }}
+                >
+                  {t("apps.detail.saveNotes")}
+                </button>
+              </div>
             </div>
           </div>
         </div>

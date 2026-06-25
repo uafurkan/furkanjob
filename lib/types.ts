@@ -88,6 +88,7 @@ export type Application = {
   providerMsgId?: string | null;
   messageId?: string | null; // RFC 2822 Message-ID we set on the outgoing email (for threading follow-ups)
   threadId?: string | null;  // Gmail thread id returned on send
+  notes?: string | null;
   error?: string | null;
   createdAt: string;
   sentAt?: string | null;

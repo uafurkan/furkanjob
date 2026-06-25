@@ -219,6 +219,7 @@ function mapApplication(r: Record<string, unknown>): Application {
     providerMsgId: r.provider_msg_id as string | null,
     messageId: (r.message_id as string | null | undefined) ?? null,
     threadId: (r.thread_id as string | null | undefined) ?? null,
+    notes: (r.notes as string | null | undefined) ?? null,
     error: r.error as string | null,
     createdAt: r.created_at as string, sentAt: r.sent_at as string | null,
   };
@@ -544,6 +545,10 @@ export async function getApplication(appId: string, userId: string): Promise<App
 }
 export async function updateApplicationStatus(appId: string, userId: string, status: string): Promise<void> {
   await sql`UPDATE applications SET status=${status} WHERE id=${appId} AND user_id=${userId}`;
+}
+export async function updateApplicationNotes(appId: string, userId: string, notes: string): Promise<void> {
+  await sql`ALTER TABLE applications ADD COLUMN IF NOT EXISTS notes TEXT`;
+  await sql`UPDATE applications SET notes=${notes} WHERE id=${appId} AND user_id=${userId}`;
 }
 
 // ---------- Usage ----------

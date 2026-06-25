@@ -162,6 +162,7 @@ export default async function ProfilePage() {
               createdAt: a.createdAt, sentAt: a.sentAt ?? null,
               body: a.body, positions: a.positions,
               emailSource: a.emailSource, draftSource: a.draftSource,
+              notes: a.notes ?? null,
             }))}
           />
           </>
