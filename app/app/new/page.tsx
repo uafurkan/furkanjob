@@ -479,7 +479,21 @@ export default function NewApplication() {
         </section>
       )}
 
-      {msg && <div className={`notice notice-${msg.kind} reveal`}>{msg.text}</div>}
+      {msg && (
+        <div className={`notice notice-${msg.kind} reveal`} style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+          <span>{msg.text}</span>
+          {msg.kind === "ok" && (
+            <button
+              type="button"
+              className="btn btn-sm"
+              style={{ marginLeft: "auto" }}
+              onClick={() => { discardDraft(); textareaRef.current?.focus(); }}
+            >
+              {t("new.another")} →
+            </button>
+          )}
+        </div>
+      )}
 
       {confirmPending && (
         <div className="confirm-overlay" onClick={() => setConfirmPending(null)}>
