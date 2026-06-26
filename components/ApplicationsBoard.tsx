@@ -286,16 +286,20 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
                 <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
                   <b>{a.company || "—"}</b>
                   {a.country && <span className="chip">{a.country}</span>}
-                  <select
-                    className={`status-select ${STATUS_CLASS[a.status] || ""}`}
-                    value={SETTABLE_STATUSES.includes(a.status as any) ? a.status : "sent"}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => { e.stopPropagation(); changeStatus(a.id, e.target.value); }}
-                  >
-                    {SETTABLE_STATUSES.map((s) => (
-                      <option key={s} value={s}>{label(s)}</option>
-                    ))}
-                  </select>
+                  {SETTABLE_STATUSES.includes(a.status as any) ? (
+                    <select
+                      className={`status-select ${STATUS_CLASS[a.status] || ""}`}
+                      value={a.status}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => { e.stopPropagation(); changeStatus(a.id, e.target.value); }}
+                    >
+                      {SETTABLE_STATUSES.map((s) => (
+                        <option key={s} value={s}>{label(s)}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className={`chip ${STATUS_CLASS[a.status] || ""}`}>{label(a.status)}</span>
+                  )}
                   {a.status === "failed" && a.body && (
                     <button className="btn btn-sm" data-loading={resending === a.id}
                       onClick={(e) => { e.stopPropagation(); resend(a); }}

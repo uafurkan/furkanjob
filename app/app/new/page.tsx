@@ -339,7 +339,7 @@ export default function NewApplication() {
         <section className="glass card stack gap-4 reveal">
           <div className="row gap-2 wrap">
             <span className="chip chip-accent">{res.company}</span>
-            <span className="chip">{res.country}</span>
+            {res.country && <span className="chip">{res.country}</span>}
             {res.positions.map((p) => (
               <span key={p} className="chip">{p}</span>
             ))}

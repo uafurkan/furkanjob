@@ -213,7 +213,10 @@ function mapApplication(r: Record<string, unknown>): Application {
   };
   return {
     id: r.id as string, userId: r.user_id as string, company: r.company as string | null,
-    country: r.country as string | null, positions: parseArr(r.positions),
+    // "the destination country" is the engine's grammatical fallback for an unknown country
+    // (reads fine inside the letter, but must not surface as a country label/chip).
+    country: (r.country as string | null) === "the destination country" ? null : (r.country as string | null),
+    positions: parseArr(r.positions),
     recipients: parseArr(r.recipients),
     emailSource: r.email_source as Application["emailSource"],
     draftSource: r.draft_source as Application["draftSource"],

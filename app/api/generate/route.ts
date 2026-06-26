@@ -95,7 +95,8 @@ async function handleGenerate(req: Request) {
 
   return NextResponse.json({
     company: result.analysis.company,
-    country: result.analysis.country.name,
+    // Don't surface the grammatical fallback ("the destination country") as a country label.
+    country: result.analysis.country.code === "XX" ? "" : result.analysis.country.name,
     positions: result.analysis.positions,
     emails: result.emails,
     emailSource: result.emailSource,

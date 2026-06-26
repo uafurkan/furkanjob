@@ -144,7 +144,7 @@ async function handleSend(req: Request) {
       messageId: outMessageId, inReplyTo, references: inReplyTo,
     });
   } else {
-    result = { ok: false, error: "Gönderim yöntemi yok: Gmail bağla veya SMTP_APP_PASSWORD ayarla." };
+    result = { ok: false, error: "No sending method connected — connect your Gmail to send applications." };
   }
 
   const resultThreadId = result.ok ? (result.threadId ?? threadId) : null;
