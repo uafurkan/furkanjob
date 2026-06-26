@@ -86,6 +86,8 @@ export default function NewApplication() {
   const [bodyBeforeRefine, setBodyBeforeRefine] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+  const redirectTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {
@@ -176,7 +178,34 @@ export default function NewApplication() {
     setBody("");
     setMsg(null);
     setDraftRestoredAt(null);
+    if (redirectTimer.current) {
+      clearInterval(redirectTimer.current);
+      redirectTimer.current = null;
+    }
+    setRedirectCountdown(null);
   }
+
+  // Clean up redirect timer on unmount
+  useEffect(() => {
+    return () => {
+      if (redirectTimer.current) clearInterval(redirectTimer.current);
+    };
+  }, []);
+
+  // Cancel redirect if user starts editing the content textarea
+  useEffect(() => {
+    if (redirectCountdown !== null) {
+      const cancelRedirect = () => {
+        if (redirectTimer.current) {
+          clearInterval(redirectTimer.current);
+          redirectTimer.current = null;
+        }
+        setRedirectCountdown(null);
+      };
+      textareaRef.current?.addEventListener("input", cancelRedirect);
+      return () => textareaRef.current?.removeEventListener("input", cancelRedirect);
+    }
+  }, [redirectCountdown]);
 
   async function pasteFromClipboard() {
     try {
@@ -268,6 +297,24 @@ export default function NewApplication() {
       setDraftRestoredAt(null);
       const attachLabel = d.coverLetterAttached ? t("new.coverLetterAttached") : d.cvAttached ? t("new.cvAttached") : t("new.cvNone");
       setMsg({ kind: "ok", text: `${d.sentTo.join(", ")} ${attachLabel}` });
+
+      // Start 10 seconds redirect countdown to reset the page for a new application
+      if (redirectTimer.current) clearInterval(redirectTimer.current);
+      setRedirectCountdown(10);
+      let count = 10;
+      redirectTimer.current = setInterval(() => {
+        count--;
+        if (count <= 0) {
+          if (redirectTimer.current) {
+            clearInterval(redirectTimer.current);
+            redirectTimer.current = null;
+          }
+          setRedirectCountdown(null);
+          discardDraft();
+        } else {
+          setRedirectCountdown(count);
+        }
+      }, 1000);
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
     } finally {
@@ -639,7 +686,14 @@ export default function NewApplication() {
 
       {msg && (
         <div className={`notice notice-${msg.kind} reveal`} style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-          <span>{msg.text}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1 }}>
+            <span>{msg.text}</span>
+            {msg.kind === "ok" && redirectCountdown !== null && (
+              <span style={{ fontSize: "var(--text-12)", opacity: 0.85, fontWeight: 500 }}>
+                {t("new.redirecting").replace("{seconds}", String(redirectCountdown))}
+              </span>
+            )}
+          </div>
           {msg.kind === "ok" && (
             <button
               type="button"
