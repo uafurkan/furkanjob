@@ -87,13 +87,38 @@ async function duckduckgo(query: string): Promise<string[]> {
 
 export type FindResult = { emails: string[]; source: "page-scrape" | "web-search" | "none" };
 
-export async function findEmails(opts: { urls?: string[]; company?: string; country?: string }): Promise<FindResult> {
-  const { urls = [], company = "", country = "" } = opts;
+export async function findEmails(opts: {
+  urls?: string[];
+  company?: string;
+  country?: string;
+  locality?: string;
+  address?: string;
+}): Promise<FindResult> {
+  const { urls = [], company = "", country = "", locality = "", address = "" } = opts;
+
+  // 1) Scrape any URLs already in the text (+ their /contact pages).
   let emails = await scrapeEmailsFromUrls(urls);
   if (emails.length) return { emails, source: "page-scrape" };
 
-  const queries = [`${company} ${country} contact email`, `${company} careers email`];
-  for (const q of queries) {
+  // 2) Web search — enriched with location so a generic/duplicated company name is pinned
+  //    down to the right business. Most specific queries first; stop at the first hit.
+  const co = company.trim();
+  const loc = locality.trim();
+  const addr = address.trim();
+  const queries = [
+    addr && co && `"${co}" ${addr} email`,
+    loc && co && `${co} ${loc} contact email`,
+    loc && co && country && `${co} ${loc} ${country} email`,
+    co && country && `${co} ${country} contact email`,
+    co && `${co} careers email`,
+    loc && co && `${co} ${loc} official website`,
+  ].filter((q): q is string => Boolean(q));
+
+  // De-dup while preserving order, and cap how many we run to keep latency sane.
+  const seen = new Set<string>();
+  const ordered = queries.filter((q) => (seen.has(q) ? false : (seen.add(q), true))).slice(0, 4);
+
+  for (const q of ordered) {
     const resultUrls = await duckduckgo(q);
     emails = await scrapeEmailsFromUrls(resultUrls);
     if (emails.length) return { emails, source: "web-search" };

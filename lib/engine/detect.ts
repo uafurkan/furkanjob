@@ -261,21 +261,52 @@ export function detectTextLang(text: string): string | null {
   return null;
 }
 
+// A street-address line: a number + street name + a street-type suffix. Used to enrich
+// the email web-search when the pasted text has a physical address but no email.
+// Handles both English suffix-style ("24 Customs Street") and Romance/German prefix-style
+// ("15 Rue de Rivoli", "42 Via Roma") street lines.
+const STREET_RE =
+  /\b\d{1,5}[a-z]?\s+(?:(?:rue|via|calle|avenida|piazza|plaza|viale|corso|strasse|straße)\s+(?:[A-Za-z][\w'’.-]+\s*){1,4}|(?:[A-Z][\w'’.-]+\s+){1,4}(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|highway|hwy|quay|terrace|tce|place|pl|boulevard|blvd|parade|pde|crescent|cres|court|ct|square|sq|wharf|esplanade|str))\b\.?/i;
+
+// Well-known cities/towns from the country rules — a strong locality signal for search.
+const CITY_RE =
+  /\b(auckland|wellington|christchurch|queenstown|hamilton|tauranga|dunedin|rotorua|napier|nelson|sydney|melbourne|brisbane|perth|adelaide|gold coast|cairns|byron bay|new york|los angeles|miami|chicago|san francisco|boston|seattle|toronto|vancouver|montreal|calgary|ottawa|london|manchester|edinburgh|glasgow|liverpool|bristol|birmingham|leeds|berlin|munich|münchen|hamburg|frankfurt|cologne|köln|madrid|barcelona|valencia|seville|sevilla|malaga|málaga|paris|lyon|marseille|bordeaux|nice|toulouse|rome|roma|milan|milano|venice|venezia|florence|firenze|naples|napoli|amsterdam|rotterdam|the hague|den haag|utrecht|eindhoven|lisbon|lisboa|porto|algarve|madeira|dublin|cork|galway|vienna|wien|salzburg|innsbruck|graz|zurich|zürich|geneva|genève|basel|bern|lausanne|athens|thessaloniki|crete|santorini|mykonos|stockholm|gothenburg|göteborg|malmö|copenhagen|københavn|aarhus|oslo|bergen|trondheim|brussels|bruxelles|antwerp|antwerpen|ghent|bruges|brugge|helsinki|tampere|turku|oulu|prague|praha|brno|ostrava|warsaw|warszawa|kraków|wrocław|gdansk)\b/i;
+
+function titleCase(s: string): string {
+  return s.replace(/\s+/g, " ").trim().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Pull location hints (street address + city/town) from pasted business text. Both feed
+// the email web-search so a generic or duplicated company name can still be pinned down.
+export function extractLocation(text: string): { address?: string; locality?: string } {
+  const out: { address?: string; locality?: string } = {};
+  const street = text.match(STREET_RE);
+  if (street) out.address = street[0].replace(/\s+/g, " ").replace(/\.$/, "").trim();
+  const city = text.match(CITY_RE);
+  if (city) out.locality = titleCase(city[0]);
+  return out;
+}
+
 export type Analysis = {
   emails: string[];
   urls: string[];
   country: CountryRule;
   positions: string[];
   company: string;
+  locality?: string;
+  address?: string;
 };
 
 export function analyze(text: string): Analysis {
   const emails = extractEmails(text);
+  const loc = extractLocation(text);
   return {
     emails,
     urls: extractUrls(text),
     country: detectCountry(text),
     positions: detectPositions(text),
     company: guessCompany(text, emails),
+    locality: loc.locality,
+    address: loc.address,
   };
 }

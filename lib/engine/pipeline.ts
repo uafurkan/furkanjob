@@ -67,7 +67,13 @@ export async function runPipeline(opts: {
   let emails = analysis.emails;
   let emailSource: PipelineResult["emailSource"] = emails.length ? "text" : "none";
   if (!emails.length && searchWeb) {
-    const found = await findEmails({ urls: analysis.urls, company: analysis.company, country: analysis.country.name });
+    const found = await findEmails({
+      urls: analysis.urls,
+      company: analysis.company,
+      country: analysis.country.code === "XX" ? "" : analysis.country.name,
+      locality: analysis.locality,
+      address: analysis.address,
+    });
     emails = found.emails;
     emailSource = found.source;
   }
