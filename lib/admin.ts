@@ -4,7 +4,7 @@
 //   ADMIN_EMAILS=alice@example.com,bob@example.com
 //   ADMIN_DOMAINS=yourcompany.com   (every @yourcompany.com address becomes admin)
 //
-// Admin status is only granted for Google OAuth sessions — demo/credentials
+// Admin status is only granted for Google OAuth sessions.
 // logins are explicitly excluded regardless of email address.
 
 export function adminEmails(): string[] {

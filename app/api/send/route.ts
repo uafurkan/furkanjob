@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentAuth } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import {
   getProfile, getDefaultCv, getCvForUser, getCvData, getDefaultEmailAccount, updateEmailAccountTokens,
   createApplication, incrementUsage, getUsage, getDocumentsForAttach,
@@ -28,23 +28,8 @@ export async function POST(req: Request) {
 }
 
 async function handleSend(req: Request) {
-  const auth = await getCurrentAuth();
-  if (!auth) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const { user, provider } = auth;
-
-  // Hard security boundary: only a real Google OAuth session may send mail.
-  // Demo/credentials sessions can draft & preview but must never reach the mailer —
-  // otherwise any signed-in email could send through a shared/owner inbox.
-  if (provider !== "google") {
-    return NextResponse.json(
-      {
-        ok: false,
-        demo: true,
-        error: "Demo mode can preview drafts but cannot send. Connect Google to send for real.",
-      },
-      { status: 403 }
-    );
-  }
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const rl = await rateLimit(user.id, "send");
   if (!rl.ok) return NextResponse.json({ error: "Too many requests. Please wait." }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });

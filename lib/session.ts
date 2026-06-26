@@ -18,20 +18,19 @@ export async function getCurrentUser(): Promise<User | null> {
   if (!user && email) user = await findUserByEmail(email);
   if (!user) return null;
 
-  // Grant unlimited access to admins — only via Google OAuth, never demo.
+  // Grant unlimited access to admins (Google OAuth + ADMIN_EMAILS/ADMIN_DOMAINS env match).
   if (isAdmin(email, provider) && user.plan !== "pro") {
     return { ...user, plan: "pro" };
   }
   return user;
 }
 
-// Like getCurrentUser, but also returns the auth provider ("google" | "demo" | …).
-// Sending real email is gated on provider === "google": demo/credentials sessions
-// can draft and preview but must never reach the mailer.
+// Like getCurrentUser, but also returns the auth provider.
+// Kept for routes that need provider-level checks.
 export async function getCurrentAuth(): Promise<{ user: User; provider: string } | null> {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email;
-  const provider = ((session?.user as any)?.provider as string | undefined) || "demo";
+  const provider = ((session?.user as any)?.provider as string | undefined) || "google";
   const id = (session?.user as any)?.id as string | undefined;
 
   let user: User | null = null;

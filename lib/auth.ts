@@ -1,16 +1,17 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import CredentialsProvider from "next-auth/providers/credentials";
 import { upsertUserByEmail, upsertGoogleAccount, findUserById } from "./db";
 import { encrypt } from "./crypto";
 
 const GOOGLE_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-const providers: NextAuthOptions["providers"] = [];
+if (!GOOGLE_ID || !GOOGLE_SECRET) {
+  console.warn("[auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — sign-in will not work.");
+}
 
-if (GOOGLE_ID && GOOGLE_SECRET) {
-  providers.push(
+export const authOptions: NextAuthOptions = {
+  providers: GOOGLE_ID && GOOGLE_SECRET ? [
     GoogleProvider({
       clientId: GOOGLE_ID,
       clientSecret: GOOGLE_SECRET,
@@ -21,29 +22,8 @@ if (GOOGLE_ID && GOOGLE_SECRET) {
           prompt: "consent", // force refresh_token on every consent
         },
       },
-    })
-  );
-}
-
-// Dev / no-Google fallback: sign in with just an email so the whole app is testable.
-providers.push(
-  CredentialsProvider({
-    id: "demo",
-    name: "Demo",
-    credentials: {
-      email: { label: "Email", type: "email" },
-      name: { label: "Name", type: "text" },
-    },
-    async authorize(creds) {
-      const email = (creds?.email || "").trim().toLowerCase();
-      if (!email) return null;
-      return { id: email, email, name: creds?.name || email.split("@")[0] };
-    },
-  })
-);
-
-export const authOptions: NextAuthOptions = {
-  providers,
+    }),
+  ] : [],
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
   pages: { signIn: "/signin" },
@@ -74,7 +54,7 @@ export const authOptions: NextAuthOptions = {
           });
           (token as any).gmailConnected = true;
         }
-        // Store the provider so admin checks can distinguish Google OAuth from demo.
+        // Store the auth provider for downstream checks.
         if (account?.provider) (token as any).provider = account.provider;
       }
       // keep plan fresh
@@ -89,7 +69,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = (token as any).userId;
         (session.user as any).plan = (token as any).plan || "free";
         (session.user as any).gmailConnected = (token as any).gmailConnected || false;
-        (session.user as any).provider = (token as any).provider || "demo";
+        (session.user as any).provider = (token as any).provider || "google";
       }
       return session;
     },
@@ -97,3 +77,5 @@ export const authOptions: NextAuthOptions = {
 };
 
 export const googleEnabled = Boolean(GOOGLE_ID && GOOGLE_SECRET);
+// Google OAuth is the only sign-in method; googleEnabled is kept so the
+// signin page can show a useful error when env keys are missing.

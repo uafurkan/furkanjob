@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { useT } from "@/components/i18n";
 import { APP_LANGS } from "@/lib/engine/template";
 import { checkRecipients, applyFix } from "@/lib/email-check";
@@ -64,10 +63,6 @@ function clearDraft() {
 
 export default function NewApplication() {
   const { t } = useT();
-  const { data: session } = useSession();
-  // Only a real Google OAuth session can send. Demo/credentials = drafts only.
-  // The server enforces this too (app/api/send/route.ts); this just disables the UI.
-  const canSend = ((session?.user as any)?.provider) === "google";
   const [text, setText] = useState("");
   const [auto, setAuto] = useState(false);
   const [language, setLanguage] = useState("auto");
@@ -230,7 +225,7 @@ export default function NewApplication() {
       // user read the warning and decide (semi-auto), even in full-auto mode.
       if (d.eligibility?.status === "blocked") {
         setMsg({ kind: "warn", text: t("new.fit.blockedAuto") });
-      } else if (auto && canSend && !d.overLimit && d.emails.length) {
+      } else if (auto && !d.overLimit && d.emails.length) {
         await doSend({ to: toVal, subject: d.subject, body: d.body, meta: d }, true);
       }
     } catch (e: any) {
@@ -245,7 +240,7 @@ export default function NewApplication() {
 
   async function doSend(p: { to: string; subject: string; body: string; meta: GenResult }, skipConfirm = false) {
     if (!p.to.trim()) return setMsg({ kind: "err", text: t("new.enterRecipient") });
-    if (!canSend) return setMsg({ kind: "warn", text: t("new.demoNoSend") });
+
     if (!skipConfirm) { setConfirmPending(p); return; }
     setSending(true);
     setMsg(null);
@@ -267,7 +262,7 @@ export default function NewApplication() {
       });
       const d = await r.json();
       if (r.status === 402) return setMsg({ kind: "warn", text: t("new.limitReached") });
-      if (r.status === 403 && d?.demo) return setMsg({ kind: "warn", text: t("new.demoNoSend") });
+
       if (!r.ok) throw new Error(d.error || "Error");
       clearDraft();
       setDraftRestoredAt(null);
@@ -587,15 +582,11 @@ export default function NewApplication() {
               </span>
               <div className="row gap-3">
                 {res.overLimit && <Link href="/app/billing" className="btn btn-sm">{t("new.limitPro")}</Link>}
-                {!canSend && <Link href="/app/profile" className="btn btn-sm">{t("new.connectGoogle")}</Link>}
-                <button className="btn btn-primary" data-loading={sending} onClick={() => res && doSend({ to, subject, body, meta: res })} disabled={sending || res.overLimit || !canSend}>
+                <button className="btn btn-primary" data-loading={sending} onClick={() => res && doSend({ to, subject, body, meta: res })} disabled={sending || res.overLimit}>
                   {sending ? t("new.sending") : t("new.send")}
                 </button>
               </div>
             </div>
-            {!canSend && (
-              <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("new.demoNoSend")}</span>
-            )}
             <label className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
               <input
                 type="checkbox"
