@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import HeroDraft from "@/components/HeroDraft";
 import StepsScene from "@/components/StepsScene";
 import StatStrip from "@/components/StatStrip";
+import HeaderAuthDropdown from "@/components/nav/HeaderAuthDropdown";
 
 export default async function Landing() {
   const { t } = getT();
@@ -40,11 +41,7 @@ export default async function Landing() {
         <Link href="/" className="brand"><span className="brand-dot" /> paply</Link>
         <div className="topbar-right">
           <LangToggle />
-          {loggedIn ? (
-            <Link href="/app/home" className="btn btn-sm btn-primary">{t("common.openApp")}</Link>
-          ) : (
-            <Link href="/signin" className="btn btn-sm">{t("common.signin")}</Link>
-          )}
+          <HeaderAuthDropdown loggedIn={loggedIn} />
         </div>
       </header>
 
