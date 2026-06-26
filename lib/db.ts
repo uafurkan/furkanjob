@@ -194,6 +194,7 @@ function mapProfile(r: Record<string, unknown>): Profile {
     completedAt: r.completed_at as string | null, updatedAt: r.updated_at as string,
     digestOptOut: (r.digest_opt_out as boolean | undefined) ?? false,
     reminderOptOut: (r.reminder_opt_out as boolean | undefined) ?? false,
+    weeklyGoal: Number(r.weekly_goal ?? 0) || 0,
   };
 }
 
@@ -299,11 +300,12 @@ export async function upsertProfile(userId: string, data: Partial<Profile>): Pro
   await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS visa_countries TEXT NOT NULL DEFAULT '[]'`;
   await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS digest_opt_out BOOLEAN NOT NULL DEFAULT FALSE`;
   await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS reminder_opt_out BOOLEAN NOT NULL DEFAULT FALSE`;
+  await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS weekly_goal INTEGER NOT NULL DEFAULT 0`;
   const rows = await sql`
     INSERT INTO profiles (id, user_id, full_name, contact_email, phone, languages, target_roles,
       needs_visa_sponsorship, target_countries, short_bio, availability, relocation, tone,
       include_signature, application_language, default_cv_id,
-      has_visa, visa_type, visa_label, visa_countries, completed_at, updated_at, digest_opt_out, reminder_opt_out)
+      has_visa, visa_type, visa_label, visa_countries, completed_at, updated_at, digest_opt_out, reminder_opt_out, weekly_goal)
     VALUES (${id()}, ${userId}, ${data.fullName ?? ""}, ${data.contactEmail ?? null},
       ${data.phone ?? null}, ${arrStr(data.languages)}, ${arrStr(data.targetRoles)},
       ${data.needsVisaSponsorship ?? true}, ${arrStr(data.targetCountries)},
@@ -312,7 +314,7 @@ export async function upsertProfile(userId: string, data: Partial<Profile>): Pro
       ${data.applicationLanguage ?? "auto"}, ${data.defaultCvId ?? null},
       ${data.hasVisa ?? false}, ${data.visaType ?? null}, ${data.visaLabel ?? null},
       ${arrStr(data.visaCountries)}, ${data.completedAt ?? null}, ${now()},
-      ${data.digestOptOut ?? false}, ${data.reminderOptOut ?? false})
+      ${data.digestOptOut ?? false}, ${data.reminderOptOut ?? false}, ${data.weeklyGoal ?? 0})
     ON CONFLICT (user_id) DO UPDATE SET
       full_name=EXCLUDED.full_name, contact_email=EXCLUDED.contact_email,
       phone=EXCLUDED.phone, languages=EXCLUDED.languages, target_roles=EXCLUDED.target_roles,
@@ -322,7 +324,7 @@ export async function upsertProfile(userId: string, data: Partial<Profile>): Pro
       application_language=EXCLUDED.application_language, default_cv_id=EXCLUDED.default_cv_id,
       has_visa=EXCLUDED.has_visa, visa_type=EXCLUDED.visa_type, visa_label=EXCLUDED.visa_label,
       visa_countries=EXCLUDED.visa_countries, digest_opt_out=EXCLUDED.digest_opt_out,
-      reminder_opt_out=EXCLUDED.reminder_opt_out,
+      reminder_opt_out=EXCLUDED.reminder_opt_out, weekly_goal=EXCLUDED.weekly_goal,
       completed_at=EXCLUDED.completed_at, updated_at=EXCLUDED.updated_at
     RETURNING *
   `;

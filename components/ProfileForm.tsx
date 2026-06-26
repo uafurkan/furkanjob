@@ -18,6 +18,7 @@ type Initial = {
   includeSignature?: boolean;
   digestOptOut?: boolean;
   reminderOptOut?: boolean;
+  weeklyGoal?: number;
   applicationLanguage?: string;
   hasVisa?: boolean;
   visaType?: string;
@@ -69,6 +70,7 @@ export default function ProfileForm({
   const [includeSignature, setIncludeSignature] = useState(initial.includeSignature ?? false);
   const [digestOptOut, setDigestOptOut] = useState(initial.digestOptOut ?? false);
   const [reminderOptOut, setReminderOptOut] = useState(initial.reminderOptOut ?? false);
+  const [weeklyGoal, setWeeklyGoal] = useState(initial.weeklyGoal ?? 0);
   const [appLang, setAppLang] = useState(initial.applicationLanguage || "auto");
   const [cvs, setCvs] = useState<CvItem[]>(initialCvs || (cvFilename ? [{ id: "", filename: cvFilename, isDefault: true }] : []));
   const [saving, setSaving] = useState(false);
@@ -193,6 +195,7 @@ export default function ProfileForm({
           fullName, contactEmail,
           languages: split(languages), targetRoles: split(targetRoles), targetCountries: split(targetCountries),
           needsVisaSponsorship: needsVisa, relocation, shortBio, includeSignature, digestOptOut, reminderOptOut,
+          weeklyGoal,
           applicationLanguage: appLang, hasVisa, visaType, visaLabel, visaCountries,
         }),
       });
@@ -289,6 +292,20 @@ export default function ProfileForm({
         <label className="field">
           <span className="field-label">{t("pf.shortBio")}</span>
           <textarea className="textarea" style={{ minHeight: 90 }} value={shortBio} onChange={(e) => setShortBio(e.target.value)} placeholder={t("pf.shortBioPh")} />
+        </label>
+
+        <label className="field">
+          <span className="field-label">{t("pf.weeklyGoal")}</span>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            max={50}
+            value={weeklyGoal || ""}
+            onChange={(e) => setWeeklyGoal(Math.max(0, Math.min(50, Math.floor(Number(e.target.value) || 0))))}
+            placeholder="0"
+          />
+          <span className="field-hint text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("pf.weeklyGoalHint")}</span>
         </label>
 
         <div className="row gap-6 wrap">

@@ -52,6 +52,7 @@ export type Profile = {
   updatedAt: string;
   digestOptOut?: boolean;
   reminderOptOut?: boolean;
+  weeklyGoal?: number; // 0 = no goal set; otherwise target applications per week
 };
 
 export type Document = {

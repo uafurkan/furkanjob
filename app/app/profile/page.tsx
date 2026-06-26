@@ -44,6 +44,7 @@ export default async function ProfilePage() {
     includeSignature: profile?.includeSignature ?? false,
     digestOptOut: profile?.digestOptOut ?? false,
     reminderOptOut: profile?.reminderOptOut ?? false,
+    weeklyGoal: profile?.weeklyGoal ?? 0,
     applicationLanguage: profile?.applicationLanguage || "auto",
     hasVisa: profile?.hasVisa ?? false,
     visaType: profile?.visaType || "",

@@ -38,6 +38,7 @@ export async function POST(req: Request) {
     includeSignature: Boolean(b.includeSignature),
     digestOptOut: Boolean(b.digestOptOut),
     reminderOptOut: Boolean(b.reminderOptOut),
+    weeklyGoal: Math.max(0, Math.min(50, Math.floor(Number(b.weeklyGoal) || 0))),
     applicationLanguage: b.applicationLanguage?.toString() || "auto",
     hasVisa,
     visaType: hasVisa ? (b.visaType?.toString() || null) : null,

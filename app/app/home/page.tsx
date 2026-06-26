@@ -49,6 +49,22 @@ export default async function HomePage() {
   });
   const maxDay = Math.max(...days7.map((d) => d.count), 1);
 
+  // Weekly goal progress (week starts Monday, local-ish via UTC date keys)
+  const weeklyGoal = profile?.weeklyGoal ?? 0;
+  const startOfWeek = (() => {
+    const d = new Date();
+    const day = (d.getUTCDay() + 6) % 7; // 0 = Monday
+    d.setUTCHours(0, 0, 0, 0);
+    d.setUTCDate(d.getUTCDate() - day);
+    return d.getTime();
+  })();
+  const weekSent = apps.filter((a) => {
+    if (a.status === "draft" || a.status === "failed") return false;
+    return new Date(a.sentAt || a.createdAt).getTime() >= startOfWeek;
+  }).length;
+  const goalPct = weeklyGoal > 0 ? Math.min(100, Math.round((weekSent / weeklyGoal) * 100)) : 0;
+  const goalMet = weeklyGoal > 0 && weekSent >= weeklyGoal;
+
   return (
     <div className="stack gap-6">
       <header className="page-head">
@@ -80,6 +96,21 @@ export default async function HomePage() {
           </div>
         )}
       </div>
+
+      {/* Weekly goal progress */}
+      {weeklyGoal > 0 && (
+        <section className="glass card stack gap-3">
+          <div className="row gap-2" style={{ alignItems: "baseline" }}>
+            <h2 className="section-title" style={{ margin: 0 }}>{t("home.goal.title")}</h2>
+            <span className="text-secondary" style={{ marginLeft: "auto", fontSize: "var(--text-13)" }}>
+              {goalMet ? t("home.goal.met") : t("home.goal.progress").replace("{n}", String(weekSent)).replace("{goal}", String(weeklyGoal))}
+            </span>
+          </div>
+          <div className="breakdown-track" style={{ height: 10 }}>
+            <div className="breakdown-bar" style={{ width: `${goalPct}%`, background: goalMet ? "var(--signal-success)" : undefined }} />
+          </div>
+        </section>
+      )}
 
       {/* Contextual nudges (top 2 max) */}
       {nudges.slice(0, 2).map((n) => (
