@@ -186,9 +186,15 @@ export default function Landing() {
 
       {/* Pricing */}
       <section className="container" style={{ marginTop: "var(--space-16)" }}>
-        <h2 className="section-title" style={{ textAlign: "center", marginBottom: "var(--space-8)", fontSize: "var(--text-24)" }}>
+        <h2 className="section-title" style={{ textAlign: "center", marginBottom: "var(--space-4)", fontSize: "var(--text-24)" }}>
           {t("landing.pricing.title")}
+          <span style={{ marginLeft: "var(--space-3)", display: "inline-block", fontSize: "var(--text-12)", fontWeight: 600, letterSpacing: "0.06em", padding: "2px 8px", borderRadius: "99px", background: "color-mix(in srgb, var(--accent) 18%, transparent)", color: "var(--accent)", verticalAlign: "middle", lineHeight: "1.6" }}>
+            {t("landing.pricing.betaBadge")}
+          </span>
         </h2>
+        <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "var(--text-14)", marginBottom: "var(--space-8)", maxWidth: 520, margin: "0 auto var(--space-8)" }}>
+          {t("landing.pricing.betaNote")}
+        </p>
         <div className="plans landing-plans">
           <div className="glass card stack gap-3">
             <h3>{t("landing.pricing.free")}</h3>

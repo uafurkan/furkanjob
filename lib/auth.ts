@@ -74,6 +74,8 @@ export const authOptions: NextAuthOptions = {
           });
           (token as any).gmailConnected = true;
         }
+        // Store the provider so admin checks can distinguish Google OAuth from demo.
+        if (account?.provider) (token as any).provider = account.provider;
       }
       // keep plan fresh
       if ((token as any).userId) {
@@ -87,6 +89,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = (token as any).userId;
         (session.user as any).plan = (token as any).plan || "free";
         (session.user as any).gmailConnected = (token as any).gmailConnected || false;
+        (session.user as any).provider = (token as any).provider || "demo";
       }
       return session;
     },

@@ -80,6 +80,8 @@ const en: Dict = {
   "landing.pricing.proLine4": "Priority support",
   "landing.pricing.cta": "Get started free →",
   "landing.pricing.upgrade": "Upgrade to Pro →",
+  "landing.pricing.betaBadge": "Beta",
+  "landing.pricing.betaNote": "During beta, everyone gets 15 free applications per month. No charges, no credit card — paply is free while we build.",
   "foot.privacy": "Privacy",
   "foot.terms": "Terms",
 
@@ -471,6 +473,8 @@ const tr: Dict = {
   "landing.pricing.proLine4": "Öncelikli destek",
   "landing.pricing.cta": "Ücretsiz başla →",
   "landing.pricing.upgrade": "Pro'ya geç →",
+  "landing.pricing.betaBadge": "Beta",
+  "landing.pricing.betaNote": "Beta sürecinde herkes aylık 15 başvuru hakkı alır. Ücret yok, kredi kartı gerekmez — paply şu an tamamen ücretsiz.",
   "foot.privacy": "Gizlilik",
   "foot.terms": "Koşullar",
 
