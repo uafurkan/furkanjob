@@ -362,6 +362,17 @@ export default function NewApplication() {
           <label className="field">
             <span className="field-label">{t("new.to")}</span>
             <input className="input" value={to} onChange={(e) => setTo(e.target.value)} placeholder="name@business.com" />
+            {res.emailSource === "none" && (
+              <a
+                className="text-secondary"
+                style={{ fontSize: "var(--text-12)", marginTop: 4 }}
+                href={`https://www.google.com/search?q=${encodeURIComponent(`${res.company} ${res.country} contact email`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("new.findEmail")}
+              </a>
+            )}
           </label>
           <div className="field">
             <div className="row gap-2" style={{ alignItems: "center", marginBottom: 6 }}>
