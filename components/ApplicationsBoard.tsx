@@ -38,6 +38,34 @@ function timeSince(dateStr: string | null, lang: string): string {
   return lang === "tr" ? `${months} ay önce` : `${months}mo ago`;
 }
 
+type TLNode = { key: string; date: string | null; state: "done" | "active" | "pending" | "failed" };
+
+// Derive a lifecycle timeline from the data we have (createdAt, sentAt, status).
+// Positive progression after "sent": replied → interview → offer. "rejected" is terminal.
+const TL_PROGRESSION = ["replied", "interview", "offer"];
+function buildTimeline(a: AppRow): TLNode[] {
+  const nodes: TLNode[] = [{ key: "drafted", date: a.createdAt, state: "done" }];
+  if (a.status === "failed") {
+    nodes.push({ key: "failed", date: null, state: "failed" });
+    return nodes;
+  }
+  const sent = Boolean(a.sentAt) || a.status !== "draft";
+  nodes.push({ key: "sent", date: a.sentAt, state: sent ? "done" : "pending" });
+
+  if (a.status === "sent" && isFollowupDue(a.status, a.sentAt, a.createdAt)) {
+    nodes.push({ key: "followupDue", date: null, state: "active" });
+  }
+  if (a.status === "rejected") {
+    nodes.push({ key: "rejected", date: null, state: "done" });
+  } else {
+    const idx = TL_PROGRESSION.indexOf(a.status);
+    for (let i = 0; i <= idx; i++) {
+      nodes.push({ key: TL_PROGRESSION[i], date: null, state: i === idx ? "active" : "done" });
+    }
+  }
+  return nodes;
+}
+
 function mdToHtml(md: string): string {
   return md
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -392,6 +420,22 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
               <button className="btn btn-sm" onClick={() => { setDetail(null); setDetailNotes(""); }}>{t("apps.detail.close")}</button>
             </div>
             <div className="detail-body stack gap-3">
+              <div className="stack gap-2">
+                <span className="field-label">{t("apps.detail.timeline")}</span>
+                <ol className="app-timeline">
+                  {buildTimeline(detail).map((n) => (
+                    <li key={n.key} className={`app-tl-node app-tl-${n.state}`}>
+                      <span className="app-tl-dot" aria-hidden />
+                      <span className="app-tl-label">{t(`apps.tl.${n.key}`)}</span>
+                      {n.date && (
+                        <span className="app-tl-date">
+                          {new Date(n.date).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US", { day: "2-digit", month: "short" })}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </div>
               <div className="detail-meta-grid">
                 <span className="field-label">{t("apps.detail.to")}</span>
                 <span className="mono" style={{ fontSize: "var(--text-13)" }}>{detail.recipients.join(", ") || "—"}</span>

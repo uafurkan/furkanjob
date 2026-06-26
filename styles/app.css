@@ -793,6 +793,39 @@
 .detail-body-text p { margin: 0 0 .9em; }
 .detail-body-text p:last-child { margin-bottom: 0; }
 
+/* ---------- Application lifecycle timeline (detail modal) ---------- */
+.app-timeline { list-style: none; margin: 0; padding: 2px 0 0; }
+.app-tl-node {
+  position: relative; display: flex; align-items: center; gap: var(--space-3);
+  padding: 0 0 16px 4px; min-height: 22px;
+}
+.app-tl-node:last-child { padding-bottom: 0; }
+.app-tl-dot {
+  position: relative; z-index: 1; flex-shrink: 0;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--bg-raised, #1A1F29);
+  border: 2px solid var(--content-tertiary);
+}
+/* connector line down from each dot to the next */
+.app-tl-node:not(:last-child)::before {
+  content: ""; position: absolute; left: 9px; top: 14px; bottom: -2px;
+  width: 2px; background: rgba(255,255,255,.12);
+}
+.app-tl-label { font-size: var(--text-14); color: var(--content-secondary); }
+.app-tl-date { margin-left: auto; font-size: var(--text-12); color: var(--content-tertiary); }
+/* states */
+.app-tl-done .app-tl-dot { background: var(--accent); border-color: var(--accent); }
+.app-tl-done .app-tl-label { color: var(--content-primary); }
+.app-tl-active .app-tl-dot {
+  background: var(--accent-bright, var(--accent)); border-color: var(--accent-bright, var(--accent));
+  box-shadow: 0 0 0 4px rgba(111,168,255,.22);
+}
+.app-tl-active .app-tl-label { color: var(--content-primary); font-weight: 600; }
+.app-tl-pending .app-tl-dot { background: transparent; border-color: var(--content-tertiary); }
+.app-tl-pending .app-tl-label { color: var(--content-tertiary); }
+.app-tl-failed .app-tl-dot { background: var(--signal-error); border-color: var(--signal-error); }
+.app-tl-failed .app-tl-label { color: var(--signal-error); font-weight: 600; }
+
 /* ---------- Sparkline (7-day bar chart) ---------- */
 .spark-row { display: flex; gap: var(--space-2); align-items: flex-end; height: 72px; }
 .spark-col { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); flex: 1; height: 100%; }
