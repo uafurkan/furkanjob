@@ -212,6 +212,14 @@ const LEGACY_ERROR_MAP: Record<string, string> = {
   "Alıcı e-posta yok.": "No recipient email address.",
   "Konu veya metin boş.": "Subject or body is empty.",
   "Aylık limit doldu.": "Monthly limit reached.",
+  "Çok fazla istek. Biraz bekleyin.": "Too many requests. Please wait.",
+  "Çok fazla gönderim. Biraz bekleyin.": "Too many requests. Please wait.",
+  "Çok fazla yükleme. Biraz bekleyin.": "Too many uploads. Please wait.",
+  "İçerik boş.": "Content is empty.",
+  "Sunucu hatası": "Server error",
+  "Dosya yok.": "No file provided.",
+  "Dosya çok büyük.": "File too large (max 10 MB).",
+  "Dosya çok büyük (max 10MB).": "File too large (max 10 MB).",
 };
 function normalizeLegacyError(err: string | null): string | null {
   if (!err) return null;

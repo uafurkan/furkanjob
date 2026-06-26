@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     return await handleGenerate(req);
   } catch (e: any) {
     await reportError(e, { route: "generate" });
-    return NextResponse.json({ error: e?.message || "Sunucu hatası" }, { status: 500 });
+    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
   }
 }
 
@@ -32,11 +32,11 @@ async function handleGenerate(req: Request) {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const rl = await rateLimit(user.id, "generate");
-  if (!rl.ok) return NextResponse.json({ error: "Çok fazla istek. Biraz bekleyin." }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
+  if (!rl.ok) return NextResponse.json({ error: "Too many requests. Please wait." }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
 
   const body = await req.json().catch(() => ({}));
   let text: string = (body?.text || "").toString();
-  if (!text.trim()) return NextResponse.json({ error: "İçerik boş." }, { status: 400 });
+  if (!text.trim()) return NextResponse.json({ error: "Content is empty." }, { status: 400 });
 
   // If the user pasted just a URL, pull the page text (keep the URL so email scraping still sees it).
   let fetchedUrl = false;

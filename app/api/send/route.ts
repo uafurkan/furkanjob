@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   } catch (e: any) {
     // Never leak an HTML 500 page — the client expects JSON.
     await reportError(e, { route: "send" });
-    return NextResponse.json({ ok: false, error: e?.message || "Sunucu hatası" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: e?.message || "Server error" }, { status: 500 });
   }
 }
 
@@ -32,11 +32,11 @@ async function handleSend(req: Request) {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const rl = await rateLimit(user.id, "send");
-  if (!rl.ok) return NextResponse.json({ error: "Çok fazla gönderim. Biraz bekleyin." }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
+  if (!rl.ok) return NextResponse.json({ error: "Too many requests. Please wait." }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
 
   const used = await getUsage(user.id);
   if (isOverLimit(user.plan, used)) {
-    return NextResponse.json({ error: "Aylık limit doldu.", paywall: true }, { status: 402 });
+    return NextResponse.json({ error: "Monthly limit reached.", paywall: true }, { status: 402 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -46,8 +46,8 @@ async function handleSend(req: Request) {
   const subject: string = (body?.subject || "").toString();
   const text: string = (body?.body || "").toString();
 
-  if (!recipients.length) return NextResponse.json({ error: "Alıcı e-posta yok." }, { status: 400 });
-  if (!subject || !text) return NextResponse.json({ error: "Konu veya metin boş." }, { status: 400 });
+  if (!recipients.length) return NextResponse.json({ error: "No recipient email address." }, { status: 400 });
+  if (!subject || !text) return NextResponse.json({ error: "Subject or body is empty." }, { status: 400 });
 
   // Threading: our own Message-ID for this email; optional reply-to a prior application's email.
   const mailDomain = (process.env.NEXT_PUBLIC_BASE_URL || "https://paply.me").replace(/^https?:\/\//, "").replace(/\/.*$/, "") || "paply.me";
@@ -130,7 +130,7 @@ async function handleSend(req: Request) {
       }
     }
     if (!accessToken) {
-      result = { ok: false, error: "Gmail erişimi yenilenemedi. Lütfen Gmail'i tekrar bağla." };
+      result = { ok: false, error: "Gmail access could not be refreshed. Please reconnect your Gmail." };
     } else {
       result = await sendViaGmailApi({
         accessToken, fromName, fromEmail, to: recipients, cc: ccAddresses, subject, body: text, attachments,

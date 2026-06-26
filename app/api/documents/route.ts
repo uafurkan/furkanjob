@@ -26,16 +26,16 @@ export async function POST(req: Request) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     const rl = await rateLimit(user.id, "upload");
-    if (!rl.ok) return NextResponse.json({ error: "Çok fazla yükleme. Biraz bekleyin." }, { status: 429 });
+    if (!rl.ok) return NextResponse.json({ error: "Too many uploads. Please wait." }, { status: 429 });
 
     const form = await req.formData().catch(() => null);
     const file = form?.get("file");
     const typeRaw = form?.get("type");
-    if (!file || typeof file === "string") return NextResponse.json({ error: "Dosya yok." }, { status: 400 });
+    if (!file || typeof file === "string") return NextResponse.json({ error: "No file provided." }, { status: 400 });
     const type: Document["type"] = isLibraryType(typeRaw) ? typeRaw : "other";
 
     const f = file as File;
-    if (f.size > 10_000_000) return NextResponse.json({ error: "Dosya çok büyük (max 10MB)." }, { status: 413 });
+    if (f.size > 10_000_000) return NextResponse.json({ error: "File too large (max 10 MB)." }, { status: 413 });
     const buf = Buffer.from(await f.arrayBuffer());
     const safeName = f.name.replace(/[^\w.\-]+/g, "_") || "document";
 

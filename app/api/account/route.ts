@@ -12,7 +12,7 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     const rl = await rateLimit(user.id, "account");
-    if (!rl.ok) return NextResponse.json({ error: "Çok fazla istek. Biraz bekleyin." }, { status: 429 });
+    if (!rl.ok) return NextResponse.json({ error: "Too many requests. Please wait." }, { status: 429 });
 
     const data = await exportUserData(user.id);
     return new NextResponse(JSON.stringify(data, null, 2), {
@@ -33,7 +33,7 @@ export async function DELETE() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     const rl = await rateLimit(user.id, "account");
-    if (!rl.ok) return NextResponse.json({ error: "Çok fazla istek. Biraz bekleyin." }, { status: 429 });
+    if (!rl.ok) return NextResponse.json({ error: "Too many requests. Please wait." }, { status: 429 });
 
     await deleteUserData(user.id);
     return NextResponse.json({ ok: true });
