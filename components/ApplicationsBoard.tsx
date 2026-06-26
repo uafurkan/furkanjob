@@ -61,6 +61,7 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"date" | "company" | "status">("date");
+  const [filterFollowup, setFilterFollowup] = useState(false);
 
   const copyBody = useCallback(async (text: string) => {
     await navigator.clipboard.writeText(text);
@@ -71,8 +72,11 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   const label = (s: string) => t(`apps.status.${s}`);
   const counts = PIPELINE_STATUSES.map((s) => ({ s, n: apps.filter((a) => a.status === s).length }));
 
+  const followupCount = apps.filter((a) => isFollowupDue(a.status, a.sentAt, a.createdAt)).length;
+
   const visible = apps
     .filter((a) => {
+      if (filterFollowup && !isFollowupDue(a.status, a.sentAt, a.createdAt)) return false;
       if (filterStatus !== "all" && a.status !== filterStatus) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
@@ -227,6 +231,15 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
             {label(s)}: <b style={{ marginLeft: 4 }}>{n}</b>
           </span>
         ))}
+        {followupCount > 0 && (
+          <span
+            className={`chip${filterFollowup ? " chip-accent" : " chip-warn"}`}
+            style={{ cursor: "pointer" }}
+            onClick={() => setFilterFollowup((prev) => !prev)}
+          >
+            {t("apps.filter.followup")}: <b style={{ marginLeft: 4 }}>{followupCount}</b>
+          </span>
+        )}
         <a
           href="/api/applications/export"
           download

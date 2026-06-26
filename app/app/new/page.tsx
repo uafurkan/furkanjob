@@ -87,7 +87,10 @@ export default function NewApplication() {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
-        if (!analyzing && !sending) analyze();
+        if (!analyzing && !sending) {
+          if (res && to.trim()) doSend({ to, subject, body, meta: res });
+          else analyze();
+        }
       }
     }
     window.addEventListener("keydown", onKey);
