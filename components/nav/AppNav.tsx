@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -11,25 +12,40 @@ const MAIN_TABS = [
 ];
 const PRO_TAB = { href: "/app/billing", key: "nav.pro", icon: IconSpark };
 
+// Hide the floating dock while scrolling down; bring it back on scroll-up or when
+// scrolling stops — so it never sits in the way of the content the user is reading.
+function useDockAutoHide() {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let idle: ReturnType<typeof setTimeout>;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY + 4 && y > 140) setHidden(true);       // decisive scroll down, past the fold
+      else if (y < lastY - 4) setHidden(false);            // any scroll up
+      lastY = y;
+      clearTimeout(idle);
+      idle = setTimeout(() => setHidden(false), 220);      // reappear once movement stops
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("scroll", onScroll); clearTimeout(idle); };
+  }, []);
+  return hidden;
+}
+
 export default function AppNav({ name, plan, isAdmin }: { name?: string | null; plan?: string; isAdmin?: boolean }) {
   const path = usePathname();
   const { t } = useT();
+  const dockHidden = useDockAutoHide();
   const isActive = (href: string) => path === href || path.startsWith(href + "/");
 
   return (
     <>
-      {/* desktop top bar */}
+      {/* Top bar — brand + account only; navigation lives in the dock below. */}
       <header className="topbar glass" role="banner">
         <Link href="/app/home" className="brand" aria-label="paply">
           <span className="brand-dot" /> paply
         </Link>
-        <nav className="topnav" aria-label="Menu">
-          {[...MAIN_TABS, PRO_TAB].map((tab) => (
-            <Link key={tab.href} href={tab.href} className={`topnav-item${isActive(tab.href) ? " active" : ""}`}>
-              <tab.icon /> <span>{t(tab.key)}</span>
-            </Link>
-          ))}
-        </nav>
         <div className="topbar-right">
           {isAdmin && <Link href="/admin" className="chip" style={{ textDecoration: "none" }}>Admin</Link>}
           {plan && <span className={`chip${plan === "pro" ? " chip-accent" : ""}`}>{plan === "pro" ? t("plan.pro") : t("plan.free")}</span>}
@@ -40,8 +56,8 @@ export default function AppNav({ name, plan, isAdmin }: { name?: string | null; 
         </div>
       </header>
 
-      {/* mobile bottom tab bar (iOS 26 liquid glass: pill + separate circle) */}
-      <nav className="tabbar" aria-label="Tabs">
+      {/* Floating dock (macOS-style) — primary navigation on every viewport. */}
+      <nav className={`tabbar${dockHidden ? " dock-hidden" : ""}`} aria-label="Navigation">
         <div className="tab-pill">
           {MAIN_TABS.map((tab) => (
             <Link key={tab.href} href={tab.href} className={`tab${isActive(tab.href) ? " active" : ""}`}>

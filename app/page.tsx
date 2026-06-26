@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { LangToggle } from "@/components/i18n";
 import { getT } from "@/lib/i18n-server";
+import { getCurrentUser } from "@/lib/session";
 import HeroDraft from "@/components/HeroDraft";
 import StepsScene from "@/components/StepsScene";
 import StatStrip from "@/components/StatStrip";
 
-export default function Landing() {
+export default async function Landing() {
   const { t } = getT();
+  // Reflect auth state so a signed-in visitor never sees a "Sign in" CTA on their own site.
+  const user = await getCurrentUser().catch(() => null);
+  const loggedIn = Boolean(user);
   const faqs = [
     { q: t("landing.faq.q1"), a: t("landing.faq.a1") },
     { q: t("landing.faq.q2"), a: t("landing.faq.a2") },
@@ -36,7 +40,11 @@ export default function Landing() {
         <Link href="/" className="brand"><span className="brand-dot" /> paply</Link>
         <div className="topbar-right">
           <LangToggle />
-          <Link href="/signin" className="btn btn-sm">{t("common.signin")}</Link>
+          {loggedIn ? (
+            <Link href="/app/home" className="btn btn-sm btn-primary">{t("common.openApp")}</Link>
+          ) : (
+            <Link href="/signin" className="btn btn-sm">{t("common.signin")}</Link>
+          )}
         </div>
       </header>
 
@@ -50,8 +58,14 @@ export default function Landing() {
           </h1>
           <p className="hero-sub text-secondary">{t("landing.sub")}</p>
           <div className="row gap-3 wrap" style={{ marginTop: "var(--space-6)" }}>
-            <Link href="/app/new" className="btn btn-primary">{t("common.start")}</Link>
-            <Link href="/signin" className="btn">{t("common.signin")}</Link>
+            {loggedIn ? (
+              <Link href="/app/home" className="btn btn-primary">{t("common.openApp")}</Link>
+            ) : (
+              <>
+                <Link href="/app/new" className="btn btn-primary">{t("common.start")}</Link>
+                <Link href="/signin" className="btn">{t("common.signin")}</Link>
+              </>
+            )}
           </div>
           <p className="mono text-secondary" style={{ marginTop: "var(--space-4)", fontSize: "var(--text-12)" }}>
             {t("landing.countries")}

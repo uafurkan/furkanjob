@@ -17,6 +17,7 @@ const en: Dict = {
 
   "common.start": "Get started",
   "common.signin": "Sign in",
+  "common.openApp": "Open app →",
 
   "landing.badge": "job applications, automated",
   "landing.title1": "Paste a page.",
@@ -435,6 +436,7 @@ const tr: Dict = {
 
   "common.start": "Hemen başla",
   "common.signin": "Giriş yap",
+  "common.openApp": "Uygulamayı aç →",
 
   "landing.badge": "iş başvurusu, otomatik",
   "landing.title1": "Bir sayfayı yapıştır.",
