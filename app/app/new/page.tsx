@@ -97,6 +97,22 @@ export default function NewApplication() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // While the confirm modal is open: Enter sends, Escape cancels (no mouse needed).
+  useEffect(() => {
+    if (!confirmPending) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { e.preventDefault(); setConfirmPending(null); }
+      else if (e.key === "Enter") {
+        e.preventDefault();
+        const p = confirmPending!;
+        setConfirmPending(null);
+        doSend(p, true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirmPending]);
+
   // Load the user's document library + CVs (for the attachment pickers).
   useEffect(() => {
     fetch("/api/documents")
