@@ -191,7 +191,8 @@ export default function NewApplication() {
     setStage(t("new.stage.analyzing"));
     setMsg(null);
     setRes(null);
-    const stageTimer = setTimeout(() => setStage(t("new.stage.drafting")), 2200);
+    const stageTimer1 = setTimeout(() => setStage(t("new.stage.searching")), 1400);
+    const stageTimer = setTimeout(() => setStage(t("new.stage.drafting")), 3800);
     try {
       const r = await fetch("/api/generate", {
         method: "POST",
@@ -216,6 +217,7 @@ export default function NewApplication() {
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
     } finally {
+      clearTimeout(stageTimer1);
       clearTimeout(stageTimer);
       setAnalyzing(false);
       setStage(null);

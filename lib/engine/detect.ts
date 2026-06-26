@@ -287,6 +287,19 @@ export function extractLocation(text: string): { address?: string; locality?: st
   return out;
 }
 
+// Phone number — used as a web-search signal so we can pin the exact business.
+// Matches: +64 9 302 1234 / (09) 302-1234 / 020 7946 0958 / +1 800 555 1234.
+// Result is digit-only (with optional leading +) for a safe search query.
+const PHONE_RE =
+  /(?:\+\d{1,3}[\s.-])?\(?\d{1,4}\)?[\s.-]\d{3,4}[\s.-]\d{3,4}(?:[\s.-]\d{2,4})?|\+\d{7,15}/g;
+
+export function extractPhone(text: string): string | null {
+  const hits = (text.match(PHONE_RE) || [])
+    .map((h) => h.replace(/[^\d+]/g, ""))
+    .filter((h) => h.replace(/\D/g, "").length >= 7);
+  return hits[0] || null;
+}
+
 export type Analysis = {
   emails: string[];
   urls: string[];
@@ -295,6 +308,7 @@ export type Analysis = {
   company: string;
   locality?: string;
   address?: string;
+  phone?: string;
 };
 
 export function analyze(text: string): Analysis {
@@ -308,5 +322,6 @@ export function analyze(text: string): Analysis {
     company: guessCompany(text, emails),
     locality: loc.locality,
     address: loc.address,
+    phone: extractPhone(text) || undefined,
   };
 }

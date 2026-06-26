@@ -71,8 +71,10 @@ export async function runPipeline(opts: {
       urls: analysis.urls,
       company: analysis.company,
       country: analysis.country.code === "XX" ? "" : analysis.country.name,
+      countryCode: analysis.country.code === "XX" ? "" : analysis.country.code,
       locality: analysis.locality,
       address: analysis.address,
+      phone: analysis.phone,
     });
     emails = found.emails;
     emailSource = found.source;

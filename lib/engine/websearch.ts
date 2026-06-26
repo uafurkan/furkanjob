@@ -1,11 +1,29 @@
 // Find a business's REAL published email when the pasted text has none.
-// 1) scrape the URLs in the text (+ their /contact pages)
-// 2) fall back to a DuckDuckGo HTML search by company/country
+// 1) scrape the URLs in the text (+ many contact/careers/about page variants)
+// 2) try to guess the domain from company name + country TLD
+// 3) fall back to a DuckDuckGo HTML search enriched with location + phone
 // Never fabricates an address — only extracts ones that actually appear on a page.
 import { extractEmails } from "./detect";
 
 const UA = "Mozilla/5.0 (compatible; PaplyBot/1.0; +https://paply.me)";
 const TIMEOUT = 12000;
+
+// Contact-related page suffixes to probe in priority order.
+const CONTACT_PATHS = [
+  "/contact",
+  "/contact-us",
+  "/contacts",
+  "/about",
+  "/about-us",
+  "/careers",
+  "/jobs",
+  "/work-with-us",
+  "/employment",
+  "/hiring",
+  "/join-us",
+  "/get-in-touch",
+  "/team",
+];
 
 async function fetchText(url: string): Promise<string> {
   if (!/^https?:\/\//i.test(url)) url = "https://" + url;
@@ -49,6 +67,8 @@ export async function fetchPageText(url: string): Promise<string> {
   return text.slice(0, 8000);
 }
 
+// Scrape a list of URLs + their most-likely contact/careers subpages.
+// Returns all real email addresses found (up to 3 to keep latency low).
 export async function scrapeEmailsFromUrls(urls: string[]): Promise<string[]> {
   const candidates = new Set<string>();
   for (const u of urls.slice(0, 5)) {
@@ -56,12 +76,10 @@ export async function scrapeEmailsFromUrls(urls: string[]): Promise<string[]> {
     if (!o) continue;
     candidates.add(u);
     candidates.add(o);
-    candidates.add(o + "/contact");
-    candidates.add(o + "/contact-us");
-    candidates.add(o + "/contacts");
+    for (const path of CONTACT_PATHS) candidates.add(o + path);
   }
   const found = new Set<string>();
-  for (const url of [...candidates].slice(0, 10)) {
+  for (const url of [...candidates].slice(0, 18)) {
     const html = await fetchText(url);
     if (!html) continue;
     extractEmails(html).forEach((e) => found.add(e));
@@ -70,16 +88,77 @@ export async function scrapeEmailsFromUrls(urls: string[]): Promise<string[]> {
   return [...found];
 }
 
+// Country code → most common TLD(s). Used for domain guessing when the text has no URL.
+const COUNTRY_TLDS: Record<string, string[]> = {
+  NZ: [".co.nz", ".nz"],
+  AU: [".com.au", ".au"],
+  UK: [".co.uk", ".uk"],
+  US: [".com"],
+  CA: [".ca", ".com"],
+  IE: [".ie", ".com"],
+  DE: [".de", ".com"],
+  FR: [".fr", ".com"],
+  ES: [".es", ".com"],
+  IT: [".it", ".com"],
+  NL: [".nl", ".com"],
+  PT: [".pt", ".com"],
+  AT: [".at", ".com"],
+  CH: [".ch", ".com"],
+  BE: [".be", ".com"],
+  SE: [".se", ".com"],
+  DK: [".dk", ".com"],
+  NO: [".no", ".com"],
+  FI: [".fi", ".com"],
+  GR: [".gr", ".com"],
+  PL: [".pl", ".com"],
+  CZ: [".cz", ".com"],
+};
+
+// Normalise accented/special chars to ASCII for domain slugs.
+function toAsciiSlug(s: string): string {
+  return s
+    .normalize("NFD").replace(/[̀-ͯ]/g, "") // strip diacritics
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim();
+}
+
+const DOMAIN_STOPWORDS =
+  /\b(hotel|suites|resort|restaurant|cafe|bistro|lodge|inn|bar|grill|brasserie|kitchen|group|limited|ltd|pty|inc|the|a|an|and|of|at|&)\b/g;
+
+// Build candidate domain roots from company name + country TLDs.
+// "Aurelia Bay Hotel" + NZ → ["aureliabay.co.nz", "aurelia-bay.co.nz", "aureliabay.com", ...]
+function guessDomainsFromCompany(company: string, countryCode: string): string[] {
+  const tlds = COUNTRY_TLDS[countryCode] || [".com"];
+  const slug = toAsciiSlug(company)
+    .replace(DOMAIN_STOPWORDS, " ")
+    .replace(/\s+/g, " ").trim();
+  if (!slug) return [];
+  const words = slug.split(/\s+/).filter((w) => w.length >= 3); // skip short/noise words
+  if (!words.length) return [];
+  const joined = words.join("");
+  const hyphenated = words.join("-");
+  const firstWord = words[0];
+  const domains: string[] = [];
+  for (const tld of tlds) {
+    if (joined) domains.push(joined + tld);
+    if (hyphenated !== joined) domains.push(hyphenated + tld);
+    if (firstWord && firstWord !== joined) domains.push(firstWord + tld);
+  }
+  if (!tlds.includes(".com")) {
+    if (joined) domains.push(joined + ".com");
+    if (hyphenated !== joined) domains.push(hyphenated + ".com");
+  }
+  return [...new Set(domains)].slice(0, 6);
+}
+
 async function duckduckgo(query: string): Promise<string[]> {
   const html = await fetchText("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(query));
   if (!html) return [];
   const links = [...html.matchAll(/uddg=([^&"]+)/g)]
     .map((m) => {
-      try {
-        return decodeURIComponent(m[1]);
-      } catch {
-        return null;
-      }
+      try { return decodeURIComponent(m[1]); }
+      catch { return null; }
     })
     .filter((x): x is string => Boolean(x));
   return [...new Set(links)].slice(0, 5);
@@ -91,32 +170,42 @@ export async function findEmails(opts: {
   urls?: string[];
   company?: string;
   country?: string;
+  countryCode?: string;
   locality?: string;
   address?: string;
+  phone?: string;
 }): Promise<FindResult> {
-  const { urls = [], company = "", country = "", locality = "", address = "" } = opts;
+  const { urls = [], company = "", country = "", countryCode = "", locality = "", address = "", phone = "" } = opts;
 
-  // 1) Scrape any URLs already in the text (+ their /contact pages).
+  // Step 1: scrape URLs in the text (+ all contact/careers/about subpages).
   let emails = await scrapeEmailsFromUrls(urls);
   if (emails.length) return { emails, source: "page-scrape" };
 
-  // 2) Web search — enriched with location so a generic/duplicated company name is pinned
-  //    down to the right business. Most specific queries first; stop at the first hit.
+  // Step 2: if no URL found in the text, try to guess the domain from company + country TLD.
+  if (!urls.length && company && countryCode) {
+    const guessedDomains = guessDomainsFromCompany(company, countryCode);
+    emails = await scrapeEmailsFromUrls(guessedDomains);
+    if (emails.length) return { emails, source: "page-scrape" };
+  }
+
+  // Step 3: web search — enriched with location + phone so a generic company name is pinned
+  //         down to the exact business. Most specific queries first; stop at the first hit.
   const co = company.trim();
   const loc = locality.trim();
   const addr = address.trim();
+  const ph = phone.trim();
   const queries = [
-    addr && co && `"${co}" ${addr} email`,
-    loc && co && `${co} ${loc} contact email`,
+    addr && co    && `"${co}" "${addr}" email`,
+    ph && co      && `"${co}" ${ph} email`,
+    loc && co     && `${co} ${loc} contact email`,
     loc && co && country && `${co} ${loc} ${country} email`,
     co && country && `${co} ${country} contact email`,
-    co && `${co} careers email`,
-    loc && co && `${co} ${loc} official website`,
+    co            && `${co} careers email`,
+    loc && co     && `${co} ${loc} official website`,
   ].filter((q): q is string => Boolean(q));
 
-  // De-dup while preserving order, and cap how many we run to keep latency sane.
   const seen = new Set<string>();
-  const ordered = queries.filter((q) => (seen.has(q) ? false : (seen.add(q), true))).slice(0, 4);
+  const ordered = queries.filter((q) => !seen.has(q) && seen.add(q) as unknown as boolean).slice(0, 5);
 
   for (const q of ordered) {
     const resultUrls = await duckduckgo(q);
