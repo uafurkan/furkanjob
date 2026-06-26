@@ -67,6 +67,35 @@ export default function Landing() {
               <p className="text-secondary">Dear Hiring Manager, I require AEWV sponsorship to work in New Zealand…</p>
             </div>
           </div>
+
+          {/* Decorative: a paper plane carrying the application from pasted text → sent. */}
+          <svg className="flight" viewBox="0 0 440 320" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <radialGradient id="flightTarget" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#7CE0D3" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#7CE0D3" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+
+            {/* origin (your pasted text) */}
+            <circle className="flight-origin" cx="88" cy="206" r="4" />
+
+            {/* flight route */}
+            <path className="flight-path" d="M88,206 C180,150 250,210 348,128" fill="none" />
+
+            {/* destination (delivered) */}
+            <circle className="flight-glow" cx="348" cy="128" r="18" fill="url(#flightTarget)" />
+            <g className="flight-target" transform="translate(348 128)">
+              <circle r="8" fill="none" stroke="#7CE0D3" strokeWidth="2" />
+              <path d="M-3.5,0 L-1,2.5 L4,-3" fill="none" stroke="#7CE0D3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </g>
+
+            {/* the paper plane */}
+            <g className="flight-plane">
+              <path d="M13,0 L-12,-9 L-4,0 L-12,9 Z" fill="#FFFFFF" />
+              <path d="M13,0 L-4,0 L-12,9 Z" fill="#5A93F0" fillOpacity="0.65" />
+            </g>
+          </svg>
         </div>
       </section>
 

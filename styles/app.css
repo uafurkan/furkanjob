@@ -25,6 +25,45 @@
 .scene-out { background: rgba(111,168,255,.08); }
 .scene-tag { font-size: 10px; letter-spacing: .08em; color: var(--content-tertiary); text-transform: uppercase; margin-bottom: var(--space-2); }
 
+/* Paper-plane flight: the application travels from pasted text → delivered. */
+.flight { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.flight-origin { fill: var(--accent-bright); opacity: .55; }
+.flight-path { stroke: var(--accent-bright); stroke-width: 1.5; stroke-opacity: .35;
+  stroke-dasharray: 1.5 7; stroke-linecap: round; animation: flight-dash 1.4s linear infinite; }
+.flight-glow { animation: flight-glow 6.5s ease-in-out infinite; }
+.flight-target { opacity: 0; animation: flight-arrive 6.5s ease-in-out infinite; }
+.flight-plane {
+  offset-path: path("M88,206 C180,150 250,210 348,128");
+  offset-rotate: auto;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
+  animation: flight-fly 6.5s cubic-bezier(.42,.04,.32,1) infinite;
+}
+
+@keyframes flight-dash { to { stroke-dashoffset: -8.5; } }
+@keyframes flight-fly {
+  0%   { offset-distance: 0%;   opacity: 0; }
+  9%   { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+@keyframes flight-glow {
+  0%, 78% { opacity: 0; }
+  88%     { opacity: .9; }
+  100%    { opacity: 0; }
+}
+@keyframes flight-arrive {
+  0%, 80% { opacity: 0; transform: translate(348px, 128px) scale(.6); }
+  90%     { opacity: 1; transform: translate(348px, 128px) scale(1); }
+  100%    { opacity: .85; transform: translate(348px, 128px) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flight-path, .flight-glow, .flight-plane, .flight-target { animation: none; }
+  .flight-plane { offset-distance: 80%; opacity: 1; }
+  .flight-target { opacity: 1; }
+  .flight-glow { opacity: .5; }
+}
+
 .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-top: var(--space-12); }
 .feature h3 { font-size: var(--text-18); margin-bottom: var(--space-2); }
 .landing-foot { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-16); padding-top: var(--space-6); border-top: 1px solid var(--glass-stroke); flex-wrap: wrap; gap: var(--space-4); }
