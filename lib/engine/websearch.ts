@@ -164,7 +164,13 @@ async function duckduckgo(query: string): Promise<string[]> {
   return [...new Set(links)].slice(0, 5);
 }
 
-export type FindResult = { emails: string[]; source: "page-scrape" | "web-search" | "none" };
+export type FindResult = {
+  emails: string[];
+  source: "page-scrape" | "web-search" | "none";
+  // Distinct site origins the engine actually probed — used to offer one-click
+  // recovery links (homepage / contact / careers) when nothing was found.
+  checkedOrigins: string[];
+};
 
 export async function findEmails(opts: {
   urls?: string[];
@@ -176,16 +182,20 @@ export async function findEmails(opts: {
   phone?: string;
 }): Promise<FindResult> {
   const { urls = [], company = "", country = "", countryCode = "", locality = "", address = "", phone = "" } = opts;
+  const checked = new Set<string>(); // origins we touched, for recovery links
+  const remember = (list: string[]) => { for (const u of list) { const o = origin(u); if (o) checked.add(o); } };
 
   // Step 1: scrape URLs in the text (+ all contact/careers/about subpages).
+  remember(urls);
   let emails = await scrapeEmailsFromUrls(urls);
-  if (emails.length) return { emails, source: "page-scrape" };
+  if (emails.length) return { emails, source: "page-scrape", checkedOrigins: [...checked] };
 
   // Step 2: if no URL found in the text, try to guess the domain from company + country TLD.
   if (!urls.length && company && countryCode) {
     const guessedDomains = guessDomainsFromCompany(company, countryCode);
+    remember(guessedDomains);
     emails = await scrapeEmailsFromUrls(guessedDomains);
-    if (emails.length) return { emails, source: "page-scrape" };
+    if (emails.length) return { emails, source: "page-scrape", checkedOrigins: [...checked] };
   }
 
   // Step 3: web search — enriched with location + phone so a generic company name is pinned
@@ -209,8 +219,9 @@ export async function findEmails(opts: {
 
   for (const q of ordered) {
     const resultUrls = await duckduckgo(q);
+    remember(resultUrls);
     emails = await scrapeEmailsFromUrls(resultUrls);
-    if (emails.length) return { emails, source: "web-search" };
+    if (emails.length) return { emails, source: "web-search", checkedOrigins: [...checked] };
   }
-  return { emails: [], source: "none" };
+  return { emails: [], source: "none", checkedOrigins: [...checked] };
 }

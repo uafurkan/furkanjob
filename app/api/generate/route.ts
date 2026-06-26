@@ -100,6 +100,8 @@ async function handleGenerate(req: Request) {
     positions: result.analysis.positions,
     emails: result.emails,
     emailSource: result.emailSource,
+    // Recovery links: only useful (and only sent) when nothing was found.
+    checkedOrigins: result.emailSource === "none" ? result.checkedOrigins.slice(0, 4) : [],
     subject: result.draft.subject,
     subjectB: subjectB || null,
     body: result.draft.body,

@@ -16,6 +16,8 @@ export type PipelineResult = {
   // True when the user holds a visa that already authorizes work in the detected country.
   visaCovered: boolean;
   visaLabel: string | null;
+  // Site origins the email search probed — offered as recovery links when none found.
+  checkedOrigins: string[];
 };
 
 export async function runPipeline(opts: {
@@ -66,6 +68,7 @@ export async function runPipeline(opts: {
   // Emails: deterministic extraction from text, else real web search. Never generated.
   let emails = analysis.emails;
   let emailSource: PipelineResult["emailSource"] = emails.length ? "text" : "none";
+  let checkedOrigins: string[] = [];
   if (!emails.length && searchWeb) {
     const found = await findEmails({
       urls: analysis.urls,
@@ -78,6 +81,7 @@ export async function runPipeline(opts: {
     });
     emails = found.emails;
     emailSource = found.source;
+    checkedOrigins = found.checkedOrigins;
   }
 
   // Held-visa intelligence: does the user already hold a visa that authorizes work here?
@@ -94,5 +98,5 @@ export async function runPipeline(opts: {
   }
   if (!draft) draft = buildDraft(analysis, profile, language, authorization);
 
-  return { analysis, emails, emailSource, draft, draftSource, language, visaCovered, visaLabel };
+  return { analysis, emails, emailSource, draft, draftSource, language, visaCovered, visaLabel, checkedOrigins };
 }

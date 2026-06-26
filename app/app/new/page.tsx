@@ -11,6 +11,7 @@ type GenResult = {
   positions: string[];
   emails: string[];
   emailSource: "text" | "page-scrape" | "web-search" | "none";
+  checkedOrigins?: string[];
   subject: string;
   subjectB?: string | null;
   body: string;
@@ -432,15 +433,31 @@ export default function NewApplication() {
               </span>
             )}
             {res.emailSource === "none" && (
-              <a
-                className="text-secondary"
-                style={{ fontSize: "var(--text-12)", marginTop: 4 }}
-                href={`https://www.google.com/search?q=${encodeURIComponent(`${res.company} ${res.country} contact email`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t("new.findEmail")}
-              </a>
+              <div className="recover-panel reveal">
+                <span className="recover-title">{t("new.recover.title")}</span>
+                <div className="recover-links">
+                  {(res.checkedOrigins || []).slice(0, 3).map((o) => {
+                    let host = o;
+                    try { host = new URL(o).hostname.replace(/^www\./, ""); } catch {}
+                    return (
+                      <span key={o} className="recover-site">
+                        <span className="recover-host">{host}</span>
+                        <a className="recover-link" href={o} target="_blank" rel="noopener noreferrer">{t("new.recover.site")}</a>
+                        <a className="recover-link" href={`${o}/contact`} target="_blank" rel="noopener noreferrer">{t("new.recover.contact")}</a>
+                        <a className="recover-link" href={`${o}/careers`} target="_blank" rel="noopener noreferrer">{t("new.recover.careers")}</a>
+                      </span>
+                    );
+                  })}
+                  <a
+                    className="recover-link recover-search"
+                    href={`https://www.google.com/search?q=${encodeURIComponent(`${res.company} ${res.country} contact email`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    🔍 {t("new.recover.search")}
+                  </a>
+                </div>
+              </div>
             )}
           </label>
           <div className="field">
