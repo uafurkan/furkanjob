@@ -378,6 +378,23 @@
 }
 .dup-banner svg { flex-shrink: 0; }
 
+/* ---------- Recipient typo / invalid inline warning ---------- */
+.email-check-warn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--text-12); color: var(--signal-warning);
+}
+.email-check-warn svg { flex-shrink: 0; }
+.email-check-fix {
+  margin-left: 2px; padding: 1px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(242,194,107,.4);
+  background: rgba(242,194,107,.1);
+  color: var(--signal-warning);
+  font-size: var(--text-12); font-weight: 600;
+  cursor: pointer; transition: background var(--dur-micro) var(--ease-standard);
+}
+.email-check-fix:hover { background: rgba(242,194,107,.2); }
+
 /* ---------- Visa-covered banner (new application) ---------- */
 .visa-banner {
   display: flex; align-items: center; gap: var(--space-3);

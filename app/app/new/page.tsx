@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useT } from "@/components/i18n";
 import { APP_LANGS } from "@/lib/engine/template";
+import { checkRecipients, applyFix } from "@/lib/email-check";
 
 type GenResult = {
   company: string;
@@ -258,6 +259,9 @@ export default function NewApplication() {
     }
   }
 
+  // Recipient sanity check — surface typos/invalid before send (not while empty).
+  const recipientIssue = to.trim() ? checkRecipients(to) : null;
+
   const restoredLabel = draftRestoredAt
     ? t("new.draftRestored").replace("{time}", new Date(draftRestoredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
     : null;
@@ -380,6 +384,29 @@ export default function NewApplication() {
           <label className="field">
             <span className="field-label">{t("new.to")}</span>
             <input className="input" value={to} onChange={(e) => setTo(e.target.value)} placeholder="name@business.com" />
+            {recipientIssue?.kind === "typo" && (
+              <span className="email-check-warn" style={{ marginTop: 4 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                {t("new.emailTypo").replace("{suggestion}", recipientIssue.suggestion)}
+                <button
+                  type="button"
+                  className="email-check-fix"
+                  onClick={() => setTo((cur) => applyFix(cur, recipientIssue.value, recipientIssue.suggestion))}
+                >
+                  {t("new.emailTypoFix")}
+                </button>
+              </span>
+            )}
+            {recipientIssue?.kind === "invalid" && (
+              <span className="email-check-warn" style={{ marginTop: 4 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                {t("new.emailInvalid").replace("{value}", recipientIssue.value)}
+              </span>
+            )}
             {res.emailSource === "none" && (
               <a
                 className="text-secondary"
