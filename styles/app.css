@@ -214,12 +214,14 @@
   bottom: max(18px, env(safe-area-inset-bottom)); z-index: 50;
   display: flex; align-items: center; gap: 10px; width: auto; max-width: calc(100% - 24px);
   transform: translateX(-50%);
-  transition: transform var(--dur-secondary) var(--ease-settle), opacity var(--dur-secondary) var(--ease-settle);
+  transition: transform var(--dur-secondary) var(--ease-settle);
 }
-/* Hidden while scrolling down — slides below the viewport edge. */
+/* Hidden while scrolling down — slides below the viewport edge.
+   No opacity fade: backdrop-filter stays "warm" the whole time so there
+   is no glass-flash when the dock slides back into view. */
 .tabbar.dock-hidden {
   transform: translate(-50%, calc(100% + 28px));
-  opacity: 0; pointer-events: none;
+  pointer-events: none;
 }
 
 /* Outer pill — groups New / Applications / Profile */
