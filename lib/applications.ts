@@ -59,9 +59,11 @@ export function computeInsights(apps: AppLike[]): Insights {
   const roleMap = new Map<string, InsightRow>();
   for (const a of dispatchedApps) {
     const isResp = RESPONDED.has(a.status) ? 1 : 0;
-    const c = (a.country || "—").trim() || "—";
-    const cr = countryMap.get(c) || { name: c, count: 0, responded: 0 };
-    cr.count++; cr.responded += isResp; countryMap.set(c, cr);
+    const c = (a.country || "").trim();
+    if (c) {
+      const cr = countryMap.get(c) || { name: c, count: 0, responded: 0 };
+      cr.count++; cr.responded += isResp; countryMap.set(c, cr);
+    }
     for (const role of a.positions || []) {
       const r = roleMap.get(role) || { name: role, count: 0, responded: 0 };
       r.count++; r.responded += isResp; roleMap.set(role, r);
