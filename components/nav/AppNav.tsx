@@ -12,23 +12,38 @@ const MAIN_TABS = [
 ];
 const PRO_TAB = { href: "/app/billing", key: "nav.pro", icon: IconSpark };
 
-// Hide the floating dock while scrolling down; bring it back on scroll-up or when
-// scrolling stops — so it never sits in the way of the content the user is reading.
+// Dock reveal logic (same on web + mobile):
+//   • scroll UP  → reveal, then auto-hide after 3s
+//   • scroll DOWN → hide immediately
+//   • idle/stopped → does NOT reveal (stays as-is)
+//   • near the very top of the page → always visible (nothing to hide behind,
+//     and short / non-scrolling pages would otherwise never show the nav)
+const NEAR_TOP = 80;
+const REVEAL_MS = 3000;
 function useDockAutoHide() {
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     let lastY = window.scrollY;
-    let idle: ReturnType<typeof setTimeout>;
+    let hideTimer: ReturnType<typeof setTimeout>;
     const onScroll = () => {
       const y = window.scrollY;
-      if (y > lastY + 4 && y > 140) setHidden(true);       // decisive scroll down, past the fold
-      else if (y < lastY - 4) setHidden(false);            // any scroll up
+      if (y <= NEAR_TOP) {                 // at the top → always visible
+        clearTimeout(hideTimer);
+        setHidden(false);
+      } else if (y < lastY - 4) {          // decisive scroll up → reveal for 3s
+        setHidden(false);
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+          if (window.scrollY > NEAR_TOP) setHidden(true);
+        }, REVEAL_MS);
+      } else if (y > lastY + 4) {          // scroll down → hide now
+        clearTimeout(hideTimer);
+        setHidden(true);
+      }
       lastY = y;
-      clearTimeout(idle);
-      idle = setTimeout(() => setHidden(false), 220);      // reappear once movement stops
     };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => { window.removeEventListener("scroll", onScroll); clearTimeout(idle); };
+    return () => { window.removeEventListener("scroll", onScroll); clearTimeout(hideTimer); };
   }, []);
   return hidden;
 }
