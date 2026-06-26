@@ -48,8 +48,9 @@
   --text-64: 4rem; --text-80: 5rem; --text-110: 6.875rem; --text-160: 10rem; --text-240: 15rem;
 
   /* BOŞLUK */
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
-  --space-8: 32px; --space-12: 48px; --space-16: 64px; --space-24: 96px; --space-32: 128px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --space-7: 28px; --space-8: 32px; --space-9: 36px; --space-10: 40px; --space-11: 44px;
+  --space-12: 48px; --space-16: 64px; --space-24: 96px; --space-32: 128px;
   --space-48: 192px; --space-64: 256px; --space-96: 384px;
 
   /* HAREKET */
