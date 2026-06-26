@@ -65,10 +65,30 @@ export default async function HomePage() {
   const goalPct = weeklyGoal > 0 ? Math.min(100, Math.round((weekSent / weeklyGoal) * 100)) : 0;
   const goalMet = weeklyGoal > 0 && weekSent >= weeklyGoal;
 
+  // Current streak: consecutive days (ending today or yesterday) with ≥1 dispatched application.
+  const sentDays = new Set(
+    apps
+      .filter((a) => a.status !== "draft" && a.status !== "failed")
+      .map((a) => (a.sentAt || a.createdAt).slice(0, 10)),
+  );
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const key = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    if (sentDays.has(key)) streak++;
+    else if (i > 0) break; // allow today to be empty without breaking the run
+  }
+
   return (
     <div className="stack gap-6">
       <header className="page-head">
-        <h1>{hello}</h1>
+        <div className="row gap-2" style={{ alignItems: "center" }}>
+          <h1 style={{ margin: 0 }}>{hello}</h1>
+          {streak >= 2 && (
+            <span className="chip chip-accent" title={t("home.streak.title")}>
+              🔥 {t("home.streak.days").replace("{n}", String(streak))}
+            </span>
+          )}
+        </div>
         <p className="text-secondary">{t("home.tagline")}</p>
       </header>
 
