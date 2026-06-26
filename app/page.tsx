@@ -2,6 +2,8 @@ import Link from "next/link";
 import { LangToggle } from "@/components/i18n";
 import { getT } from "@/lib/i18n-server";
 import HeroDraft from "@/components/HeroDraft";
+import StepsScene from "@/components/StepsScene";
+import StatStrip from "@/components/StatStrip";
 
 export default function Landing() {
   const { t } = getT();
@@ -111,20 +113,34 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* How it works — sticky scrollytelling: the mockup morphs paste → draft → sent */}
       <section className="container" style={{ marginTop: "var(--space-16)" }}>
         <h2 className="section-title" style={{ textAlign: "center", marginBottom: "var(--space-8)", fontSize: "var(--text-24)" }}>
           {t("landing.steps.title")}
         </h2>
-        <div className="steps-grid">
-          {steps.map((s, i) => (
-            <div key={i} className="glass card step-card reveal">
-              <span className="step-num">{s.n}</span>
-              <h3 style={{ fontSize: "var(--text-18)", margin: 0 }}>{s.title}</h3>
-              <p className="text-secondary" style={{ margin: 0 }}>{s.d}</p>
-            </div>
-          ))}
-        </div>
+        <StepsScene
+          steps={steps}
+          labels={{
+            pasted: t("landing.scene.pasted"),
+            found: t("landing.scene.found"),
+            application: t("landing.scene.application"),
+            sent: t("landing.scene.sent"),
+          }}
+          sampleText="Aurelia Bay Hotel, Lindravale, New Zealand. We're hiring front desk & kitchen staff for the summer season."
+          sampleEmail="careers@example-hotel.co.nz"
+          draftText="Dear Hiring Manager, I require AEWV sponsorship to work in New Zealand…"
+        />
+      </section>
+
+      {/* Stat strip — counts up on scroll into view */}
+      <section className="container" style={{ marginTop: "var(--space-16)" }}>
+        <StatStrip
+          stats={[
+            { value: 5, label: t("landing.stat.visa") },
+            { value: 5, label: t("landing.stat.countries") },
+            { value: 30, prefix: "~", suffix: "s", label: t("landing.stat.send") },
+          ]}
+        />
       </section>
 
       {/* Testimonials */}
