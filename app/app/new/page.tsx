@@ -75,6 +75,8 @@ export default function NewApplication() {
   const [msg, setMsg] = useState<{ kind: "ok" | "err" | "warn"; text: string } | null>(null);
   const [confirmPending, setConfirmPending] = useState<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
+  const [refining, setRefining] = useState<string | null>(null);
+  const [bodyBeforeRefine, setBodyBeforeRefine] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -261,6 +263,28 @@ export default function NewApplication() {
 
   // Recipient sanity check — surface typos/invalid before send (not while empty).
   const recipientIssue = to.trim() ? checkRecipients(to) : null;
+
+  async function refine(action: "shorter" | "warmer" | "formal" | "regenerate") {
+    if (!res || !body.trim() || refining) return;
+    const prev = body;
+    setRefining(action);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/refine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body, action, company: res.company, language: res.language }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.body) throw new Error(d.error || "refine failed");
+      setBodyBeforeRefine(prev);
+      setBody(d.body);
+    } catch {
+      setMsg({ kind: "warn", text: t("new.refine.failed") });
+    } finally {
+      setRefining(null);
+    }
+  }
 
   const restoredLabel = draftRestoredAt
     ? t("new.draftRestored").replace("{time}", new Date(draftRestoredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
@@ -459,6 +483,31 @@ export default function NewApplication() {
               </span>
             </div>
             <textarea className="textarea" style={{ minHeight: 260 }} value={body} onChange={(e) => setBody(e.target.value)} />
+            {res.draftSource === "ai" && (
+              <div className="refine-row" aria-busy={Boolean(refining)}>
+                <span className="refine-label">{t("new.refine")}</span>
+                {(["shorter", "warmer", "formal", "regenerate"] as const).map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    className="refine-chip"
+                    onClick={() => refine(a)}
+                    disabled={Boolean(refining)}
+                  >
+                    {refining === a ? t("new.refine.working") : t(`new.refine.${a}`)}
+                  </button>
+                ))}
+                {bodyBeforeRefine !== null && !refining && (
+                  <button
+                    type="button"
+                    className="refine-chip refine-undo"
+                    onClick={() => { setBody(bodyBeforeRefine); setBodyBeforeRefine(null); }}
+                  >
+                    ↩ {t("new.refine.undo")}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="stack gap-3">

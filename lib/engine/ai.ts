@@ -218,6 +218,43 @@ Rules:
   return null;
 }
 
+// ---------- One-tap body refinement ----------
+export type RefineAction = "shorter" | "warmer" | "formal" | "regenerate";
+
+const REFINE_INSTRUCTION: Record<RefineAction, string> = {
+  shorter: "Make it noticeably more concise — cut roughly a third of the length while keeping every key point and the visa statement. Tighten sentences, remove filler.",
+  warmer: "Make the tone warmer, more personable and human — still professional, never gushing. Keep the same facts and structure.",
+  formal: "Make the tone more formal, polished and precise — the register a careful hiring manager respects. Keep the same facts.",
+  regenerate: "Rewrite it fresh: a different opening line and different phrasing throughout, but the SAME facts, intent, roles and visa stance.",
+};
+
+export async function aiRefine(opts: {
+  body: string;
+  action: RefineAction;
+  company?: string;
+  lang: AppLang;
+  tier?: AiTier;
+}): Promise<string | null> {
+  if (!aiEnabled()) return null;
+  const langName = APP_LANGS.find((l) => l.code === opts.lang)?.label || "English";
+  const prompt = `You are refining the BODY of a job-application email. Apply this change: ${REFINE_INSTRUCTION[opts.action]}
+
+Write fully IN ${langName}. Return STRICT JSON only: {"body": "..."}.
+
+Hard rules (follow exactly):
+- Keep it a single email body. Preserve the visa/sponsorship statement if one is present.
+- NO "Sincerely"/"Kind regards"/any closing salutation, NO applicant name, email, phone or signature block — a Gmail signature is appended automatically.
+- Invent NOTHING new — no email addresses, no facts not already in the text${opts.company ? ` about ${opts.company}` : ""}. No clichés, no fake urgency.
+
+Current body:
+"""
+${opts.body.slice(0, 4000)}
+"""`;
+  const parsed = extractJson<{ body?: string }>(await complete(prompt, 900, opts.tier || "free"));
+  if (parsed?.body && typeof parsed.body === "string" && parsed.body.trim()) return parsed.body.trim();
+  return null;
+}
+
 // ---------- Draft generation ----------
 export async function aiDraft(
   { text, analysis, profile }: GenerateInput,

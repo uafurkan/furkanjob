@@ -395,6 +395,32 @@
 }
 .email-check-fix:hover { background: rgba(242,194,107,.2); }
 
+/* ---------- One-tap draft refine chips ---------- */
+.refine-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.refine-row[aria-busy="true"] { opacity: .85; }
+.refine-label {
+  font-size: var(--text-12); color: var(--content-tertiary);
+  margin-right: 2px;
+}
+.refine-chip {
+  padding: 4px 12px; border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-edge, rgba(255,255,255,.12));
+  background: rgba(255,255,255,.04);
+  color: var(--content-secondary);
+  font-size: var(--text-12); font-weight: 500;
+  cursor: pointer; transition: background var(--dur-micro) var(--ease-standard), color var(--dur-micro) var(--ease-standard), border-color var(--dur-micro) var(--ease-standard);
+}
+.refine-chip:hover:not(:disabled) {
+  background: rgba(111,168,255,.12);
+  border-color: rgba(111,168,255,.4);
+  color: var(--content-primary);
+}
+.refine-chip:disabled { cursor: default; opacity: .55; }
+.refine-undo { color: var(--accent); border-color: rgba(111,168,255,.34); }
+
 /* ---------- Visa-covered banner (new application) ---------- */
 .visa-banner {
   display: flex; align-items: center; gap: var(--space-3);
