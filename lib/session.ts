@@ -24,3 +24,23 @@ export async function getCurrentUser(): Promise<User | null> {
   }
   return user;
 }
+
+// Like getCurrentUser, but also returns the auth provider ("google" | "demo" | …).
+// Sending real email is gated on provider === "google": demo/credentials sessions
+// can draft and preview but must never reach the mailer.
+export async function getCurrentAuth(): Promise<{ user: User; provider: string } | null> {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email;
+  const provider = ((session?.user as any)?.provider as string | undefined) || "demo";
+  const id = (session?.user as any)?.id as string | undefined;
+
+  let user: User | null = null;
+  if (id) user = await findUserById(id);
+  if (!user && email) user = await findUserByEmail(email);
+  if (!user) return null;
+
+  if (isAdmin(email, provider) && user.plan !== "pro") {
+    return { user: { ...user, plan: "pro" }, provider };
+  }
+  return { user, provider };
+}

@@ -40,6 +40,7 @@ export default function SignInForm({ googleEnabled }: { googleEnabled: boolean }
         <button className="btn btn-primary btn-block" data-loading={loading === "demo"} type="submit">
           {loading === "demo" ? t("signin.signingin") : t("signin.demo")}
         </button>
+        <p className="text-secondary" style={{ fontSize: "var(--text-12)", textAlign: "center" }}>{t("signin.demoNote")}</p>
       </form>
 
       {!googleEnabled && (

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentAuth } from "@/lib/session";
 import {
   getProfile, getDefaultCv, getCvForUser, getCvData, getDefaultEmailAccount, updateEmailAccountTokens,
   createApplication, incrementUsage, getUsage, getDocumentsForAttach,
@@ -28,8 +28,23 @@ export async function POST(req: Request) {
 }
 
 async function handleSend(req: Request) {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getCurrentAuth();
+  if (!auth) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, provider } = auth;
+
+  // Hard security boundary: only a real Google OAuth session may send mail.
+  // Demo/credentials sessions can draft & preview but must never reach the mailer —
+  // otherwise any signed-in email could send through a shared/owner inbox.
+  if (provider !== "google") {
+    return NextResponse.json(
+      {
+        ok: false,
+        demo: true,
+        error: "Demo mode can preview drafts but cannot send. Connect Google to send for real.",
+      },
+      { status: 403 }
+    );
+  }
 
   const rl = await rateLimit(user.id, "send");
   if (!rl.ok) return NextResponse.json({ error: "Too many requests. Please wait." }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
@@ -137,7 +152,13 @@ async function handleSend(req: Request) {
         messageId: outMessageId, inReplyTo, references: inReplyTo, threadId,
       });
     }
-  } else if (process.env.SMTP_APP_PASSWORD) {
+  } else if (
+    process.env.SMTP_APP_PASSWORD &&
+    process.env.SMTP_USER &&
+    // Owner-only fallback: the SMTP App Password belongs to a single inbox. Only allow it
+    // when the signed-in (Google-verified) address IS that inbox — never for other tenants.
+    user.email?.toLowerCase() === process.env.SMTP_USER.toLowerCase()
+  ) {
     fromEmail = process.env.SMTP_USER || fromEmail;
     result = await sendViaSmtp({
       user: fromEmail, pass: process.env.SMTP_APP_PASSWORD, fromName, to: recipients, cc: ccAddresses, subject, body: text, attachments,

@@ -73,7 +73,7 @@ async function handleGenerate(req: Request) {
     aiSubjectVariant(
       result.draft.subject,
       result.analysis.company,
-      result.analysis.positions,
+      result.applyFor.length ? result.applyFor : result.analysis.positions,
       result.language as any,
       aiTier(user.plan)
     ).catch(() => null),
@@ -98,6 +98,12 @@ async function handleGenerate(req: Request) {
     // Don't surface the grammatical fallback ("the destination country") as a country label.
     country: result.analysis.country.code === "XX" ? "" : result.analysis.country.name,
     positions: result.analysis.positions,
+    // Smart role fit + suitability/eligibility.
+    applyFor: result.applyFor,
+    droppedRoles: result.droppedRoles,
+    fitScore: result.fitScore,
+    fitSummary: result.fitSummary,
+    eligibility: result.eligibility,
     emails: result.emails,
     emailSource: result.emailSource,
     // Recovery links: only useful (and only sent) when nothing was found.

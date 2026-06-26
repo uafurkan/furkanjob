@@ -3,7 +3,7 @@
 // null and the caller falls back to the smart template. Email addresses are NEVER produced here:
 // extraction stays deterministic (lib/engine/detect + websearch) so the "never guess emails" rule holds.
 import Anthropic from "@anthropic-ai/sdk";
-import type { Draft, GenerateInput } from "./types";
+import type { Draft, GenerateInput, EngineProfile } from "./types";
 import { APP_LANGS, type AppLang } from "./template";
 
 export type AiTier = "free" | "pro";
@@ -122,6 +122,92 @@ ${text.slice(0, 6000)}
     positions: Array.isArray(parsed.positions)
       ? parsed.positions.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4)
       : undefined,
+  };
+}
+
+// ---------- Fit assessment: which roles to apply for + suitability + eligibility ----------
+export type Eligibility = { status: "ok" | "warning" | "blocked"; note: string };
+export type FitAssessment = {
+  applyFor: string[];      // the 1-2 roles actually worth applying for at THIS business
+  droppedRoles: string[];  // target roles that don't fit this business
+  fitScore: number;        // 0-100 how well the applicant matches what this business needs
+  fitSummary: string;      // one human sentence shown to the user
+  eligibility: Eligibility;
+};
+
+// One LLM call that decides role best-fit, scores suitability, and reads any hard eligibility
+// constraint the listing states (work rights / no sponsorship / residents only). Crosses these
+// with the applicant's own visa situation. Invents nothing — eligibility notes only come from the text.
+export async function aiAssessFit(opts: {
+  text: string;
+  company: string;
+  countryName: string;
+  countryVisa: string;           // e.g. "Accredited Employer Work Visa (AEWV)"
+  businessPositions: string[];   // what the page seems to offer
+  profile: EngineProfile;
+  lang?: AppLang;
+  tier?: AiTier;
+}): Promise<FitAssessment | null> {
+  if (!aiEnabled()) return null;
+  const { profile } = opts;
+  const langName = APP_LANGS.find((l) => l.code === (opts.lang || "en"))?.label || "English";
+  const visaLine = profile.hasVisa
+    ? `Already holds work authorization for: ${(profile.visaCountries || []).join(", ") || "(unspecified)"}${profile.visaLabel ? ` (${profile.visaLabel})` : ""}.`
+    : profile.needsVisaSponsorship
+    ? `Needs visa sponsorship to work in ${opts.countryName} (${opts.countryVisa}).`
+    : `Does not need visa sponsorship.`;
+
+  const prompt = `You are the matching engine of a job-application assistant. Decide, for THIS specific business,
+which of the applicant's target roles are genuinely worth applying for, score the fit, and flag any hard
+eligibility constraint the listing itself states. Be a sharp, honest career advisor — never pad an application
+with irrelevant roles (applying to a restaurant as a "Night Auditor" is spam).
+
+APPLICANT
+- Target roles (wish list): ${profile.targetRoles.join(", ") || "(none set)"}
+- Languages: ${profile.languages.join(", ") || "(unspecified)"}
+- Open to relocating: ${profile.relocation ? "yes" : "no"}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${visaLine}
+
+THE BUSINESS
+- Name: ${opts.company}
+- Country: ${opts.countryName}
+- Roles it appears to offer: ${opts.businessPositions.join(", ") || "(not explicitly stated — infer from the venue type)"}
+
+RAW PAGE TEXT:
+"""
+${opts.text.slice(0, 5000)}
+"""
+
+Return STRICT JSON ONLY, exactly these keys:
+{
+  "applyFor": ["1-2 of the applicant's target roles that truly fit this business; if none fit, the single closest realistic role for this venue"],
+  "droppedRoles": ["target roles that do NOT fit this business, e.g. lodging roles at a standalone restaurant"],
+  "fitScore": 0-100,
+  "fitSummary": "ONE short sentence in ${langName}, addressed to the applicant, explaining the fit and which role(s) you're applying for and why.",
+  "eligibility": {
+    "status": "ok | warning | blocked",
+    "note": "If the listing explicitly requires something the applicant may not meet (valid work rights / no sponsorship offered / citizens or residents only / specific local license), state it in ${langName} and what it means for them. Otherwise empty string."
+  }
+}
+
+Rules:
+- applyFor must be a subset of realistic roles for this venue. Prefer the applicant's own wording.
+- eligibility.note ONLY from explicit text in the page. If the page says nothing restrictive, status "ok" and note "".
+- If the applicant needs sponsorship AND the listing says no sponsorship / must already have work rights → status "blocked".
+- If it's implied or country-typical but not stated → status "warning" at most. Never invent a constraint.`;
+
+  const parsed = extractJson<Partial<FitAssessment>>(await complete(prompt, 600, opts.tier || "free"));
+  if (!parsed) return null;
+  const clampStr = (a: unknown): string[] =>
+    Array.isArray(a) ? a.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4) : [];
+  const elig = (parsed.eligibility || {}) as Partial<Eligibility>;
+  const status: Eligibility["status"] = elig.status === "blocked" || elig.status === "warning" ? elig.status : "ok";
+  return {
+    applyFor: clampStr(parsed.applyFor),
+    droppedRoles: clampStr(parsed.droppedRoles),
+    fitScore: typeof parsed.fitScore === "number" ? Math.max(0, Math.min(100, Math.round(parsed.fitScore))) : 0,
+    fitSummary: typeof parsed.fitSummary === "string" ? parsed.fitSummary.trim().slice(0, 300) : "",
+    eligibility: { status, note: typeof elig.note === "string" ? elig.note.trim().slice(0, 300) : "" },
   };
 }
 
@@ -260,10 +346,15 @@ export async function aiDraft(
   { text, analysis, profile }: GenerateInput,
   lang: AppLang = "en",
   tier: AiTier = "free",
-  authorization?: { authorized: boolean; visaLabel?: string | null }
+  authorization?: { authorized: boolean; visaLabel?: string | null },
+  // The specific role(s) chosen for THIS business (from fit assessment). When set, the draft
+  // applies ONLY for these — never the user's full target-role wish list.
+  applyForRoles?: string[]
 ): Promise<Draft | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
+  const rolesForThisJob = (applyForRoles && applyForRoles.length ? applyForRoles : analysis.positions).filter(Boolean);
+  const rolesLine = rolesForThisJob.join(", ") || "Hospitality (infer suitable roles from the page)";
 
   const sponsorship = authorization?.authorized
     ? `IMPORTANT — the applicant ALREADY HOLDS a valid ${authorization.visaLabel || "work authorization"} that permits them to work in ${analysis.country.name}. They do NOT need any sponsorship. State this clearly and positively as a major advantage: they are legally able to start without the employer arranging or paying for a visa, and they are immediately available. Do NOT ask for sponsorship.`
@@ -274,7 +365,7 @@ export async function aiDraft(
   const prompt = `You write outstanding, human job-application emails — the kind a hiring manager actually replies to. Write ONE application email for ${profile.fullName || "the applicant"}.
 
 APPLICANT
-- Roles of interest: ${profile.targetRoles.join(", ") || "Hospitality (infer suitable roles)"}
+- Applying specifically for: ${rolesLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
 - Open to relocating: ${profile.relocation ? "yes" : "no"}
 ${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- ${sponsorship}
@@ -282,7 +373,6 @@ ${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- ${sponsorship}
 THE BUSINESS (already analyzed)
 - Company: ${analysis.company}
 - Country: ${analysis.country.name}
-- Relevant positions: ${analysis.positions.join(", ") || "(infer from the page)"}
 
 RAW PAGE TEXT (for concrete, specific detail — reference something real about this venue, not generic flattery):
 """
@@ -292,6 +382,7 @@ ${text.slice(0, 4000)}
 Write the email fully IN ${langName} (subject AND body), at native-speaker quality. Return STRICT JSON only: {"subject": "...", "body": "..."}.
 
 Hard rules (follow exactly):
+- Apply ONLY for the role(s) listed under "Applying specifically for" — do NOT mention or apply for any other role, even if it's on the applicant's wider wish list. The subject names only these role(s).
 - Subject: plain text, NO "SUBJECT:" prefix; specific, not generic.
 - Body: warm, confident, concise (roughly 110-170 words). Reference the company by name and one concrete, true detail from the page. State the visa sponsorship need transparently if required. Mention the languages naturally. Note that the CV is attached.
 - NO "Sincerely"/"Kind regards"/any closing salutation, NO applicant name, email, phone, or signature block — a Gmail signature is appended automatically.

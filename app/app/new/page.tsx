@@ -1,14 +1,21 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useT } from "@/components/i18n";
 import { APP_LANGS } from "@/lib/engine/template";
 import { checkRecipients, applyFix } from "@/lib/email-check";
 
+type Eligibility = { status: "ok" | "warning" | "blocked"; note: string };
 type GenResult = {
   company: string;
   country: string;
   positions: string[];
+  applyFor?: string[];
+  droppedRoles?: string[];
+  fitScore?: number;
+  fitSummary?: string;
+  eligibility?: Eligibility;
   emails: string[];
   emailSource: "text" | "page-scrape" | "web-search" | "none";
   checkedOrigins?: string[];
@@ -57,6 +64,10 @@ function clearDraft() {
 
 export default function NewApplication() {
   const { t } = useT();
+  const { data: session } = useSession();
+  // Only a real Google OAuth session can send. Demo/credentials = drafts only.
+  // The server enforces this too (app/api/send/route.ts); this just disables the UI.
+  const canSend = ((session?.user as any)?.provider) === "google";
   const [text, setText] = useState("");
   const [auto, setAuto] = useState(false);
   const [language, setLanguage] = useState("auto");
@@ -215,7 +226,11 @@ export default function NewApplication() {
         setMsg({ kind: "warn", text: t("new.noEmailFound") });
         return;
       }
-      if (auto && !d.overLimit && d.emails.length) {
+      // Full-auto sends only when there's no hard eligibility block — otherwise stop and let the
+      // user read the warning and decide (semi-auto), even in full-auto mode.
+      if (d.eligibility?.status === "blocked") {
+        setMsg({ kind: "warn", text: t("new.fit.blockedAuto") });
+      } else if (auto && canSend && !d.overLimit && d.emails.length) {
         await doSend({ to: toVal, subject: d.subject, body: d.body, meta: d }, true);
       }
     } catch (e: any) {
@@ -230,6 +245,7 @@ export default function NewApplication() {
 
   async function doSend(p: { to: string; subject: string; body: string; meta: GenResult }, skipConfirm = false) {
     if (!p.to.trim()) return setMsg({ kind: "err", text: t("new.enterRecipient") });
+    if (!canSend) return setMsg({ kind: "warn", text: t("new.demoNoSend") });
     if (!skipConfirm) { setConfirmPending(p); return; }
     setSending(true);
     setMsg(null);
@@ -239,7 +255,8 @@ export default function NewApplication() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           to: p.to, subject: p.subject, body: p.body,
-          company: p.meta.company, country: p.meta.country, positions: p.meta.positions,
+          company: p.meta.company, country: p.meta.country,
+          positions: p.meta.applyFor?.length ? p.meta.applyFor : p.meta.positions,
           emailSource: p.meta.emailSource, draftSource: p.meta.draftSource,
           language: p.meta.language,
           includeCoverLetter,
@@ -250,6 +267,7 @@ export default function NewApplication() {
       });
       const d = await r.json();
       if (r.status === 402) return setMsg({ kind: "warn", text: t("new.limitReached") });
+      if (r.status === 403 && d?.demo) return setMsg({ kind: "warn", text: t("new.demoNoSend") });
       if (!r.ok) throw new Error(d.error || "Error");
       clearDraft();
       setDraftRestoredAt(null);
@@ -371,11 +389,34 @@ export default function NewApplication() {
           <div className="row gap-2 wrap">
             <span className="chip chip-accent">{res.company}</span>
             {res.country && <span className="chip">{res.country}</span>}
-            {res.positions.map((p) => (
+            {(res.applyFor && res.applyFor.length ? res.applyFor : res.positions).map((p) => (
               <span key={p} className="chip">{p}</span>
             ))}
             <span className={`chip ${res.emailSource === "none" ? "chip-warn" : "chip-ok"}`}>{t("new.mail")}: {srcLabel(res.emailSource)}</span>
           </div>
+
+          {(res.fitSummary || (res.eligibility && res.eligibility.status !== "ok") || (res.droppedRoles && res.droppedRoles.length > 0)) && (
+            <div className={`fit-panel reveal fit-${res.eligibility?.status === "blocked" ? "blocked" : res.eligibility?.status === "warning" ? "warning" : "ok"}`}>
+              {typeof res.fitScore === "number" && res.fitScore > 0 && (
+                <div className="fit-head">
+                  <span className="fit-score" aria-label={t("new.fit.score")}>{res.fitScore}<span className="fit-score-max">/100</span></span>
+                  <span className="fit-score-label">{t("new.fit.score")}</span>
+                </div>
+              )}
+              {res.fitSummary && <p className="fit-summary">{res.fitSummary}</p>}
+              {res.droppedRoles && res.droppedRoles.length > 0 && (
+                <p className="fit-dropped">{t("new.fit.dropped").replace("{roles}", res.droppedRoles.join(", "))}</p>
+              )}
+              {res.eligibility && res.eligibility.status !== "ok" && res.eligibility.note && (
+                <p className={`fit-eligibility fit-eligibility-${res.eligibility.status}`}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <span>{res.eligibility.note}</span>
+                </p>
+              )}
+            </div>
+          )}
 
           {res.duplicate && (
             <div className="dup-banner reveal">
@@ -546,11 +587,15 @@ export default function NewApplication() {
               </span>
               <div className="row gap-3">
                 {res.overLimit && <Link href="/app/billing" className="btn btn-sm">{t("new.limitPro")}</Link>}
-                <button className="btn btn-primary" data-loading={sending} onClick={() => res && doSend({ to, subject, body, meta: res })} disabled={sending || res.overLimit}>
+                {!canSend && <Link href="/app/profile" className="btn btn-sm">{t("new.connectGoogle")}</Link>}
+                <button className="btn btn-primary" data-loading={sending} onClick={() => res && doSend({ to, subject, body, meta: res })} disabled={sending || res.overLimit || !canSend}>
                   {sending ? t("new.sending") : t("new.send")}
                 </button>
               </div>
             </div>
+            {!canSend && (
+              <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("new.demoNoSend")}</span>
+            )}
             <label className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
               <input
                 type="checkbox"
