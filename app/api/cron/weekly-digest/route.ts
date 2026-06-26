@@ -8,13 +8,19 @@ export const maxDuration = 60;
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || "https://paply.me";
 
-function digestHtml(name: string, sent: number, companies: string[]): string {
+function digestHtml(name: string, sent: number, companies: string[], goal: number): string {
   const greeting = name ? `Hi ${name},` : "Hi,";
   const list = companies.slice(0, 5).map((c) => `<li style="margin:4px 0">${c}</li>`).join("");
+  const goalLine = goal > 0
+    ? (sent >= goal
+        ? `<p style="font-size:15px;color:#1a8f5f">You hit your weekly goal of <b>${goal}</b> 🎉</p>`
+        : `<p style="font-size:15px">You're <b>${goal - sent}</b> away from your weekly goal of <b>${goal}</b>.</p>`)
+    : "";
   return `
   <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:0 auto;color:#1a1f29">
     <p style="font-size:15px">${greeting}</p>
     <p style="font-size:15px">Here's your week on <b>paply</b>: you sent <b>${sent}</b> application${sent === 1 ? "" : "s"}.</p>
+    ${goalLine}
     ${list ? `<ul style="font-size:14px;color:#444;padding-left:18px">${list}</ul>` : ""}
     <p style="font-size:15px"><a href="${BASE}/app/new" style="color:#2f6bdc;font-weight:600">Send another →</a></p>
     <p style="font-size:12px;color:#8a8f98;margin-top:24px">You're receiving this because you have a paply account.
@@ -44,7 +50,7 @@ export async function GET(req: Request) {
       const recent = apps.filter((a) => new Date(a.createdAt).getTime() >= since && a.status === "sent");
       if (!recent.length) continue; // only nudge users who were actually active
       const companies = recent.map((a) => a.company || "—").filter(Boolean);
-      const html = digestHtml((u.name || "").split(" ")[0] || "", recent.length, companies);
+      const html = digestHtml((u.name || "").split(" ")[0] || "", recent.length, companies, profile?.weeklyGoal ?? 0);
       const ok = await sendEmail({
         to: u.email,
         subject: `Your paply week — ${recent.length} application${recent.length === 1 ? "" : "s"} sent`,
