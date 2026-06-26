@@ -152,6 +152,19 @@ export default function NewApplication() {
     setDraftRestoredAt(null);
   }
 
+  async function pasteFromClipboard() {
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (clip.trim()) {
+        setText(clip);
+        textareaRef.current?.focus();
+      }
+    } catch {
+      // Clipboard blocked (permission/Safari) — fall back to manual paste, focus the field.
+      textareaRef.current?.focus();
+    }
+  }
+
   const srcLabel = (s: string) =>
     ({ text: t("new.src.text"), "page-scrape": t("new.src.scrape"), "web-search": t("new.src.web"), none: t("new.src.none") } as Record<string, string>)[s] || s;
   const langLabel = (c: string) => APP_LANGS.find((l) => l.code === c)?.label || c;
@@ -256,7 +269,22 @@ export default function NewApplication() {
 
       <section className="glass card stack gap-4">
         <label className="field">
-          <span className="field-label">{t("new.content")}</span>
+          <div className="row gap-2" style={{ alignItems: "center", marginBottom: 6 }}>
+            <span className="field-label" style={{ margin: 0 }}>{t("new.content")}</span>
+            {!text.trim() && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ marginLeft: "auto" }}
+                onClick={pasteFromClipboard}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1" /><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
+                </svg>
+                {t("new.paste")}
+              </button>
+            )}
+          </div>
           <textarea ref={textareaRef} className="textarea" placeholder={t("new.placeholder")} value={text} onChange={(e) => setText(e.target.value)} />
           <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("new.urlHint")}</span>
         </label>
