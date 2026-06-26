@@ -59,7 +59,7 @@ async function complete(prompt: string, maxTokens: number, tier: AiTier): Promis
     const res = await fetch(`${r.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${r.apiKey}` },
-      body: JSON.stringify({ model: r.model, max_tokens: maxTokens, temperature: 0.4, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ model: r.model, max_tokens: maxTokens, temperature: 0.4, reasoning_effort: "low", messages: [{ role: "user", content: prompt }] }),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -213,7 +213,7 @@ Rules:
 - No more than 10 words.
 - Don't repeat the original word-for-word.
 - Invent nothing not implied by the roles or company.`;
-  const parsed = extractJson<{ subject?: string }>(await complete(prompt, 80, tier));
+  const parsed = extractJson<{ subject?: string }>(await complete(prompt, 300, tier));
   if (parsed?.subject && typeof parsed.subject === "string") return parsed.subject.trim().slice(0, 160);
   return null;
 }
@@ -297,7 +297,7 @@ Hard rules (follow exactly):
 - NO "Sincerely"/"Kind regards"/any closing salutation, NO applicant name, email, phone, or signature block — a Gmail signature is appended automatically.
 - Invent NOTHING — no email addresses, no facts not supported by the page or applicant profile. No clichés, no fake urgency.`;
 
-  const parsed = extractJson<Partial<Draft>>(await complete(prompt, 900, tier));
+  const parsed = extractJson<Partial<Draft>>(await complete(prompt, 1400, tier));
   if (parsed?.subject && parsed?.body) return { subject: parsed.subject, body: parsed.body };
   return null;
 }
