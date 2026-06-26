@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LangToggle } from "@/components/i18n";
 import { getT } from "@/lib/i18n-server";
+import HeroDraft from "@/components/HeroDraft";
 
 export default function Landing() {
   const { t } = getT();
@@ -64,8 +65,19 @@ export default function Landing() {
             <div className="scene-side scene-out">
               <div className="scene-tag">{t("landing.scene.application")}</div>
               <p><b>Front Desk / Kitchen — Aurelia Bay Hotel</b></p>
-              <p className="text-secondary">Dear Hiring Manager, I require AEWV sponsorship to work in New Zealand…</p>
+              <p className="text-secondary">
+                <HeroDraft text="Dear Hiring Manager, I require AEWV sponsorship to work in New Zealand…" />
+              </p>
             </div>
+          </div>
+
+          {/* Floating target-country pills — apply anywhere. */}
+          <div className="hero-orbit" aria-hidden="true">
+            <span className="orbit-chip" style={{ top: "-3%", left: "5%", animationDelay: "0s" }}>NZ</span>
+            <span className="orbit-chip" style={{ top: "7%", right: "-5%", animationDelay: "1.1s" }}>AU</span>
+            <span className="orbit-chip" style={{ top: "47%", right: "-7%", animationDelay: "2.3s" }}>UK</span>
+            <span className="orbit-chip" style={{ bottom: "9%", left: "-6%", animationDelay: "1.7s" }}>US</span>
+            <span className="orbit-chip" style={{ bottom: "-4%", right: "17%", animationDelay: "0.6s" }}>CA</span>
           </div>
 
           {/* Decorative: a paper plane carrying the application from pasted text → sent. */}

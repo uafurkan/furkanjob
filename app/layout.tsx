@@ -43,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang={lang}>
       <body>
         <div className="app-backdrop" aria-hidden />
+        <div className="app-aurora" aria-hidden />
         <div className="app-grain" aria-hidden />
         <Providers initialLang={lang}>{children}</Providers>
         <Analytics />

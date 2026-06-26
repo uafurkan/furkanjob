@@ -64,6 +64,43 @@
   .flight-glow { opacity: .5; }
 }
 
+/* Headline that settles into focus on load (protocol: "things become clear"). */
+.hero-title { animation: title-settle 900ms var(--ease-standard) both; }
+@keyframes title-settle {
+  from { filter: blur(10px); letter-spacing: .05em; opacity: 0; }
+  to   { filter: blur(0);    letter-spacing: -.02em; opacity: 1; }
+}
+
+/* Typewriter caret for the self-writing draft. */
+.type-caret {
+  display: inline-block; width: 2px; height: 1.05em; margin-left: 2px;
+  background: var(--accent-bright); vertical-align: text-bottom; border-radius: 1px;
+  animation: caret-blink 1s steps(1) infinite;
+}
+@keyframes caret-blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+
+/* Floating target-country pills orbiting the hero scene. */
+.hero-orbit { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.orbit-chip {
+  position: absolute; padding: 4px 11px; border-radius: 999px;
+  font-size: var(--text-12); font-weight: 600; letter-spacing: .05em;
+  color: var(--content-secondary);
+  background: rgba(255, 255, 255, .06); border: 1px solid var(--glass-stroke);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
+  animation: orbit-float 7s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes orbit-float {
+  0%, 100% { transform: translateY(0) rotate(-.5deg); }
+  50%      { transform: translateY(-9px) rotate(.5deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-title { animation: none; }
+  .orbit-chip { animation: none; }
+}
+
 .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-top: var(--space-12); }
 .feature h3 { font-size: var(--text-18); margin-bottom: var(--space-2); }
 .landing-foot { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-16); padding-top: var(--space-6); border-top: 1px solid var(--glass-stroke); flex-wrap: wrap; gap: var(--space-4); }

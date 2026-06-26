@@ -96,6 +96,33 @@ body {
     radial-gradient(80% 80% at 50% 50%, rgba(124, 224, 211, 0.05), transparent 80%),
     var(--bg-void);
 }
+/* Slow-drifting aurora blobs over the static backdrop — calm, single atmosphere, GPU-cheap. */
+.app-aurora { position: fixed; inset: -12%; z-index: -2; pointer-events: none; }
+.app-aurora::before, .app-aurora::after {
+  content: ""; position: absolute; border-radius: 50%; filter: blur(55px); will-change: transform;
+}
+.app-aurora::before {
+  width: 52vw; height: 52vw; left: 4%; top: -4%;
+  background: radial-gradient(circle, rgba(111, 168, 255, 0.16), transparent 65%);
+  animation: aurora-a 36s ease-in-out infinite;
+}
+.app-aurora::after {
+  width: 46vw; height: 46vw; right: 4%; bottom: -4%;
+  background: radial-gradient(circle, rgba(124, 224, 211, 0.13), transparent 65%);
+  animation: aurora-b 44s ease-in-out infinite;
+}
+@keyframes aurora-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(7vw, 6vh) scale(1.12); }
+}
+@keyframes aurora-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-6vw, -5vh) scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-aurora::before, .app-aurora::after { animation: none; }
+}
+
 /* very low grain to turn flat areas into "material" (protocol §4) */
 .app-grain {
   position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .025;
