@@ -206,6 +206,18 @@ function mapCv(r: Record<string, unknown>): Cv {
   };
 }
 
+const LEGACY_ERROR_MAP: Record<string, string> = {
+  "Gönderim yöntemi yok: Gmail bağla veya SMTP_APP_PASSWORD ayarla.": "No sending method connected — connect your Gmail to send applications.",
+  "Gmail erişimi yenilenemedi. Lütfen Gmail'i tekrar bağla.": "Gmail access could not be refreshed. Please reconnect your Gmail.",
+  "Alıcı e-posta yok.": "No recipient email address.",
+  "Konu veya metin boş.": "Subject or body is empty.",
+  "Aylık limit doldu.": "Monthly limit reached.",
+};
+function normalizeLegacyError(err: string | null): string | null {
+  if (!err) return null;
+  return LEGACY_ERROR_MAP[err.trim()] ?? err;
+}
+
 function mapApplication(r: Record<string, unknown>): Application {
   const parseArr = (v: unknown) => {
     if (Array.isArray(v)) return v as string[];
@@ -226,7 +238,8 @@ function mapApplication(r: Record<string, unknown>): Application {
     messageId: (r.message_id as string | null | undefined) ?? null,
     threadId: (r.thread_id as string | null | undefined) ?? null,
     notes: (r.notes as string | null | undefined) ?? null,
-    error: r.error as string | null,
+    // Normalize legacy Turkish error messages stored before i18n cleanup.
+    error: normalizeLegacyError(r.error as string | null),
     createdAt: r.created_at as string, sentAt: r.sent_at as string | null,
   };
 }
