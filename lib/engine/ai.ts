@@ -222,10 +222,10 @@ fitScore = sum of all 5 components (0-100).
 
 Return STRICT JSON ONLY, exactly these keys:
 {
-  "applyFor": ["1-2 of the applicant's target roles that truly fit this business; if none fit, the single closest realistic role for this venue"],
-  "droppedRoles": ["target roles that do NOT fit this business, e.g. lodging roles at a standalone restaurant"],
+  "applyFor": ["ALL of the applicant's target roles that genuinely fit this business — keep every role that the venue plausibly employs. E.g. a hotel with a restaurant keeps BOTH Front Desk AND Waiter. Only drop roles that are truly incompatible (e.g. Night Audit at a standalone café). If none fit, suggest the single most realistic role for this venue type."],
+  "droppedRoles": ["target roles that clearly do NOT fit this business, e.g. lodging-only roles at a standalone restaurant"],
   "fitScore": <number: sum from rubric above>,
-  "fitSummary": "ONE short sentence in ${langName}, addressed to the applicant, explaining the fit and which role(s) you're applying for and why.",
+  "fitSummary": "ONE short sentence in ${langName}, addressed to the applicant, listing all roles being applied for and why they fit.",
   "eligibility": {
     "status": "ok | warning | blocked",
     "note": "If the listing explicitly requires something the applicant may not meet (valid work rights / no sponsorship offered / citizens or residents only / specific local license), state it in ${langName} and what it means for them. Otherwise empty string."
@@ -233,7 +233,8 @@ Return STRICT JSON ONLY, exactly these keys:
 }
 
 Rules:
-- applyFor must be a subset of realistic roles for this venue. Prefer the applicant's own wording.
+- applyFor: include ALL of the applicant's roles that this venue can plausibly employ. Hotels employ both lodging AND food/bar staff — keep all applicable roles. Only drop roles that are structurally incompatible (accommodation roles at a standalone restaurant/café/bar).
+- Prefer the applicant's own role wording exactly.
 - eligibility.note ONLY from explicit text in the page. If the page says nothing restrictive, status "ok" and note "".
 - If the applicant needs sponsorship AND the listing says no sponsorship / must already have work rights → status "blocked".
 - If it's implied or country-typical but not stated → status "warning" at most. Never invent a constraint.
@@ -497,8 +498,8 @@ Return STRICT JSON only, with a "drafts" array containing exactly three items, e
 }
 
 Hard rules (follow exactly):
-- Apply ONLY for the role(s) listed under "Applying specifically for" — do NOT mention or apply for any other role. The subject names only these role(s).
-- Subject: plain text, NO "SUBJECT:" prefix; specific, not generic.
+- Apply ONLY for the role(s) listed under "Applying specifically for". If multiple roles are listed (e.g. "Front Desk, Waiter"), mention ALL of them — the applicant is qualified for each and the business employs all of them.
+- Subject: plain text, NO "SUBJECT:" prefix; specific, not generic. If multiple roles, list them all (e.g. "Front Desk & Waiter Application").
 - Body: concise. Reference the company by name and one concrete, true detail from the page. State the visa sponsorship need transparently if required. Mention the languages naturally. Note that the CV is attached.
 - NO "Sincerely"/"Kind regards"/any closing salutation, NO applicant name, email, phone, or signature block — a Gmail signature is appended automatically.
 - Invent NOTHING — no email addresses, no facts not supported by the page or applicant profile. No clichés, no fake urgency.`;
