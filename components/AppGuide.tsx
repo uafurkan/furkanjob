@@ -173,6 +173,8 @@ export default function AppGuide({ open, onClose }: { open?: boolean; onClose?: 
       onClick={(e) => { if (e.target === e.currentTarget) dismiss(); }}
     >
       <div className="guide-card glass glass-strong" role="dialog" aria-modal="true">
+        {/* iOS-style drag handle, visible only on mobile via CSS */}
+        <div className="guide-handle" aria-hidden="true" />
         <button className="guide-skip btn btn-ghost btn-sm" onClick={dismiss}>
           {t("guide.skip")}
         </button>

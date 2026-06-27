@@ -1238,9 +1238,50 @@
   opacity: 0; animation: gmPopIn 0.5s var(--ease-emphatic) 1.3s forwards;
 }
 
+/* iOS drag handle — hidden on desktop */
+.guide-handle {
+  display: none;
+}
+
 /* ── Guide mobile responsive ──────────────────── */
 @media (max-width: 520px) {
-  .guide-card { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
-  .guide-backdrop { align-items: flex-end; padding: 0; }
-  .guide-mockup { height: 180px; }
+  .guide-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .guide-card {
+    border-radius: 22px 22px 0 0;
+    max-width: 100%;
+    /* Fill at least 78% of screen so content breathes */
+    min-height: 78svh;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Drag handle pill at top */
+  .guide-handle {
+    display: block;
+    width: 36px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.18);
+    margin: 12px auto 0;
+    flex-shrink: 0;
+  }
+  /* Push skip button down below handle */
+  .guide-skip { top: 22px; }
+  /* Step fills remaining vertical space so footer sticks to bottom */
+  .guide-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .guide-mockup { height: 195px; }
+  .guide-body { flex: 1; }
+  /* Safe-area padding for home indicator */
+  .guide-footer {
+    padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 16px));
+  }
+  /* Slide-up entry on mobile instead of scale */
+  @keyframes gcSlideUp {
+    from { opacity: 0; transform: translateY(60px); }
+    to   { opacity: 1; transform: none; }
+  }
 }
