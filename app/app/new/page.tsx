@@ -22,7 +22,9 @@ type GenResult = {
   subjectB?: string | null;
   body: string;
   drafts?: { subject: string; body: string; style: string }[];
+  coverLetterBody?: string | null;
   fullName?: string;
+  contactEmail?: string;
   includeSignature?: boolean;
   draftSource: "ai" | "template";
   language: string;
@@ -45,12 +47,14 @@ type SavedDraft = {
   to: string;
   subject: string;
   body: string;
+  coverLetterBody?: string;
   res: GenResult;
   savedAt: number;
   selectedDraftIndex?: number;
   currentDrafts?: { subject: string; body: string; style: string }[];
   signatureChecked?: boolean;
   fullName?: string;
+  contactEmail?: string;
 };
 
 const DRAFT_KEY = "paply:draft:v1";
@@ -99,6 +103,9 @@ export default function NewApplication() {
   const [currentDrafts, setCurrentDrafts] = useState<{ subject: string; body: string; style: string }[]>([]);
   const [signatureChecked, setSignatureChecked] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [coverLetterBody, setCoverLetterBody] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [coverLetterPreviewOpen, setCoverLetterPreviewOpen] = useState(false);
 
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {
@@ -165,11 +172,13 @@ export default function NewApplication() {
     setTo(d.to);
     setSubject(d.subject);
     setBody(d.body);
+    setCoverLetterBody(d.coverLetterBody || "");
     setDraftRestoredAt(d.savedAt);
     setSelectedDraftIndex(d.selectedDraftIndex || 0);
     setCurrentDrafts(d.currentDrafts || []);
     setSignatureChecked(d.signatureChecked || false);
     setFullName(d.fullName || "");
+    setContactEmail(d.contactEmail || "");
   }, []);
 
   // Auto-save draft whenever editable fields change (debounced 800ms)
@@ -178,12 +187,12 @@ export default function NewApplication() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       saveDraft({
-        text, language, auto, to, subject, body, res, savedAt: Date.now(),
-        selectedDraftIndex, currentDrafts, signatureChecked, fullName
+        text, language, auto, to, subject, body, coverLetterBody, res, savedAt: Date.now(),
+        selectedDraftIndex, currentDrafts, signatureChecked, fullName, contactEmail
       });
     }, 800);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [text, language, auto, to, subject, body, res, selectedDraftIndex, currentDrafts, signatureChecked, fullName]);
+  }, [text, language, auto, to, subject, body, coverLetterBody, res, selectedDraftIndex, currentDrafts, signatureChecked, fullName, contactEmail]);
 
   function discardDraft() {
     clearDraft();
@@ -194,6 +203,7 @@ export default function NewApplication() {
     setTo("");
     setSubject("");
     setBody("");
+    setCoverLetterBody("");
     setMsg(null);
     setDraftRestoredAt(null);
     if (redirectTimer.current) {
@@ -204,6 +214,7 @@ export default function NewApplication() {
     setSelectedDraftIndex(0);
     setCurrentDrafts([]);
     setFullName("");
+    setContactEmail("");
 
     // Restore signature checkbox preference
     let lastSigPref = false;
@@ -350,6 +361,7 @@ export default function NewApplication() {
       setCurrentDrafts(parsedDrafts);
       setSelectedDraftIndex(0);
       setFullName(d.fullName || "");
+      setContactEmail(d.contactEmail || "");
       
       let initialBody = parsedDrafts[0].body;
       let isSigChecked = d.includeSignature || false;
@@ -368,6 +380,7 @@ export default function NewApplication() {
       }
       setSubject(parsedDrafts[0].subject);
       setBody(initialBody);
+      setCoverLetterBody(d.coverLetterBody || initialBody);
       setDraftRestoredAt(null);
       if (d.emailSource === "none") {
         setMsg({ kind: "warn", text: t("new.noEmailFound") });
@@ -409,6 +422,7 @@ export default function NewApplication() {
       setCurrentDrafts(parsedDrafts);
       setSelectedDraftIndex(0);
       setFullName(d.fullName || "");
+      setContactEmail(d.contactEmail || "");
       
       let initialBody = parsedDrafts[0].body;
       let isSigChecked = signatureChecked;
@@ -427,6 +441,7 @@ export default function NewApplication() {
       }
       setSubject(parsedDrafts[0].subject);
       setBody(initialBody);
+      setCoverLetterBody(d.coverLetterBody || initialBody);
       setDraftRestoredAt(null);
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
@@ -453,6 +468,7 @@ export default function NewApplication() {
           emailSource: p.meta.emailSource, draftSource: p.meta.draftSource,
           language: p.meta.language,
           includeCoverLetter,
+          coverLetterBody: includeCoverLetter ? coverLetterBody : undefined,
           ccSelf,
           documentIds: selectedDocs,
           cvId: selectedCv || undefined,
@@ -810,6 +826,112 @@ export default function NewApplication() {
             )}
           </div>
 
+          {includeCoverLetter && (
+            <div className="stack gap-3 reveal" style={{ marginTop: "var(--space-2)", borderTop: "1px solid var(--border)", paddingTop: "var(--space-4)" }}>
+              <div className="row gap-2" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                <span className="field-label" style={{ margin: 0 }}>📝 {t("new.coverLetterTitle")}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ fontSize: "var(--text-12)", minHeight: 28, padding: "0 var(--space-2)", gap: "var(--space-1)" }}
+                  onClick={() => setCoverLetterPreviewOpen(true)}
+                >
+                  📄 {t("new.preview")}
+                </button>
+              </div>
+              <textarea
+                className="textarea"
+                style={{ minHeight: 220 }}
+                value={coverLetterBody}
+                onChange={(e) => setCoverLetterBody(e.target.value)}
+                placeholder={t("new.coverLetterBody")}
+              />
+
+              {/* Cover Letter Quality Check Widget */}
+              <div className="glass card stack gap-3" style={{ background: "rgba(255,255,255,0.02)", padding: "var(--space-3)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-md)" }}>
+                <span className="field-label" style={{ margin: 0, fontSize: "var(--text-13)", opacity: 0.8, display: "flex", alignItems: "center", gap: 6 }}>
+                  🔍 {t("new.coverLetterChecklist")}
+                </span>
+                
+                <div className="stack gap-2" style={{ marginTop: "var(--space-1)" }}>
+                  {/* Rule 1: Includes company name */}
+                  <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
+                    <span style={{ color: coverLetterBody.toLowerCase().includes((res?.company || "").toLowerCase()) ? "var(--signal-success, #10b981)" : "var(--signal-warning, #f59e0b)" }}>
+                      {coverLetterBody.toLowerCase().includes((res?.company || "").toLowerCase()) ? "✓" : "⚠"}
+                    </span>
+                    <span className="text-secondary">{t("new.coverLetterCheck.company")}:</span>
+                    <strong className="chip chip-sm" style={{ fontSize: "var(--text-11)" }}>{res?.company || "—"}</strong>
+                  </div>
+
+                  {/* Rule 2: Includes target roles */}
+                  {(() => {
+                    const roles = (res?.applyFor?.length ? res.applyFor : res?.positions || []);
+                    const matchedRole = roles.find(r => coverLetterBody.toLowerCase().includes(r.toLowerCase()));
+                    const hasMatched = Boolean(matchedRole);
+                    return (
+                      <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
+                        <span style={{ color: hasMatched ? "var(--signal-success, #10b981)" : "var(--signal-warning, #f59e0b)" }}>
+                          {hasMatched ? "✓" : "⚠"}
+                        </span>
+                        <span className="text-secondary">{t("new.coverLetterCheck.roles")}:</span>
+                        <div className="row gap-1">
+                          {roles.map(r => (
+                            <strong key={r} className={`chip chip-sm ${matchedRole === r ? "chip-accent" : ""}`} style={{ fontSize: "var(--text-11)" }}>
+                              {r}
+                            </strong>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Rule 3: Avoids email specific keywords */}
+                  {(() => {
+                    const hasEmailPhrases = /attached (to )?this email|email attachment|attachment in this mail|e-postada|ekli mail|bu mail|e-posta eki|dosya ektedir|ek e-posta/i.test(coverLetterBody);
+                    return (
+                      <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
+                        <span style={{ color: !hasEmailPhrases ? "var(--signal-success, #10b981)" : "var(--signal-warning, #f59e0b)" }}>
+                          {!hasEmailPhrases ? "✓" : "⚠"}
+                        </span>
+                        <span className="text-secondary">{t("new.coverLetterCheck.noEmailPhrases")}</span>
+                        {hasEmailPhrases && (
+                          <span className="text-secondary" style={{ fontSize: "var(--text-11)", color: "var(--signal-warning, #f59e0b)" }}>
+                            (Found email references)
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Rule 4: Custom tailored status */}
+                  {(() => {
+                    const roles = (res?.applyFor?.length ? res.applyFor : res?.positions || []);
+                    const hasMatched = roles.some(r => coverLetterBody.toLowerCase().includes(r.toLowerCase()));
+                    const hasCompany = coverLetterBody.toLowerCase().includes((res?.company || "").toLowerCase());
+                    const isTailored = hasMatched && hasCompany;
+                    return (
+                      <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
+                        <span style={{ color: isTailored ? "var(--signal-success, #10b981)" : "var(--signal-warning, #f59e0b)" }}>
+                          {isTailored ? "✓" : "⚠"}
+                        </span>
+                        <span className="text-secondary">{t("new.coverLetterCheck.customized")}</span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Rule 5: AI personalized */}
+                  {res?.draftSource === "ai" && (
+                    <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
+                      <span style={{ color: "var(--signal-success, #10b981)" }}>✓</span>
+                      <span className="text-secondary">{t("new.coverLetterCheck.aiGenerated")}</span>
+                      <span className="chip chip-sm chip-accent" style={{ fontSize: "var(--text-10)", padding: "1px 6px" }}>{t("new.aiLabel")}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="stack gap-3">
             {cvs.length > 1 && (
               <label className="field" style={{ maxWidth: 320 }}>
@@ -937,6 +1059,95 @@ export default function NewApplication() {
               <button className="btn btn-primary" onClick={() => { const p = confirmPending; setConfirmPending(null); doSend(p, true); }}>
                 {t("new.send")}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {coverLetterPreviewOpen && res && (
+        <div className="confirm-overlay" onClick={() => setCoverLetterPreviewOpen(false)}>
+          <div className="confirm-modal cl-preview-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 680, width: "94%", maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column", padding: "var(--space-4)" }}>
+            <div className="detail-header" style={{ borderBottom: "1px solid var(--border-soft)", paddingBottom: "var(--space-3)", marginBottom: "var(--space-3)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span className="detail-company" style={{ fontSize: "var(--text-16)", fontWeight: 600 }}>📄 {t("new.coverLetterTitle")} ({t("new.preview")})</span>
+              <button className="btn btn-sm" onClick={() => setCoverLetterPreviewOpen(false)}>{t("apps.detail.close")}</button>
+            </div>
+            
+            {/* Styled "A4" Document Preview Box */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "var(--space-4) var(--space-5)", background: "#ffffff", color: "#1e293b", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid #e2e8f0", fontFamily: "Georgia, serif", fontSize: "14px", lineHeight: "1.6", display: "flex", flexDirection: "column", gap: "16px" }}>
+              
+              {/* Sender Details */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                <strong style={{ fontSize: "16px", color: "#0f172a" }}>{fullName || res.fullName || ""}</strong>
+                <span style={{ fontSize: "12px", color: "#64748b" }}>{contactEmail || res.contactEmail || ""}</span>
+              </div>
+              
+              {/* Date */}
+              <div style={{ color: "#64748b", fontSize: "12px", marginTop: "4px" }}>
+                {(() => {
+                  const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
+                    en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
+                    tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
+                    es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
+                    fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
+                    de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
+                    it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
+                    pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
+                  };
+                  const lang = res.language || "en";
+                  const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
+                  return loc.formatDate(new Date());
+                })()}
+              </div>
+              
+              {/* Company Info */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
+                <strong style={{ color: "#0f172a" }}>{res.company}</strong>
+                <span style={{ color: "#475569" }}>
+                  {(() => {
+                    const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
+                      en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
+                      tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
+                      es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
+                      fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
+                      de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
+                      it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
+                      pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
+                    };
+                    const lang = res.language || "en";
+                    const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
+                    return loc.hiringTeam;
+                  })()}
+                </span>
+              </div>
+              
+              {/* Document Body Paragraphs */}
+              <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "14px", color: "#334155", textAlign: "justify" }}>
+                {coverLetterBody.split(/\n+/).filter(s => s.trim().length > 0).map((p, i) => (
+                  <p key={i} style={{ margin: 0 }}>{p}</p>
+                ))}
+              </div>
+              
+              {/* Closing */}
+              <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span>
+                  {(() => {
+                    const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
+                      en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
+                      tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
+                      es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
+                      fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
+                      de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
+                      it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
+                      pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
+                    };
+                    const lang = res.language || "en";
+                    const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
+                    return loc.sincerely;
+                  })()}
+                </span>
+                <strong style={{ color: "#0f172a" }}>{fullName || res.fullName || ""}</strong>
+              </div>
+              
             </div>
           </div>
         </div>

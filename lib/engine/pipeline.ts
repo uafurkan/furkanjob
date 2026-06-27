@@ -2,7 +2,7 @@
 import { analyze, detectTextLang, countryByCode, type Analysis } from "./detect";
 import { findEmails } from "./websearch";
 import { buildDraft, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
-import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, type AiTier, type Eligibility } from "./ai";
+import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, type AiTier, type Eligibility } from "./ai";
 import { pickRelevantRoles } from "./match";
 import { isVisaCovered } from "./visa";
 import type { Draft, DraftOption, EngineProfile } from "./types";
@@ -26,6 +26,7 @@ export type PipelineResult = {
   fitScore: number;          // 0-100 suitability
   fitSummary: string;        // one human sentence
   eligibility: Eligibility;  // hard constraint read from the listing, crossed with user's visa status
+  coverLetterBody: string | null;
 };
 
 export async function runPipeline(opts: {
@@ -141,12 +142,17 @@ export async function runPipeline(opts: {
   // Draft: AI when configured (tier picks the model), else the smart multilingual template.
   let drafts: DraftOption[] = [];
   let draftSource: "ai" | "template" = "template";
+  let coverLetterBody: string | null = null;
   if (aiEnabled()) {
-    const aiRes = await aiDrafts({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor, opts.reasoningEffort);
+    const [aiRes, aiCl] = await Promise.all([
+      aiDrafts({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor, opts.reasoningEffort),
+      aiCoverLetter({ text, analysis: draftAnalysis, profile }, language, tier, applyFor),
+    ]);
     if (aiRes && aiRes.length) {
       drafts = aiRes;
       draftSource = "ai";
     }
+    coverLetterBody = aiCl;
   }
   if (!drafts.length) {
     const fallbackDraft = buildDraft(draftAnalysis, profile, language, authorization);
@@ -163,5 +169,6 @@ export async function runPipeline(opts: {
     drafts,
     draftSource, language, visaCovered, visaLabel, checkedOrigins,
     applyFor, droppedRoles, fitScore, fitSummary, eligibility,
+    coverLetterBody,
   };
 }

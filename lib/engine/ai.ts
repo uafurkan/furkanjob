@@ -341,6 +341,53 @@ ${opts.body.slice(0, 4000)}
   return null;
 }
 
+
+// ---------- Custom Cover Letter generation ----------
+export async function aiCoverLetter(
+  { text, analysis, profile }: GenerateInput,
+  lang: AppLang = "en",
+  tier: AiTier = "free",
+  applyForRoles?: string[]
+): Promise<string | null> {
+  if (!aiEnabled()) return null;
+  const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
+  const rolesForThisJob = (applyForRoles && applyForRoles.length ? applyForRoles : analysis.positions).filter(Boolean);
+  const rolesLine = rolesForThisJob.join(", ") || "Hospitality";
+
+  const prompt = `You are a professional CV and Cover Letter writer. Write a formal, outstanding Cover Letter for ${profile.fullName || "the applicant"} applying to "${analysis.company}" in ${analysis.country.name} for the roles: ${rolesLine}.
+
+APPLICANT INFO:
+- Name: ${profile.fullName || "the applicant"}
+- Target Roles: ${rolesLine}
+- Languages: ${profile.languages.join(", ") || "(not specified)"}
+- Relocation: ${profile.relocation ? "Yes" : "No"}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${profile.needsVisaSponsorship ? "Requires visa sponsorship" : "Work authorized"}
+
+THE BUSINESS:
+- Company: ${analysis.company}
+- Location: ${analysis.country.name}
+
+RAW TEXT FROM JOB LISTING / WEBSITE:
+"""
+${text.slice(0, 4000)}
+"""
+
+Write the cover letter fully in ${langName} at native speaker quality.
+Return STRICT JSON only: {"body": "..."}.
+
+Rules for the cover letter:
+- Write ONLY the main body paragraphs of the cover letter.
+- Do NOT include applicant details, date, company address, greeting (like 'Dear hiring manager'), or closing sign-off (like 'Sincerely, [Name]'). Those will be added automatically by the docx formatter.
+- Structure it professionally into 3 paragraphs:
+  1. Introduction: State interest in the role at the specific company, demonstrating genuine enthusiasm. Reference some details of their venue or brand.
+  2. Experience/Why Me: Map the applicant's background, bio, and languages to the specific business needs.
+  3. Conclusion: Reiterate interest, state that the resume/CV is enclosed (do NOT mention email attachments since this is a document), and express interest in discussing further.
+- Keep it concise, formal yet engaging, and highly customized. Invent no fake details.`;
+
+  const parsed = extractJson<{ body?: string }>(await complete(prompt, 1000, tier));
+  return parsed?.body || null;
+}
+
 // ---------- Draft generation ----------
 export async function aiDrafts(
   { text, analysis, profile }: GenerateInput,

@@ -95,7 +95,8 @@ async function handleSend(req: Request) {
       const applicantEmail = profile?.contactEmail || user.email || "";
       const company = (body?.company as string | undefined) || "the company";
       const language = (body?.language as string | undefined) || "en";
-      const docxBuf = await buildCoverLetterDocx({ applicantName, applicantEmail, company, body: text, language });
+      const clBody = (body?.coverLetterBody as string | undefined) || text;
+      const docxBuf = await buildCoverLetterDocx({ applicantName, applicantEmail, company, body: clBody, language });
       const safeName = (applicantName.replace(/\s+/g, "_") || "Applicant") + "_cover_letter.docx";
       attachments.push({
         filename: safeName,
