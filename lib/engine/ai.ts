@@ -158,6 +158,10 @@ export async function aiAssessFit(opts: {
     ? `Needs visa sponsorship to work in ${opts.countryName} (${opts.countryVisa}).`
     : `Does not need visa sponsorship.`;
 
+  const cvSection = profile.cvText
+    ? `\nCV / RESUME (extracted text — use this to score experience accurately):\n"""\n${profile.cvText.slice(0, 3000)}\n"""`
+    : "";
+
   // Build a deterministic prompt with strict rubric-based scoring so the same inputs always produce the same result.
   const prompt = `You are the deterministic matching engine of a job-application assistant. Your output must be EXACTLY
 reproducible: given the same inputs, you MUST return the same JSON every time. Do NOT introduce any randomness.
@@ -169,7 +173,7 @@ APPLICANT
 - Target roles (wish list): ${profile.targetRoles.join(", ") || "(none set)"}
 - Languages: ${profile.languages.join(", ") || "(unspecified)"}
 - Open to relocating: ${profile.relocation ? "yes" : "no"}
-${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${visaLine}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${visaLine}${cvSection}
 
 THE BUSINESS
 - Name: ${opts.company}
@@ -393,6 +397,10 @@ export async function aiCoverLetter(
   const rolesForThisJob = (applyForRoles && applyForRoles.length ? applyForRoles : analysis.positions).filter(Boolean);
   const rolesLine = rolesForThisJob.join(", ") || "Hospitality";
 
+  const cvSection = profile.cvText
+    ? `\nAPPLICANT CV (extract concrete experience, past employers, job titles, and skills — weave these into the cover letter to make it specific and compelling):\n"""\n${profile.cvText.slice(0, 3500)}\n"""`
+    : "";
+
   const prompt = `You are a professional CV and Cover Letter writer. Write a formal, outstanding Cover Letter for ${profile.fullName || "the applicant"} applying to "${analysis.company}" in ${analysis.country.name} for the roles: ${rolesLine}.
 
 APPLICANT INFO:
@@ -400,7 +408,7 @@ APPLICANT INFO:
 - Target Roles: ${rolesLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
 - Relocation: ${profile.relocation ? "Yes" : "No"}
-${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${profile.needsVisaSponsorship ? "Requires visa sponsorship" : "Work authorized"}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${profile.needsVisaSponsorship ? "Requires visa sponsorship" : "Work authorized"}${cvSection}
 
 THE BUSINESS:
 - Company: ${analysis.company}
@@ -452,6 +460,10 @@ export async function aiDrafts(
     thinkingInstruction = "\n\nDEEP REASONING MODE: Please analyze the job listing thoroughly. Think deeply about the culture, requirements, and how the applicant's profile maps to it. Craft drafts that show a profound understanding of the venue's brand and look extremely tailored, mature, and professional.";
   }
 
+  const cvSection = profile.cvText
+    ? `\nAPPLICANT CV (use specific details — job titles, employers, dates, skills — to make the email concrete and tailored):\n"""\n${profile.cvText.slice(0, 3000)}\n"""`
+    : "";
+
   const prompt = `You write outstanding, human job-application emails — the kind a hiring manager actually replies to. Write THREE distinct application emails for ${profile.fullName || "the applicant"}.
 
 Each draft should have a different style/angle:
@@ -463,7 +475,7 @@ APPLICANT
 - Applying specifically for: ${rolesLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
 - Open to relocating: ${profile.relocation ? "yes" : "no"}
-${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- ${sponsorship}${thinkingInstruction}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- ${sponsorship}${cvSection}${thinkingInstruction}
 
 THE BUSINESS (already analyzed)
 - Company: ${analysis.company}
@@ -509,6 +521,7 @@ export async function aiRewriteCoverLetter(opts: {
   applicantLanguages?: string[];
   needsVisaSponsorship?: boolean;
   openToRelocation?: boolean;
+  cvText?: string | null;
   lang: AppLang;
   tier?: AiTier;
 }): Promise<string | null> {
@@ -527,10 +540,14 @@ export async function aiRewriteCoverLetter(opts: {
     .filter(Boolean)
     .join("\n");
 
+  const cvSection = opts.cvText
+    ? `\nAPPLICANT CV (use specific job titles, employers, dates, skills from here):\n"""\n${opts.cvText.slice(0, 3000)}\n"""`
+    : "";
+
   const prompt = `You are an elite Cover Letter writer. Your task is to DEEPLY REWRITE and dramatically IMPROVE the cover letter below.
 
 APPLICANT PROFILE:
-${applicantLines || "(profile not available)"}
+${applicantLines || "(profile not available)"}${cvSection}
 
 COMPANY: ${opts.company || "(not specified)"}
 TARGET ROLES: ${rolesLine}
