@@ -122,6 +122,14 @@ export default function NewApplication() {
   const [coverLetterPreviewOpen, setCoverLetterPreviewOpen] = useState(false);
   const [rewritingCoverLetter, setRewritingCoverLetter] = useState(false);
 
+  // Ask AI panel
+  const [askOpen, setAskOpen] = useState(false);
+  const [askSuggestions, setAskSuggestions] = useState<string[]>([]);
+  const [askQuestion, setAskQuestion] = useState("");
+  const [askAnswer, setAskAnswer] = useState<string | null>(null);
+  const [askLoading, setAskLoading] = useState(false);
+  const [askCustom, setAskCustom] = useState(false);
+
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {
     if (!loadDraft()) textareaRef.current?.focus();
@@ -582,6 +590,62 @@ export default function NewApplication() {
   }
 
 
+  async function openAsk() {
+    if (!res) return;
+    setAskOpen(true);
+    setAskAnswer(null);
+    setAskCustom(false);
+    setAskQuestion("");
+    if (askSuggestions.length) return;
+    try {
+      const r = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mode: "suggestions",
+          company: res.company,
+          country: res.country,
+          roles: res.applyFor?.length ? res.applyFor : res.positions,
+          subject,
+          body,
+          eligibilityNote: res.eligibility?.note || "",
+          fitScore: res.fitScore,
+        }),
+      });
+      const d = await r.json();
+      if (Array.isArray(d.suggestions)) setAskSuggestions(d.suggestions);
+    } catch {}
+  }
+
+  async function submitAsk(question: string) {
+    if (!res || !question.trim() || askLoading) return;
+    setAskLoading(true);
+    setAskAnswer(null);
+    try {
+      const r = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mode: "ask",
+          company: res.company,
+          country: res.country,
+          roles: res.applyFor?.length ? res.applyFor : res.positions,
+          subject,
+          body,
+          eligibilityNote: res.eligibility?.note || "",
+          fitScore: res.fitScore,
+          question,
+        }),
+      });
+      const d = await r.json();
+      setAskAnswer(d.answer || null);
+    } catch {
+      setAskAnswer("Something went wrong. Please try again.");
+    } finally {
+      setAskLoading(false);
+    }
+  }
+
   const restoredLabel = draftRestoredAt
     ? t("new.draftRestored").replace("{time}", new Date(draftRestoredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
     : null;
@@ -694,6 +758,109 @@ export default function NewApplication() {
               )}
             </div>
           )}
+
+          {/* Ask AI panel */}
+          <div className="stack gap-3">
+            {!askOpen ? (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ alignSelf: "flex-start", gap: 6, fontSize: "var(--text-13)", color: "var(--content-secondary)" }}
+                onClick={openAsk}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                Ask AI about this application
+              </button>
+            ) : (
+              <div className="glass stack gap-3 reveal" style={{ padding: "var(--space-4)", borderRadius: "var(--radius-soft)", border: "1px solid var(--border-soft)" }}>
+                <div className="row gap-2" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "var(--text-13)", fontWeight: 600, color: "var(--content-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    Ask about this application
+                  </span>
+                  <button type="button" className="btn btn-ghost btn-sm" style={{ minHeight: 24, padding: "0 var(--space-2)", fontSize: "var(--text-12)" }} onClick={() => { setAskOpen(false); setAskAnswer(null); setAskCustom(false); setAskQuestion(""); }}>✕</button>
+                </div>
+
+                {/* Suggestion chips */}
+                {!askAnswer && (
+                  <div className="row gap-2 wrap">
+                    {askSuggestions.length === 0 && !askCustom && (
+                      <span style={{ fontSize: "var(--text-12)", color: "var(--content-secondary)", opacity: 0.6 }}>Loading suggestions…</span>
+                    )}
+                    {askSuggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className="chip"
+                        style={{ cursor: "pointer", textAlign: "left", fontSize: "var(--text-12)" }}
+                        onClick={() => { setAskQuestion(s); submitAsk(s); }}
+                        disabled={askLoading}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                    {!askCustom && askSuggestions.length > 0 && (
+                      <button
+                        type="button"
+                        className="chip chip-accent"
+                        style={{ cursor: "pointer", fontSize: "var(--text-12)" }}
+                        onClick={() => setAskCustom(true)}
+                      >
+                        + Other…
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Custom input */}
+                {(askCustom || askAnswer) && (
+                  <div className="row gap-2" style={{ alignItems: "flex-end" }}>
+                    <input
+                      className="input"
+                      style={{ flex: 1, fontSize: "var(--text-13)" }}
+                      placeholder="Ask anything about this application…"
+                      value={askQuestion}
+                      onChange={(e) => setAskQuestion(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitAsk(askQuestion); } }}
+                      disabled={askLoading}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      style={{ minHeight: 36, padding: "0 var(--space-3)" }}
+                      onClick={() => submitAsk(askQuestion)}
+                      disabled={askLoading || !askQuestion.trim()}
+                    >
+                      {askLoading ? "…" : "Ask"}
+                    </button>
+                  </div>
+                )}
+
+                {/* Answer */}
+                {askLoading && (
+                  <div style={{ fontSize: "var(--text-13)", color: "var(--content-secondary)", opacity: 0.7 }}>Thinking…</div>
+                )}
+                {askAnswer && (
+                  <div className="stack gap-2 reveal">
+                    <p style={{ fontSize: "var(--text-13)", color: "var(--content-primary)", lineHeight: 1.6, margin: 0 }}>{askAnswer}</p>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ alignSelf: "flex-start", fontSize: "var(--text-12)", marginTop: 2 }}
+                      onClick={() => { setAskAnswer(null); setAskQuestion(""); setAskCustom(true); }}
+                    >
+                      Ask another question
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {res.duplicate && (
             <div className="dup-banner reveal">
