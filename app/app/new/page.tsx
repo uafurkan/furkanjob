@@ -203,9 +203,30 @@ export default function NewApplication() {
     setRedirectCountdown(null);
     setSelectedDraftIndex(0);
     setCurrentDrafts([]);
-    setSignatureChecked(false);
     setFullName("");
+
+    // Restore signature checkbox preference
+    let lastSigPref = false;
+    try {
+      const sigPref = localStorage.getItem("paply:pref:includeSignature");
+      if (sigPref !== null) lastSigPref = sigPref === "true";
+    } catch {}
+    setSignatureChecked(lastSigPref);
   }
+
+  // Load settings preferences on mount
+  useEffect(() => {
+    try {
+      const coverPref = localStorage.getItem("paply:pref:includeCoverLetter");
+      if (coverPref !== null) {
+        setIncludeCoverLetter(coverPref === "true");
+      }
+      const sigPref = localStorage.getItem("paply:pref:includeSignature");
+      if (sigPref !== null) {
+        setSignatureChecked(sigPref === "true");
+      }
+    } catch {}
+  }, []);
 
   // Clean up redirect timer on unmount
   useEffect(() => {
@@ -245,8 +266,14 @@ export default function NewApplication() {
     setBody(targetBody);
   };
 
+  const handleCoverLetterToggle = (checked: boolean) => {
+    setIncludeCoverLetter(checked);
+    try { localStorage.setItem("paply:pref:includeCoverLetter", String(checked)); } catch {}
+  };
+
   const handleSignatureToggle = (checked: boolean) => {
     setSignatureChecked(checked);
+    try { localStorage.setItem("paply:pref:includeSignature", String(checked)); } catch {}
     if (!fullName) return;
 
     const sigText = `\n\nSincerely,\n${fullName}`;
@@ -325,7 +352,15 @@ export default function NewApplication() {
       setFullName(d.fullName || "");
       
       let initialBody = parsedDrafts[0].body;
-      if (d.includeSignature && d.fullName) {
+      let isSigChecked = d.includeSignature || false;
+      try {
+        const sigPref = localStorage.getItem("paply:pref:includeSignature");
+        if (sigPref !== null) {
+          isSigChecked = sigPref === "true";
+        }
+      } catch {}
+
+      if (isSigChecked && d.fullName) {
         initialBody = initialBody.trim() + `\n\nSincerely,\n${d.fullName}`;
         setSignatureChecked(true);
       } else {
@@ -376,8 +411,19 @@ export default function NewApplication() {
       setFullName(d.fullName || "");
       
       let initialBody = parsedDrafts[0].body;
-      if (signatureChecked && d.fullName) {
+      let isSigChecked = signatureChecked;
+      try {
+        const sigPref = localStorage.getItem("paply:pref:includeSignature");
+        if (sigPref !== null) {
+          isSigChecked = sigPref === "true";
+        }
+      } catch {}
+
+      if (isSigChecked && d.fullName) {
         initialBody = initialBody.trim() + `\n\nSincerely,\n${d.fullName}`;
+        setSignatureChecked(true);
+      } else {
+        setSignatureChecked(false);
       }
       setSubject(parsedDrafts[0].subject);
       setBody(initialBody);
@@ -792,7 +838,7 @@ export default function NewApplication() {
               <input
                 type="checkbox"
                 checked={includeCoverLetter}
-                onChange={(e) => setIncludeCoverLetter(e.target.checked)}
+                onChange={(e) => handleCoverLetterToggle(e.target.checked)}
                 style={{ width: 16, height: 16, accentColor: "var(--accent)" }}
               />
               <span style={{ fontSize: "var(--text-13)", color: "var(--text-secondary)" }}>
