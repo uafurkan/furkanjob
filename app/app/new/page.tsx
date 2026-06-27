@@ -574,7 +574,7 @@ export default function NewApplication() {
           <div>
             <h1>{t("new.title")}</h1>
             <p className="text-secondary">{t("new.sub")}</p>
-            <Link href="/app/bulk" className="text-secondary" style={{ fontSize: "var(--text-13)", textDecoration: "none" }}>⚡ {t("new.bulk")} →</Link>
+            <Link href="/app/bulk" className="text-secondary" style={{ fontSize: "var(--text-13)", textDecoration: "none" }}>{t("new.bulk")} →</Link>
           </div>
           {res && (
             <button className="btn btn-ghost btn-sm draft-discard" onClick={discardDraft} title={t("new.discard")}>
@@ -925,13 +925,13 @@ export default function NewApplication() {
                       </svg>
                       {t("new.preview")}
                     </span>
-                    <div style={{ flex: 1, minHeight: 280, maxHeight: 420, overflowY: "auto", padding: "var(--space-4) var(--space-4)", background: "#ffffff", color: "#1e293b", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid #e2e8f0", fontFamily: "Georgia, serif", fontSize: "12px", lineHeight: "1.5", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ flex: 1, minHeight: 280, maxHeight: 420, overflowY: "auto", padding: "var(--space-4) var(--space-4)", background: "rgba(255,255,255,0.95)", color: "var(--content-primary)", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid var(--glass-stroke)", fontFamily: "Georgia, serif", fontSize: "12px", lineHeight: "1.5", display: "flex", flexDirection: "column", gap: "12px" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                        <strong style={{ fontSize: "13px", color: "#0f172a" }}>{fullName || res?.fullName || "Applicant"}</strong>
-                        <span style={{ fontSize: "11px", color: "#64748b" }}>{contactEmail || res?.contactEmail || ""}</span>
+                        <strong style={{ fontSize: "13px", color: "var(--content-primary)" }}>{fullName || res?.fullName || "Applicant"}</strong>
+                        <span style={{ fontSize: "11px", color: "var(--content-secondary)" }}>{contactEmail || res?.contactEmail || ""}</span>
                       </div>
 
-                      <div style={{ color: "#64748b", fontSize: "10px", marginTop: "2px" }}>
+                      <div style={{ color: "var(--content-secondary)", fontSize: "10px", marginTop: "2px" }}>
                         {(() => {
                           const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
                             en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
@@ -949,8 +949,8 @@ export default function NewApplication() {
                       </div>
 
                       <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
-                        <strong style={{ color: "#0f172a" }}>{res?.company}</strong>
-                        <span style={{ color: "#475569" }}>
+                        <strong style={{ color: "var(--content-primary)" }}>{res?.company}</strong>
+                        <span style={{ color: "var(--content-secondary)" }}>
                           {(() => {
                             const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
                               en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
@@ -968,7 +968,7 @@ export default function NewApplication() {
                         </span>
                       </div>
 
-                      <div style={{ marginTop: "4px", display: "flex", flexDirection: "column", gap: "8px", color: "#334155", textAlign: "justify" }}>
+                      <div style={{ marginTop: "4px", display: "flex", flexDirection: "column", gap: "8px", color: "var(--content-primary)", textAlign: "justify" }}>
                         {coverLetterBody.split(/\n+/).filter(s => s.trim().length > 0).map((p, i) => (
                           <p key={i} style={{ margin: 0 }}>{p}</p>
                         ))}
@@ -991,7 +991,7 @@ export default function NewApplication() {
                             return loc.sincerely;
                           })()}
                         </span>
-                        <strong style={{ color: "#0f172a" }}>{fullName || res?.fullName || "Applicant"}</strong>
+                        <strong style={{ color: "var(--content-primary)" }}>{fullName || res?.fullName || "Applicant"}</strong>
                       </div>
                     </div>
                   </div>
@@ -1263,16 +1263,16 @@ export default function NewApplication() {
             </div>
             
             {/* Styled "A4" Document Preview Box */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "var(--space-4) var(--space-5)", background: "#ffffff", color: "#1e293b", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid #e2e8f0", fontFamily: "Georgia, serif", fontSize: "14px", lineHeight: "1.6", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "var(--space-4) var(--space-5)", background: "rgba(255,255,255,0.95)", color: "var(--content-primary)", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid var(--glass-stroke)", fontFamily: "Georgia, serif", fontSize: "14px", lineHeight: "1.6", display: "flex", flexDirection: "column", gap: "16px" }}>
               
               {/* Sender Details */}
               <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                <strong style={{ fontSize: "16px", color: "#0f172a" }}>{fullName || res.fullName || ""}</strong>
-                <span style={{ fontSize: "12px", color: "#64748b" }}>{contactEmail || res.contactEmail || ""}</span>
+                <strong style={{ fontSize: "16px", color: "var(--content-primary)" }}>{fullName || res.fullName || ""}</strong>
+                <span style={{ fontSize: "12px", color: "var(--content-secondary)" }}>{contactEmail || res.contactEmail || ""}</span>
               </div>
               
               {/* Date */}
-              <div style={{ color: "#64748b", fontSize: "12px", marginTop: "4px" }}>
+              <div style={{ color: "var(--content-secondary)", fontSize: "12px", marginTop: "4px" }}>
                 {(() => {
                   const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
                     en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
@@ -1291,8 +1291,8 @@ export default function NewApplication() {
               
               {/* Company Info */}
               <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
-                <strong style={{ color: "#0f172a" }}>{res.company}</strong>
-                <span style={{ color: "#475569" }}>
+                <strong style={{ color: "var(--content-primary)" }}>{res.company}</strong>
+                <span style={{ color: "var(--content-secondary)" }}>
                   {(() => {
                     const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
                       en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
@@ -1311,7 +1311,7 @@ export default function NewApplication() {
               </div>
               
               {/* Document Body Paragraphs */}
-              <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "14px", color: "#334155", textAlign: "justify" }}>
+              <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "14px", color: "var(--content-primary)", textAlign: "justify" }}>
                 {coverLetterBody.split(/\n+/).filter(s => s.trim().length > 0).map((p, i) => (
                   <p key={i} style={{ margin: 0 }}>{p}</p>
                 ))}
@@ -1335,7 +1335,7 @@ export default function NewApplication() {
                     return loc.sincerely;
                   })()}
                 </span>
-                <strong style={{ color: "#0f172a" }}>{fullName || res.fullName || ""}</strong>
+                <strong style={{ color: "var(--content-primary)" }}>{fullName || res.fullName || ""}</strong>
               </div>
               
             </div>
