@@ -314,35 +314,6 @@ export default function BulkApply() {
   }
 
 
-  const [rewritingItemId, setRewritingItemId] = useState<number | null>(null);
-
-  async function rewriteCoverLetterForItem(id: number) {
-    const it = items.find((x) => x.id === id);
-    if (!it || !it.coverLetterBody?.trim() || rewritingItemId === id) return;
-    setRewritingItemId(id);
-    try {
-      const r = await fetch("/api/rewrite-cover-letter", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          currentCoverLetter: it.coverLetterBody,
-          jobText: it.input,
-          company: it.company || "",
-          positions: it.positions || [],
-          language: it.language || "en",
-        }),
-      });
-      const d = await r.json();
-      if (!r.ok || !d.body) throw new Error(d.error || "rewrite failed");
-      update(id, { coverLetterBody: d.body });
-    } catch {
-      // silently fail
-    } finally {
-      setRewritingItemId(null);
-    }
-  }
-
-
   const statusClass: Record<Status, string> = {
     queued: "", analyzing: "", drafted: "chip-accent", sending: "",
     sent: "chip-ok", failed: "chip-warn", skipped: "chip-warn",

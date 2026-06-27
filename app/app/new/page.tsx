@@ -107,7 +107,6 @@ export default function NewApplication() {
   const [contactEmail, setContactEmail] = useState("");
   const [coverLetterPreviewOpen, setCoverLetterPreviewOpen] = useState(false);
   const [rewritingCoverLetter, setRewritingCoverLetter] = useState(false);
-  const [rewritingCoverLetter, setRewritingCoverLetter] = useState(false);
 
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {

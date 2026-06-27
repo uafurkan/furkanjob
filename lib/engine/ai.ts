@@ -43,7 +43,7 @@ export function aiEnabled(): boolean {
 }
 
 // One text completion for the given tier. Returns the raw assistant text, or null on any failure.
-async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoningEffort: "low" | "high" = "low"): Promise<string | null> {
+async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoningEffort: "low" | "high" = "low", temperature: number = 0.4): Promise<string | null> {
   const r = resolveProvider(tier);
   if (!r) return null;
   try {
@@ -52,6 +52,7 @@ async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoni
       const msg = await client.messages.create({
         model: r.model,
         max_tokens: maxTokens,
+        temperature,
         messages: [{ role: "user", content: prompt }],
       });
       return msg.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
@@ -59,7 +60,7 @@ async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoni
     const res = await fetch(`${r.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${r.apiKey}` },
-      body: JSON.stringify({ model: r.model, max_tokens: maxTokens, temperature: 0.4, reasoning_effort: reasoningEffort, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ model: r.model, max_tokens: maxTokens, temperature, reasoning_effort: reasoningEffort, messages: [{ role: "user", content: prompt }] }),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -157,10 +158,12 @@ export async function aiAssessFit(opts: {
     ? `Needs visa sponsorship to work in ${opts.countryName} (${opts.countryVisa}).`
     : `Does not need visa sponsorship.`;
 
-  const prompt = `You are the matching engine of a job-application assistant. Decide, for THIS specific business,
-which of the applicant's target roles are genuinely worth applying for, score the fit, and flag any hard
-eligibility constraint the listing itself states. Be a sharp, honest career advisor — never pad an application
-with irrelevant roles (applying to a restaurant as a "Night Auditor" is spam).
+  // Build a deterministic prompt with strict rubric-based scoring so the same inputs always produce the same result.
+  const prompt = `You are the deterministic matching engine of a job-application assistant. Your output must be EXACTLY
+reproducible: given the same inputs, you MUST return the same JSON every time. Do NOT introduce any randomness.
+
+Determine which of the applicant's target roles fit THIS specific business, calculate the fit score using the
+STRICT RUBRIC below, and flag any hard eligibility constraint the listing itself states.
 
 APPLICANT
 - Target roles (wish list): ${profile.targetRoles.join(", ") || "(none set)"}
@@ -178,11 +181,46 @@ RAW PAGE TEXT:
 ${opts.text.slice(0, 5000)}
 """
 
+=== STRICT SCORING RUBRIC (use this EXACTLY — do NOT deviate) ===
+Calculate fitScore by summing these components:
+
+1. ROLE MATCH (0-35 points)
+   - 35: At least one target role is an exact or near-exact match for what the business offers
+   - 25: Target role is in the same job family (e.g. "Front Desk" at a hotel offering "Receptionist")
+   - 15: Target role is loosely related to the business type (e.g. "Waiter" at a restaurant, but listing doesn't mention waiter)
+   - 5: Target role has minimal relevance to this business
+   - 0: No target role fits this business at all
+
+2. EXPERIENCE & SKILLS (0-25 points)
+   - 25: CV/bio shows direct relevant experience for the matched role(s)
+   - 15: CV/bio shows transferable experience from a related field
+   - 8: CV/bio shows some general work experience but not in this field
+   - 0: No relevant experience evident or no CV provided
+
+3. LANGUAGE FIT (0-15 points)
+   - 15: Applicant speaks the primary language of the business's country
+   - 10: Applicant speaks English and the business is in a non-English country (English likely useful)
+   - 5: Applicant speaks a language somewhat common in the country
+   - 0: No language overlap evident
+
+4. LOCATION & LOGISTICS (0-15 points)
+   - 15: Applicant is in the same country or city, or no location barriers
+   - 10: Applicant is willing to relocate and relocation is feasible
+   - 5: Relocation possible but uncertain
+   - 0: Significant location barriers and applicant is not open to relocating
+
+5. WORK AUTHORIZATION (0-10 points)
+   - 10: Applicant already has work authorization for this country
+   - 5: Sponsorship needed but listing doesn't explicitly exclude it
+   - 0: Listing explicitly requires existing work rights and applicant doesn't have them
+
+fitScore = sum of all 5 components (0-100).
+
 Return STRICT JSON ONLY, exactly these keys:
 {
   "applyFor": ["1-2 of the applicant's target roles that truly fit this business; if none fit, the single closest realistic role for this venue"],
   "droppedRoles": ["target roles that do NOT fit this business, e.g. lodging roles at a standalone restaurant"],
-  "fitScore": 0-100,
+  "fitScore": <number: sum from rubric above>,
   "fitSummary": "ONE short sentence in ${langName}, addressed to the applicant, explaining the fit and which role(s) you're applying for and why.",
   "eligibility": {
     "status": "ok | warning | blocked",
@@ -194,9 +232,10 @@ Rules:
 - applyFor must be a subset of realistic roles for this venue. Prefer the applicant's own wording.
 - eligibility.note ONLY from explicit text in the page. If the page says nothing restrictive, status "ok" and note "".
 - If the applicant needs sponsorship AND the listing says no sponsorship / must already have work rights → status "blocked".
-- If it's implied or country-typical but not stated → status "warning" at most. Never invent a constraint.`;
+- If it's implied or country-typical but not stated → status "warning" at most. Never invent a constraint.
+- CRITICAL: Be deterministic. Same inputs = same output. Do not vary your assessment.`;
 
-  const parsed = extractJson<Partial<FitAssessment>>(await complete(prompt, 600, opts.tier || "free"));
+  const parsed = extractJson<Partial<FitAssessment>>(await complete(prompt, 600, opts.tier || "free", "low", 0));
   if (!parsed) return null;
   const clampStr = (a: unknown): string[] =>
     Array.isArray(a) ? a.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4) : [];
