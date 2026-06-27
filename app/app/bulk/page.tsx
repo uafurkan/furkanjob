@@ -27,13 +27,15 @@ type Item = {
 const MAX_ITEMS = 20;
 
 // Split the textarea into items: separated by a line of dashes, or — if there are none —
-// one URL per line, otherwise the whole text is a single item.
+// one URL/domain/email per line, otherwise the whole text is a single item.
 function parseItems(raw: string): string[] {
   const byDash = raw.split(/\n\s*-{3,}\s*\n/).map((s) => s.trim()).filter(Boolean);
   if (byDash.length > 1) return byDash.slice(0, MAX_ITEMS);
   const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
-  const allUrls = lines.length > 1 && lines.every((l) => /^(https?:\/\/|www\.)\S+$/i.test(l));
-  if (allUrls) return lines.slice(0, MAX_ITEMS);
+  if (lines.length > 1) {
+    const allUrlsOrEmails = lines.every((l) => !/\s/.test(l) && (l.includes(".") || l.includes("@")));
+    if (allUrlsOrEmails) return lines.slice(0, MAX_ITEMS);
+  }
   const single = raw.trim();
   return single ? [single] : [];
 }
@@ -137,9 +139,12 @@ export default function BulkApply() {
         update(base.id, { status: "skipped", error: t("bulk.stopped") });
         continue;
       }
-      update(base.id, { status: "analyzing" });
-      let it = await analyzeItem(base);
-      setItems((prev) => prev.map((x) => (x.id === it.id ? it : x)));
+      let it = base;
+      if (it.status === "queued" || it.status === "failed" || it.status === "analyzing") {
+        update(it.id, { status: "analyzing" });
+        it = await analyzeItem(it);
+        setItems((prev) => prev.map((x) => (x.id === it.id ? it : x)));
+      }
       if (!stopRef.current && auto && it.status === "drafted" && !it.overLimit && it.to.trim()) {
         update(it.id, { status: "sending" });
         it = await sendItem(it);
