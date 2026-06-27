@@ -721,8 +721,13 @@ export default function NewApplication() {
                     href={`https://www.google.com/search?q=${encodeURIComponent(`${res.company} ${res.country} contact email`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
                   >
-                    🔍 {t("new.recover.search")}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    {t("new.recover.search")}
                   </a>
                 </div>
               </div>
@@ -737,9 +742,16 @@ export default function NewApplication() {
                   className="btn btn-ghost btn-sm"
                   onClick={regenerateWithDeepThinking}
                   disabled={analyzing || Boolean(refining) || sending}
-                  style={{ fontSize: "var(--text-12)", minHeight: 28, padding: "0 var(--space-2)", gap: "var(--space-1)" }}
+                  style={{ fontSize: "var(--text-12)", minHeight: 28, padding: "0 var(--space-2)", gap: 4 }}
                 >
-                  🧠 {t("new.deepThink")}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                  </svg>
+                  {t("new.deepThink")}
                 </button>
               </div>
               {currentDrafts.length > 1 && (
@@ -829,14 +841,27 @@ export default function NewApplication() {
           {includeCoverLetter && (
             <div className="stack gap-3 reveal" style={{ marginTop: "var(--space-2)", borderTop: "1px solid var(--border)", paddingTop: "var(--space-4)" }}>
               <div className="row gap-2" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                <span className="field-label" style={{ margin: 0 }}>📝 {t("new.coverLetterTitle")}</span>
+                <span className="field-label" style={{ margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  {t("new.coverLetterTitle")}
+                </span>
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  style={{ fontSize: "var(--text-12)", minHeight: 28, padding: "0 var(--space-2)", gap: "var(--space-1)" }}
+                  style={{ fontSize: "var(--text-12)", minHeight: 28, padding: "0 var(--space-2)", gap: 6 }}
                   onClick={() => setCoverLetterPreviewOpen(true)}
                 >
-                  📄 {t("new.preview")}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                  {t("new.preview")}
                 </button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
@@ -852,7 +877,16 @@ export default function NewApplication() {
                 </div>
 
                 <div className="stack gap-2">
-                  <span className="field-label" style={{ fontSize: "var(--text-12)", opacity: 0.7 }}>📄 {t("new.preview")}</span>
+                  <span className="field-label" style={{ fontSize: "var(--text-12)", opacity: 0.7, display: "flex", alignItems: "center", gap: 4 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                    {t("new.preview")}
+                  </span>
                   <div style={{ flex: 1, minHeight: 280, maxHeight: 420, overflowY: "auto", padding: "var(--space-4) var(--space-4)", background: "#ffffff", color: "#1e293b", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid #e2e8f0", fontFamily: "Georgia, serif", fontSize: "12px", lineHeight: "1.5", display: "flex", flexDirection: "column", gap: "12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                       <strong style={{ fontSize: "13px", color: "#0f172a" }}>{fullName || res?.fullName || "Applicant"}</strong>
@@ -928,15 +962,27 @@ export default function NewApplication() {
               {/* Cover Letter Quality Check Widget */}
               <div className="glass card stack gap-3" style={{ background: "rgba(255,255,255,0.02)", padding: "var(--space-3)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-md)" }}>
                 <span className="field-label" style={{ margin: 0, fontSize: "var(--text-13)", opacity: 0.8, display: "flex", alignItems: "center", gap: 6 }}>
-                  🔍 {t("new.coverLetterChecklist")}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                  {t("new.coverLetterChecklist")}
                 </span>
                 
                 <div className="stack gap-2" style={{ marginTop: "var(--space-1)" }}>
                   {/* Rule 1: Includes company name */}
                   <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
-                    <span style={{ color: coverLetterBody.toLowerCase().includes((res?.company || "").toLowerCase()) ? "var(--signal-success, #10b981)" : "var(--signal-warning, #f59e0b)" }}>
-                      {coverLetterBody.toLowerCase().includes((res?.company || "").toLowerCase()) ? "✓" : "⚠"}
-                    </span>
+                    {coverLetterBody.toLowerCase().includes((res?.company || "").toLowerCase()) ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-success, #10b981)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-warning, #f59e0b)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                      </svg>
+                    )}
                     <span className="text-secondary">{t("new.coverLetterCheck.company")}:</span>
                     <strong className="chip chip-sm" style={{ fontSize: "var(--text-11)" }}>{res?.company || "—"}</strong>
                   </div>
@@ -948,9 +994,17 @@ export default function NewApplication() {
                     const hasMatched = Boolean(matchedRole);
                     return (
                       <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
-                        <span style={{ color: hasMatched ? "var(--signal-success, #10b981)" : "var(--signal-warning, #f59e0b)" }}>
-                          {hasMatched ? "✓" : "⚠"}
-                        </span>
+                        {hasMatched ? (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-success, #10b981)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-warning, #f59e0b)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                        )}
                         <span className="text-secondary">{t("new.coverLetterCheck.roles")}:</span>
                         <div className="row gap-1">
                           {roles.map(r => (
@@ -968,9 +1022,17 @@ export default function NewApplication() {
                     const hasEmailPhrases = /attached (to )?this email|email attachment|attachment in this mail|e-postada|ekli mail|bu mail|e-posta eki|dosya ektedir|ek e-posta/i.test(coverLetterBody);
                     return (
                       <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
-                        <span style={{ color: !hasEmailPhrases ? "var(--signal-success, #10b981)" : "var(--signal-warning, #f59e0b)" }}>
-                          {!hasEmailPhrases ? "✓" : "⚠"}
-                        </span>
+                        {!hasEmailPhrases ? (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-success, #10b981)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-warning, #f59e0b)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                        )}
                         <span className="text-secondary">{t("new.coverLetterCheck.noEmailPhrases")}</span>
                         {hasEmailPhrases && (
                           <span className="text-secondary" style={{ fontSize: "var(--text-11)", color: "var(--signal-warning, #f59e0b)" }}>
@@ -989,9 +1051,17 @@ export default function NewApplication() {
                     const isTailored = hasMatched && hasCompany;
                     return (
                       <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
-                        <span style={{ color: isTailored ? "var(--signal-success, #10b981)" : "var(--signal-warning, #f59e0b)" }}>
-                          {isTailored ? "✓" : "⚠"}
-                        </span>
+                        {isTailored ? (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-success, #10b981)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-warning, #f59e0b)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                        )}
                         <span className="text-secondary">{t("new.coverLetterCheck.customized")}</span>
                       </div>
                     );
@@ -1000,7 +1070,9 @@ export default function NewApplication() {
                   {/* Rule 5: AI personalized */}
                   {res?.draftSource === "ai" && (
                     <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
-                      <span style={{ color: "var(--signal-success, #10b981)" }}>✓</span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-success, #10b981)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
                       <span className="text-secondary">{t("new.coverLetterCheck.aiGenerated")}</span>
                       <span className="chip chip-sm chip-accent" style={{ fontSize: "var(--text-10)", padding: "1px 6px" }}>{t("new.aiLabel")}</span>
                     </div>
