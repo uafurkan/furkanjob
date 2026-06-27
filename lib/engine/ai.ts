@@ -3,7 +3,7 @@
 // null and the caller falls back to the smart template. Email addresses are NEVER produced here:
 // extraction stays deterministic (lib/engine/detect + websearch) so the "never guess emails" rule holds.
 import Anthropic from "@anthropic-ai/sdk";
-import type { Draft, GenerateInput, EngineProfile } from "./types";
+import type { Draft, DraftOption, GenerateInput, EngineProfile } from "./types";
 import { APP_LANGS, type AppLang } from "./template";
 
 export type AiTier = "free" | "pro";
@@ -43,7 +43,7 @@ export function aiEnabled(): boolean {
 }
 
 // One text completion for the given tier. Returns the raw assistant text, or null on any failure.
-async function complete(prompt: string, maxTokens: number, tier: AiTier): Promise<string | null> {
+async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoningEffort: "low" | "high" = "low"): Promise<string | null> {
   const r = resolveProvider(tier);
   if (!r) return null;
   try {
@@ -59,7 +59,7 @@ async function complete(prompt: string, maxTokens: number, tier: AiTier): Promis
     const res = await fetch(`${r.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${r.apiKey}` },
-      body: JSON.stringify({ model: r.model, max_tokens: maxTokens, temperature: 0.4, reasoning_effort: "low", messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ model: r.model, max_tokens: maxTokens, temperature: 0.4, reasoning_effort: reasoningEffort, messages: [{ role: "user", content: prompt }] }),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -342,15 +342,14 @@ ${opts.body.slice(0, 4000)}
 }
 
 // ---------- Draft generation ----------
-export async function aiDraft(
+export async function aiDrafts(
   { text, analysis, profile }: GenerateInput,
   lang: AppLang = "en",
   tier: AiTier = "free",
   authorization?: { authorized: boolean; visaLabel?: string | null },
-  // The specific role(s) chosen for THIS business (from fit assessment). When set, the draft
-  // applies ONLY for these — never the user's full target-role wish list.
-  applyForRoles?: string[]
-): Promise<Draft | null> {
+  applyForRoles?: string[],
+  reasoningEffort: "low" | "high" = "low"
+): Promise<DraftOption[] | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
   const rolesForThisJob = (applyForRoles && applyForRoles.length ? applyForRoles : analysis.positions).filter(Boolean);
@@ -362,13 +361,23 @@ export async function aiDraft(
     ? `The applicant REQUIRES visa sponsorship to work in ${analysis.country.name} (${analysis.country.visa}). State this transparently and confidently — never apologetically.`
     : `The applicant does not need visa sponsorship; do not mention visas.`;
 
-  const prompt = `You write outstanding, human job-application emails — the kind a hiring manager actually replies to. Write ONE application email for ${profile.fullName || "the applicant"}.
+  let thinkingInstruction = "";
+  if (reasoningEffort === "high") {
+    thinkingInstruction = "\n\nDEEP REASONING MODE: Please analyze the job listing thoroughly. Think deeply about the culture, requirements, and how the applicant's profile maps to it. Craft drafts that show a profound understanding of the venue's brand and look extremely tailored, mature, and professional.";
+  }
+
+  const prompt = `You write outstanding, human job-application emails — the kind a hiring manager actually replies to. Write THREE distinct application emails for ${profile.fullName || "the applicant"}.
+
+Each draft should have a different style/angle:
+1. "Balanced & Personal": Warm-professional, natural, friendly yet polite. (Excellent baseline).
+2. "Short & Direct": Focused and high-impact. Perfect for busy managers.
+3. "Skills & Bio Focused": Highlights the applicant's relevant experience, short bio, and languages.
 
 APPLICANT
 - Applying specifically for: ${rolesLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
 - Open to relocating: ${profile.relocation ? "yes" : "no"}
-${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- ${sponsorship}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- ${sponsorship}${thinkingInstruction}
 
 THE BUSINESS (already analyzed)
 - Company: ${analysis.company}
@@ -379,16 +388,26 @@ RAW PAGE TEXT (for concrete, specific detail — reference something real about 
 ${text.slice(0, 4000)}
 """
 
-Write the email fully IN ${langName} (subject AND body), at native-speaker quality. Return STRICT JSON only: {"subject": "...", "body": "..."}.
+Write the emails fully IN ${langName} (subject AND body), at native-speaker quality.
+Return STRICT JSON only, with a "drafts" array containing exactly three items, each having "style", "subject", and "body" keys:
+{
+  "drafts": [
+    { "style": "Balanced & Personal", "subject": "...", "body": "..." },
+    { "style": "Short & Direct", "subject": "...", "body": "..." },
+    { "style": "Skills & Bio Focused", "subject": "...", "body": "..." }
+  ]
+}
 
 Hard rules (follow exactly):
-- Apply ONLY for the role(s) listed under "Applying specifically for" — do NOT mention or apply for any other role, even if it's on the applicant's wider wish list. The subject names only these role(s).
+- Apply ONLY for the role(s) listed under "Applying specifically for" — do NOT mention or apply for any other role. The subject names only these role(s).
 - Subject: plain text, NO "SUBJECT:" prefix; specific, not generic.
-- Body: warm, confident, concise (roughly 110-170 words). Reference the company by name and one concrete, true detail from the page. State the visa sponsorship need transparently if required. Mention the languages naturally. Note that the CV is attached.
+- Body: concise. Reference the company by name and one concrete, true detail from the page. State the visa sponsorship need transparently if required. Mention the languages naturally. Note that the CV is attached.
 - NO "Sincerely"/"Kind regards"/any closing salutation, NO applicant name, email, phone, or signature block — a Gmail signature is appended automatically.
 - Invent NOTHING — no email addresses, no facts not supported by the page or applicant profile. No clichés, no fake urgency.`;
 
-  const parsed = extractJson<Partial<Draft>>(await complete(prompt, 1400, tier));
-  if (parsed?.subject && parsed?.body) return { subject: parsed.subject, body: parsed.body };
+  const parsed = extractJson<{ drafts?: DraftOption[] }>(await complete(prompt, 1800, tier, reasoningEffort));
+  if (parsed?.drafts && Array.isArray(parsed.drafts) && parsed.drafts.length === 3) {
+    return parsed.drafts;
+  }
   return null;
 }

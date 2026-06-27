@@ -61,6 +61,7 @@ async function handleGenerate(req: Request) {
     tier: aiTier(user.plan),
     searchWeb: true,
     language: body?.language || undefined,
+    reasoningEffort: body?.reasoningEffort || undefined,
     hints: {
       company: body?.company || undefined,
       country: body?.country || undefined,
@@ -111,6 +112,9 @@ async function handleGenerate(req: Request) {
     subject: result.draft.subject,
     subjectB: subjectB || null,
     body: result.draft.body,
+    drafts: result.drafts,
+    fullName: profile?.fullName || user.name || "",
+    includeSignature: profile?.includeSignature || false,
     draftSource: result.draftSource,
     language: result.language,
     countryCode: result.analysis.country.code,

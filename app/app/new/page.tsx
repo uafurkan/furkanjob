@@ -21,6 +21,9 @@ type GenResult = {
   subject: string;
   subjectB?: string | null;
   body: string;
+  drafts?: { subject: string; body: string; style: string }[];
+  fullName?: string;
+  includeSignature?: boolean;
   draftSource: "ai" | "template";
   language: string;
   countryCode: string;
@@ -44,6 +47,10 @@ type SavedDraft = {
   body: string;
   res: GenResult;
   savedAt: number;
+  selectedDraftIndex?: number;
+  currentDrafts?: { subject: string; body: string; style: string }[];
+  signatureChecked?: boolean;
+  fullName?: string;
 };
 
 const DRAFT_KEY = "paply:draft:v1";
@@ -88,6 +95,10 @@ export default function NewApplication() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
   const redirectTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [selectedDraftIndex, setSelectedDraftIndex] = useState<number>(0);
+  const [currentDrafts, setCurrentDrafts] = useState<{ subject: string; body: string; style: string }[]>([]);
+  const [signatureChecked, setSignatureChecked] = useState(false);
+  const [fullName, setFullName] = useState("");
 
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {
@@ -155,6 +166,10 @@ export default function NewApplication() {
     setSubject(d.subject);
     setBody(d.body);
     setDraftRestoredAt(d.savedAt);
+    setSelectedDraftIndex(d.selectedDraftIndex || 0);
+    setCurrentDrafts(d.currentDrafts || []);
+    setSignatureChecked(d.signatureChecked || false);
+    setFullName(d.fullName || "");
   }, []);
 
   // Auto-save draft whenever editable fields change (debounced 800ms)
@@ -162,10 +177,13 @@ export default function NewApplication() {
     if (!res) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveDraft({ text, language, auto, to, subject, body, res, savedAt: Date.now() });
+      saveDraft({
+        text, language, auto, to, subject, body, res, savedAt: Date.now(),
+        selectedDraftIndex, currentDrafts, signatureChecked, fullName
+      });
     }, 800);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [text, language, auto, to, subject, body, res]);
+  }, [text, language, auto, to, subject, body, res, selectedDraftIndex, currentDrafts, signatureChecked, fullName]);
 
   function discardDraft() {
     clearDraft();
@@ -183,6 +201,10 @@ export default function NewApplication() {
       redirectTimer.current = null;
     }
     setRedirectCountdown(null);
+    setSelectedDraftIndex(0);
+    setCurrentDrafts([]);
+    setSignatureChecked(false);
+    setFullName("");
   }
 
   // Clean up redirect timer on unmount
@@ -206,6 +228,59 @@ export default function NewApplication() {
       return () => textareaRef.current?.removeEventListener("input", cancelRedirect);
     }
   }, [redirectCountdown]);
+
+  const handleDraftSelect = (index: number) => {
+    setSelectedDraftIndex(index);
+    const targetDraft = currentDrafts[index];
+    if (!targetDraft) return;
+
+    let targetBody = targetDraft.body;
+    if (signatureChecked && fullName && !targetBody.includes("Sincerely,")) {
+      targetBody = targetBody.trim() + `\n\nSincerely,\n${fullName}`;
+    } else if (!signatureChecked && targetBody.includes("Sincerely,")) {
+      targetBody = targetBody.replace(`\n\nSincerely,\n${fullName}`, "").replace(/\n\nSincerely,\n.*$/, "").trim();
+    }
+    
+    setSubject(targetDraft.subject);
+    setBody(targetBody);
+  };
+
+  const handleSignatureToggle = (checked: boolean) => {
+    setSignatureChecked(checked);
+    if (!fullName) return;
+
+    const sigText = `\n\nSincerely,\n${fullName}`;
+    if (checked) {
+      if (!body.includes("Sincerely,")) {
+        setBody((prev) => prev.trim() + sigText);
+        setCurrentDrafts((prev) =>
+          prev.map((d, i) => (i === selectedDraftIndex ? { ...d, body: d.body.trim() + sigText } : d))
+        );
+      }
+    } else {
+      if (body.includes("Sincerely,")) {
+        const cleanBody = body.replace(sigText, "").replace(/\n\nSincerely,\n.*$/, "").trim();
+        setBody(cleanBody);
+        setCurrentDrafts((prev) =>
+          prev.map((d, i) => (i === selectedDraftIndex ? { ...d, body: cleanBody } : d))
+        );
+      }
+    }
+  };
+
+  const handleSubjectChange = (val: string) => {
+    setSubject(val);
+    setCurrentDrafts((prev) =>
+      prev.map((d, i) => (i === selectedDraftIndex ? { ...d, subject: val } : d))
+    );
+  };
+
+  const handleBodyChange = (val: string) => {
+    setBody(val);
+    setCurrentDrafts((prev) =>
+      prev.map((d, i) => (i === selectedDraftIndex ? { ...d, body: val } : d))
+    );
+  };
 
   async function pasteFromClipboard() {
     try {
@@ -243,8 +318,21 @@ export default function NewApplication() {
       setRes(d);
       const toVal = (d.emails || []).join(", ");
       setTo(toVal);
-      setSubject(d.subject);
-      setBody(d.body);
+      
+      const parsedDrafts = d.drafts || [{ subject: d.subject, body: d.body, style: "Balanced & Personal" }];
+      setCurrentDrafts(parsedDrafts);
+      setSelectedDraftIndex(0);
+      setFullName(d.fullName || "");
+      
+      let initialBody = parsedDrafts[0].body;
+      if (d.includeSignature && d.fullName) {
+        initialBody = initialBody.trim() + `\n\nSincerely,\n${d.fullName}`;
+        setSignatureChecked(true);
+      } else {
+        setSignatureChecked(false);
+      }
+      setSubject(parsedDrafts[0].subject);
+      setBody(initialBody);
       setDraftRestoredAt(null);
       if (d.emailSource === "none") {
         setMsg({ kind: "warn", text: t("new.noEmailFound") });
@@ -255,13 +343,48 @@ export default function NewApplication() {
       if (d.eligibility?.status === "blocked") {
         setMsg({ kind: "warn", text: t("new.fit.blockedAuto") });
       } else if (auto && !d.overLimit && d.emails.length) {
-        await doSend({ to: toVal, subject: d.subject, body: d.body, meta: d }, true);
+        await doSend({ to: toVal, subject: parsedDrafts[0].subject, body: initialBody, meta: d }, true);
       }
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
     } finally {
       clearTimeout(stageTimer1);
       clearTimeout(stageTimer);
+      setAnalyzing(false);
+      setStage(null);
+    }
+  }
+
+  async function regenerateWithDeepThinking() {
+    if (!text.trim() || analyzing || sending) return;
+    setAnalyzing(true);
+    setStage(t("new.stage.drafting") + " (Deep Thinking Mode)...");
+    setMsg(null);
+    try {
+      const r = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text, language, reasoningEffort: "high" }),
+      });
+      const d: GenResult = await r.json();
+      if (!r.ok) throw new Error((d as any).error || "Error");
+      setRes(d);
+      
+      const parsedDrafts = d.drafts || [{ subject: d.subject, body: d.body, style: "Balanced & Personal" }];
+      setCurrentDrafts(parsedDrafts);
+      setSelectedDraftIndex(0);
+      setFullName(d.fullName || "");
+      
+      let initialBody = parsedDrafts[0].body;
+      if (signatureChecked && d.fullName) {
+        initialBody = initialBody.trim() + `\n\nSincerely,\n${d.fullName}`;
+      }
+      setSubject(parsedDrafts[0].subject);
+      setBody(initialBody);
+      setDraftRestoredAt(null);
+    } catch (e: any) {
+      setMsg({ kind: "err", text: e.message });
+    } finally {
       setAnalyzing(false);
       setStage(null);
     }
@@ -543,23 +666,41 @@ export default function NewApplication() {
               </div>
             )}
           </label>
+          {res && (
+            <div className="field" style={{ marginBottom: "var(--space-4)" }}>
+              <div className="row gap-2" style={{ alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <span className="field-label" style={{ margin: 0 }}>{t("new.chooseDraft")}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={regenerateWithDeepThinking}
+                  disabled={analyzing || Boolean(refining) || sending}
+                  style={{ fontSize: "var(--text-12)", minHeight: 28, padding: "0 var(--space-2)", gap: "var(--space-1)" }}
+                >
+                  🧠 {t("new.deepThink")}
+                </button>
+              </div>
+              {currentDrafts.length > 1 && (
+                <div className="segmented" style={{ display: "flex", width: "100%" }}>
+                  {currentDrafts.map((d, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className={`seg${selectedDraftIndex === index ? " active" : ""}`}
+                      onClick={() => handleDraftSelect(index)}
+                      style={{ minHeight: 34, fontSize: "var(--text-13)" }}
+                    >
+                      {d.style}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="field">
             <div className="row gap-2" style={{ alignItems: "center", marginBottom: 6 }}>
               <span className="field-label" style={{ margin: 0 }}>{t("new.subject")}</span>
-              {res?.subjectB && (
-                <div className="ab-toggle">
-                  <button
-                    type="button"
-                    className={`ab-btn${subject === res.subject ? " ab-active" : ""}`}
-                    onClick={() => setSubject(res.subject)}
-                  >A</button>
-                  <button
-                    type="button"
-                    className={`ab-btn${subject === res.subjectB ? " ab-active" : ""}`}
-                    onClick={() => setSubject(res.subjectB!)}
-                  >B</button>
-                </div>
-              )}
               <span
                 className="text-secondary"
                 style={{
@@ -570,10 +711,7 @@ export default function NewApplication() {
                 {subject.length}
               </span>
             </div>
-            <input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} />
-            {res?.subjectB && subject !== res.subject && subject !== res.subjectB && (
-              <span className="text-secondary" style={{ fontSize: "var(--text-12)", marginTop: 4 }}>{t("new.subjectCustom")}</span>
-            )}
+            <input className="input" value={subject} onChange={(e) => handleSubjectChange(e.target.value)} />
           </div>
           <div className="field">
             <div className="row gap-2" style={{ alignItems: "center", marginBottom: 6 }}>
@@ -582,7 +720,23 @@ export default function NewApplication() {
                 {body.trim() ? body.trim().split(/\s+/).length : 0} {t("new.words")}
               </span>
             </div>
-            <textarea className="textarea" style={{ minHeight: 260 }} value={body} onChange={(e) => setBody(e.target.value)} />
+            <textarea className="textarea" style={{ minHeight: 260 }} value={body} onChange={(e) => handleBodyChange(e.target.value)} />
+            
+            {fullName && (
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+                <input
+                  id="signature-checkbox"
+                  type="checkbox"
+                  checked={signatureChecked}
+                  onChange={(e) => handleSignatureToggle(e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: "pointer" }}
+                />
+                <label htmlFor="signature-checkbox" style={{ fontSize: "var(--text-13)", cursor: "pointer", fontWeight: 500, userSelect: "none" }}>
+                  {t("new.addSignature")}
+                </label>
+              </div>
+            )}
+
             {res.draftSource === "ai" && (
               <div className="refine-row" aria-busy={Boolean(refining)}>
                 <span className="refine-label">{t("new.refine")}</span>

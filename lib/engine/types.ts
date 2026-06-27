@@ -23,6 +23,7 @@ export type EngineProfile = {
 };
 
 export type Draft = { subject: string; body: string };
+export type DraftOption = { subject: string; body: string; style: string };
 
 export type GenerateInput = {
   text: string;

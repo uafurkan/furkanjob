@@ -2,16 +2,17 @@
 import { analyze, detectTextLang, countryByCode, type Analysis } from "./detect";
 import { findEmails } from "./websearch";
 import { buildDraft, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
-import { aiAnalyze, aiAssessFit, aiDraft, aiEnabled, type AiTier, type Eligibility } from "./ai";
+import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, type AiTier, type Eligibility } from "./ai";
 import { pickRelevantRoles } from "./match";
 import { isVisaCovered } from "./visa";
-import type { Draft, EngineProfile } from "./types";
+import type { Draft, DraftOption, EngineProfile } from "./types";
 
 export type PipelineResult = {
   analysis: Analysis;
   emails: string[];
   emailSource: "text" | "page-scrape" | "web-search" | "none";
   draft: Draft;
+  drafts: DraftOption[];
   draftSource: "ai" | "template";
   language: AppLang;
   // True when the user holds a visa that already authorizes work in the detected country.
@@ -34,6 +35,7 @@ export async function runPipeline(opts: {
   searchWeb?: boolean;
   language?: string; // per-request override; falls back to profile.applicationLanguage
   hints?: { company?: string; country?: string; positions?: string[] };
+  reasoningEffort?: "low" | "high";
 }): Promise<PipelineResult> {
   const { text, profile, tier = "free", searchWeb = true, hints } = opts;
 
@@ -137,16 +139,29 @@ export async function runPipeline(opts: {
   const draftAnalysis: Analysis = { ...analysis, positions: applyFor.length ? applyFor : analysis.positions };
 
   // Draft: AI when configured (tier picks the model), else the smart multilingual template.
-  let draft: Draft | null = null;
+  let drafts: DraftOption[] = [];
   let draftSource: "ai" | "template" = "template";
   if (aiEnabled()) {
-    draft = await aiDraft({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor);
-    if (draft) draftSource = "ai";
+    const aiRes = await aiDrafts({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor, opts.reasoningEffort);
+    if (aiRes && aiRes.length) {
+      drafts = aiRes;
+      draftSource = "ai";
+    }
   }
-  if (!draft) draft = buildDraft(draftAnalysis, profile, language, authorization);
+  if (!drafts.length) {
+    const fallbackDraft = buildDraft(draftAnalysis, profile, language, authorization);
+    drafts = [{
+      subject: fallbackDraft.subject,
+      body: fallbackDraft.body,
+      style: "Balanced & Personal"
+    }];
+  }
 
   return {
-    analysis, emails, emailSource, draft, draftSource, language, visaCovered, visaLabel, checkedOrigins,
+    analysis, emails, emailSource,
+    draft: { subject: drafts[0].subject, body: drafts[0].body },
+    drafts,
+    draftSource, language, visaCovered, visaLabel, checkedOrigins,
     applyFor, droppedRoles, fitScore, fitSummary, eligibility,
   };
 }
