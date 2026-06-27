@@ -573,6 +573,7 @@ export default function NewApplication() {
       setTimeout(() => setMsg(null), 4000);
     } finally {
       setRewritingCoverLetter(false);
+      setCoverLetterPreviewOpen(false);
     }
   }
 
