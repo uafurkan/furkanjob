@@ -495,20 +495,21 @@ export default function BulkApply() {
                           </button>
                         </div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: it.showInlinePreview ? "repeat(auto-fit, minmax(260px, 1fr))" : "1fr", gap: "var(--space-3)" }}>
-                        <div className="stack gap-1">
-                          <span className="field-label" style={{ fontSize: "var(--text-11)", opacity: 0.7 }}>{t("new.coverLetterBody")}</span>
-                          <textarea
-                            className="textarea"
-                            style={{ minHeight: 200, fontSize: "var(--text-13)", height: "100%", resize: "vertical" }}
-                            value={it.coverLetterBody || ""}
-                            onChange={(e) => update(it.id, { coverLetterBody: e.target.value })}
-                            placeholder={t("new.coverLetterBody")}
-                          />
-                        </div>
+                      
+                      {it.showInlinePreview && (
+                        <div className="reveal" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "var(--space-3)" }}>
+                          <div className="stack gap-1">
+                            <span className="field-label" style={{ fontSize: "var(--text-11)", opacity: 0.7 }}>{t("new.coverLetterBody")}</span>
+                            <textarea
+                              className="textarea"
+                              style={{ minHeight: 200, fontSize: "var(--text-13)", height: "100%", resize: "vertical" }}
+                              value={it.coverLetterBody || ""}
+                              onChange={(e) => update(it.id, { coverLetterBody: e.target.value })}
+                              placeholder={t("new.coverLetterBody")}
+                            />
+                          </div>
 
-                        {it.showInlinePreview && (
-                          <div className="stack gap-1 reveal">
+                          <div className="stack gap-1">
                             <span className="field-label" style={{ fontSize: "var(--text-11)", opacity: 0.7, display: "flex", alignItems: "center", gap: 4 }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -588,8 +589,8 @@ export default function BulkApply() {
                               </div>
                             </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Cover Letter Quality Check Widget */}
                       <div className="glass card stack gap-2" style={{ background: "rgba(255,255,255,0.01)", padding: "var(--space-2)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-md)" }}>
