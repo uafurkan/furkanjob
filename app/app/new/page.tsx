@@ -839,13 +839,91 @@ export default function NewApplication() {
                   📄 {t("new.preview")}
                 </button>
               </div>
-              <textarea
-                className="textarea"
-                style={{ minHeight: 220 }}
-                value={coverLetterBody}
-                onChange={(e) => setCoverLetterBody(e.target.value)}
-                placeholder={t("new.coverLetterBody")}
-              />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
+                <div className="stack gap-2">
+                  <span className="field-label" style={{ fontSize: "var(--text-12)", opacity: 0.7 }}>{t("new.coverLetterBody")}</span>
+                  <textarea
+                    className="textarea"
+                    style={{ minHeight: 280, height: "100%", resize: "vertical" }}
+                    value={coverLetterBody}
+                    onChange={(e) => setCoverLetterBody(e.target.value)}
+                    placeholder={t("new.coverLetterBody")}
+                  />
+                </div>
+
+                <div className="stack gap-2">
+                  <span className="field-label" style={{ fontSize: "var(--text-12)", opacity: 0.7 }}>📄 {t("new.preview")}</span>
+                  <div style={{ flex: 1, minHeight: 280, maxHeight: 420, overflowY: "auto", padding: "var(--space-4) var(--space-4)", background: "#ffffff", color: "#1e293b", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid #e2e8f0", fontFamily: "Georgia, serif", fontSize: "12px", lineHeight: "1.5", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <strong style={{ fontSize: "13px", color: "#0f172a" }}>{fullName || res?.fullName || "Applicant"}</strong>
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>{contactEmail || res?.contactEmail || ""}</span>
+                    </div>
+
+                    <div style={{ color: "#64748b", fontSize: "10px", marginTop: "2px" }}>
+                      {(() => {
+                        const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
+                          en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
+                          tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
+                          es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
+                          fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
+                          de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
+                          it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
+                          pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
+                        };
+                        const lang = res?.language || "en";
+                        const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
+                        return loc.formatDate(new Date());
+                      })()}
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
+                      <strong style={{ color: "#0f172a" }}>{res?.company}</strong>
+                      <span style={{ color: "#475569" }}>
+                        {(() => {
+                          const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
+                            en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
+                            tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
+                            es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
+                            fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
+                            de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
+                            it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
+                            pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
+                          };
+                          const lang = res?.language || "en";
+                          const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
+                          return loc.hiringTeam;
+                        })()}
+                      </span>
+                    </div>
+
+                    <div style={{ marginTop: "4px", display: "flex", flexDirection: "column", gap: "8px", color: "#334155", textAlign: "justify" }}>
+                      {coverLetterBody.split(/\n+/).filter(s => s.trim().length > 0).map((p, i) => (
+                        <p key={i} style={{ margin: 0 }}>{p}</p>
+                      ))}
+                    </div>
+
+                    <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <span>
+                        {(() => {
+                          const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
+                            en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
+                            tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
+                            es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
+                            fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
+                            de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
+                            it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
+                            pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
+                          };
+                          const lang = res?.language || "en";
+                          const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
+                          return loc.sincerely;
+                        })()}
+                      </span>
+                      <strong style={{ color: "#0f172a" }}>{fullName || res?.fullName || "Applicant"}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Cover Letter Quality Check Widget */}
               <div className="glass card stack gap-3" style={{ background: "rgba(255,255,255,0.02)", padding: "var(--space-3)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-md)" }}>
