@@ -15,6 +15,36 @@ export function extractEmails(text: string): string[] {
   return [...new Set(found)];
 }
 
+// Score an email address by how well it suits a job application.
+// Higher = better. Used to pick the single best recipient from a list.
+const JOB_PRIORITY: [RegExp, number][] = [
+  [/^(careers|jobs|recruitment|hiring|hr|talent|apply|applications|employment|staffing|work)@/i, 100],
+  [/^(manager|gm|generalmanager|owner|director|people|humanresources)@/i, 80],
+  [/^(hello|team|contact|enquiries|enquiry|enquire)@/i, 40],
+  [/^(info|mail|office|admin|reception|general|support|service|help|sales|booking|bookings|reservations|events)@/i, 20],
+];
+
+function emailScore(email: string): number {
+  for (const [re, score] of JOB_PRIORITY) {
+    if (re.test(email)) return score;
+  }
+  return 10; // unknown prefix — better than a clearly wrong one
+}
+
+// Return the single best email for a job application, or all if none stands out.
+export function pickBestEmail(emails: string[]): string[] {
+  if (emails.length <= 1) return emails;
+  const scored = emails.map((e) => ({ e, s: emailScore(e) })).sort((a, b) => b.s - a.s);
+  const best = scored[0];
+  // If the top candidate has a clearly higher score than the rest, use only it.
+  const second = scored[1];
+  if (best.s >= 40 && best.s > second.s) return [best.e];
+  // If there's a tie at the high-priority level, keep all tied winners.
+  if (best.s >= 80) return scored.filter((x) => x.s === best.s).map((x) => x.e);
+  // Otherwise fall back to just the best one to avoid spamming multiple inboxes.
+  return [best.e];
+}
+
 export function extractUrls(text: string): string[] {
   const found = (text.match(URL_RE) || [])
     .map((u) => u.trim().replace(/[.,;:)]+$/, ""))
