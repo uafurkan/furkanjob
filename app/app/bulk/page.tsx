@@ -171,28 +171,35 @@ export default function BulkApply() {
   }
 
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const text = e.clipboardData.getData("text");
-    if (!text.trim()) return;
+    try {
+      const text = e.clipboardData?.getData("text");
+      if (!text || !text.trim()) return;
 
-    // Immediately process the pasted block as one or more items
-    e.preventDefault();
-    const parsed = parseItems(text);
-    if (!parsed.length) return;
+      const parsed = parseItems(text);
+      if (!parsed.length) return;
 
-    setItems((prev) => {
-      const maxId = prev.reduce((max, item) => (item.id > max ? item.id : max), -1);
-      const newItems: Item[] = parsed.map((input, i) => ({
-        id: maxId + 1 + i,
-        input,
-        status: "queued",
-        to: "",
-        subject: "",
-        body: "",
-        coverLetterBody: "",
-        includeCoverLetter: includeCoverLetter,
-      }));
-      return [...prev, ...newItems];
-    });
+      setItems((prev) => {
+        const maxId = prev.reduce((max, item) => (item.id > max ? item.id : max), -1);
+        const newItems: Item[] = parsed.map((input, i) => ({
+          id: maxId + 1 + i,
+          input,
+          status: "queued",
+          to: "",
+          subject: "",
+          body: "",
+          coverLetterBody: "",
+          includeCoverLetter: includeCoverLetter,
+        }));
+        return [...prev, ...newItems];
+      });
+
+      // Clear the textarea after a brief delay so the user sees the paste succeed
+      setTimeout(() => {
+        setRaw("");
+      }, 100);
+    } catch (err) {
+      console.error("Paste error:", err);
+    }
   }
 
   function clearQueue() {
