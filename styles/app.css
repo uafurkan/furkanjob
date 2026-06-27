@@ -1009,3 +1009,238 @@
     display: flex;
   }
 }
+
+/* ── App Guide (iOS-style onboarding overlay) ────────────────────────────── */
+
+.guide-backdrop {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(4, 8, 18, 0.75);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  backdrop-filter: blur(14px) saturate(120%);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4);
+  animation: gbFadeIn 0.28s var(--ease-standard);
+}
+@keyframes gbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.guide-card {
+  position: relative; width: 100%; max-width: 460px;
+  padding: 0; overflow: hidden;
+  animation: gcSlideUp 0.38s var(--ease-emphatic);
+}
+@keyframes gcSlideUp {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.guide-skip {
+  position: absolute; top: var(--space-3); right: var(--space-3); z-index: 2;
+  font-size: var(--text-13); color: var(--content-tertiary);
+}
+
+.guide-step {
+  animation: gsEnter 0.3s var(--ease-standard);
+}
+@keyframes gsEnter {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Mockup preview area */
+.guide-mockup {
+  height: 210px;
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid var(--glass-stroke);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; padding: var(--space-5);
+}
+
+.guide-body {
+  padding: var(--space-5) var(--space-6) var(--space-3);
+}
+.guide-eyebrow {
+  font-size: var(--text-12); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--content-tertiary); margin: 0 0 var(--space-2);
+}
+.guide-title {
+  font-size: clamp(18px, 4vw, 22px); font-weight: 700; letter-spacing: -0.3px;
+  color: var(--content-primary); margin: 0 0 var(--space-2);
+}
+.guide-sub {
+  font-size: var(--text-14); line-height: 1.65; color: var(--content-secondary);
+  margin: 0;
+}
+
+/* Footer */
+.guide-footer {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-4); padding: var(--space-4) var(--space-6) var(--space-5);
+}
+.guide-dots { display: flex; gap: 6px; }
+.guide-dot {
+  width: 6px; height: 6px; border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18); border: none; cursor: pointer; padding: 0;
+  transition: width 0.3s var(--ease-standard), background 0.3s var(--ease-standard);
+}
+.guide-dot.active { width: 22px; background: var(--accent-bright); }
+.guide-nav {
+  display: flex; width: 100%; align-items: center; justify-content: space-between;
+}
+
+/* ── Shared mockup animations ─────────────────── */
+@keyframes gmFadeUp   { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes gmSlideIn  { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@keyframes gmPopIn    { from { opacity: 0; transform: scale(0.82); } to { opacity: 1; transform: none; } }
+@keyframes gmRevChip  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Common mockup wrapper */
+.gm { display: flex; flex-direction: column; align-items: center; width: 100%; gap: var(--space-3); }
+
+/* ── Step 0: Welcome ──────────────────────────── */
+.gm-logo {
+  display: flex; align-items: center; gap: 10px;
+  animation: gmFadeUp 0.5s var(--ease-emphatic) 0.1s both;
+}
+.gm-pulse-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent-bright);
+  box-shadow: 0 0 16px var(--glow-core), 0 0 32px var(--glow-halo);
+  animation: dotPulse 2s ease infinite;
+}
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 14px var(--glow-core), 0 0 28px var(--glow-halo); }
+  50%       { box-shadow: 0 0 26px var(--glow-core), 0 0 52px var(--glow-halo); }
+}
+.gm-wordmark { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+.gm-feat-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
+.gm-chip {
+  opacity: 0;
+  animation: gmRevChip 0.4s var(--ease-emphatic) forwards;
+}
+
+/* ── Step 1: Paste ────────────────────────────── */
+.gm-paste { gap: var(--space-2); }
+.gm-fake-area {
+  width: 100%; border-radius: var(--radius-soft);
+  border: 1px solid var(--glass-stroke);
+  background: rgba(255,255,255,0.03); overflow: hidden;
+  animation: gmFadeUp 0.35s var(--ease-standard) 0.1s both;
+}
+.gm-ta-header {
+  display: flex; gap: 5px; padding: 7px 10px;
+  border-bottom: 1px solid var(--glass-stroke);
+  background: rgba(255,255,255,0.02);
+}
+.gm-ta-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.12); }
+.gm-ta-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+.gm-tl {
+  font-size: 11px; display: block; color: var(--content-secondary);
+  opacity: 0; animation: gmFadeUp 0.4s var(--ease-standard) forwards;
+}
+.gm-tl-1 { animation-delay: 250ms; }
+.gm-tl-2 { animation-delay: 700ms; }
+.gm-tl-3 { animation-delay: 1200ms; color: var(--accent-bright); font-weight: 600; }
+.gm-paste-hint {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--content-tertiary);
+  opacity: 0; animation: gmFadeUp 0.4s var(--ease-standard) 1.7s forwards;
+}
+
+/* ── Step 2: Roles ────────────────────────────── */
+.gm-roles { gap: var(--space-2); }
+.gm-role-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 13px; border-radius: var(--radius-soft); width: 100%;
+  opacity: 0; transform: translateX(-10px);
+  animation: gmSlideIn 0.35s var(--ease-emphatic) forwards;
+}
+.gm-role-ok   { background: rgba(95,208,166,0.08); border: 1px solid rgba(95,208,166,0.25); }
+.gm-role-drop { background: rgba(255,255,255,0.025); border: 1px solid var(--glass-stroke); }
+.gm-role-icon { font-size: 13px; font-weight: 800; width: 18px; text-align: center; }
+.gm-role-ok   .gm-role-icon { color: var(--signal-success); }
+.gm-role-drop .gm-role-icon { color: rgba(255,255,255,0.2); }
+.gm-role-name { font-size: 12px; font-weight: 600; flex: 1; }
+.gm-role-drop .gm-role-name { color: var(--content-tertiary); text-decoration: line-through; }
+.gm-role-note { font-size: 10px; color: var(--content-tertiary); font-style: italic; }
+
+/* ── Step 3: Draft + fit score ────────────────── */
+.gm-draft { gap: var(--space-4); }
+.gm-score-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  animation: gmFadeUp 0.4s var(--ease-standard) 0.1s both;
+}
+.gm-score-num {
+  font-size: 26px; font-weight: 800; color: var(--accent-bright); min-width: 40px;
+  animation: gmPopIn 0.5s var(--ease-emphatic) 0.2s both;
+}
+.gm-score-track {
+  flex: 1; height: 6px; border-radius: 3px;
+  background: rgba(255,255,255,0.08); overflow: hidden;
+}
+.gm-score-fill {
+  height: 100%; width: 0; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  box-shadow: 0 0 8px var(--glow-halo);
+  animation: gsFillScore 1.3s var(--ease-standard) 0.35s forwards;
+}
+@keyframes gsFillScore { to { width: 82%; } }
+.gm-score-tag {
+  font-size: 11px; font-weight: 600; color: var(--signal-success); white-space: nowrap;
+  opacity: 0; animation: gmFadeUp 0.3s ease 1.4s forwards;
+}
+.gm-email-lines { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.gm-email-line {
+  height: 7px; border-radius: 4px; background: rgba(255,255,255,0.08);
+  opacity: 0; animation: gmFadeUp 0.3s ease forwards;
+}
+
+/* ── Step 4: Ask AI ───────────────────────────── */
+.gm-ask { gap: var(--space-2); }
+.gm-ask-chips { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; }
+.gm-ask-q {
+  opacity: 0; transform: translateX(-8px);
+  animation: gmSlideIn 0.3s var(--ease-emphatic) forwards;
+  font-size: 11px !important; text-align: left; justify-content: flex-start;
+  white-space: normal; height: auto !important; min-height: 34px; padding: 7px 11px;
+  line-height: 1.4;
+}
+.gm-ask-answer {
+  font-size: 11px; line-height: 1.55; color: var(--content-secondary);
+  padding: 9px 11px; border-radius: var(--radius-soft);
+  border: 1px solid var(--glass-stroke); background: rgba(255,255,255,0.025); width: 100%;
+  opacity: 0; animation: gmFadeUp 0.4s ease 900ms forwards;
+}
+
+/* ── Step 5: Send ─────────────────────────────── */
+.gm-send { gap: var(--space-3); }
+.gm-envelope {
+  font-size: 38px; line-height: 1;
+  animation: envFly 1.1s var(--ease-emphatic) 0.4s forwards;
+}
+@keyframes envFly {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  65%  { transform: translateY(-35px) rotate(-10deg) scale(1.1); opacity: 0.7; }
+  100% { transform: translateY(-55px) rotate(-14deg) scale(1); opacity: 0; }
+}
+.gm-send-meta {
+  width: 100%; display: flex; flex-direction: column; gap: 5px;
+  padding: 9px 12px; border-radius: var(--radius-soft);
+  border: 1px solid var(--glass-stroke); background: rgba(255,255,255,0.025);
+  opacity: 0; animation: gmFadeUp 0.4s ease 0.2s forwards;
+}
+.gm-send-row { display: flex; gap: 10px; font-size: 11px; }
+.gm-send-key { color: var(--content-tertiary); min-width: 28px; }
+.gm-send-val { color: var(--content-secondary); }
+.gm-sent-badge {
+  font-size: 13px; font-weight: 700; color: var(--signal-success);
+  padding: 6px 16px; border-radius: var(--radius-pill);
+  border: 1px solid rgba(95,208,166,0.4); background: rgba(95,208,166,0.1);
+  opacity: 0; animation: gmPopIn 0.5s var(--ease-emphatic) 1.3s forwards;
+}
+
+/* ── Guide mobile responsive ──────────────────── */
+@media (max-width: 520px) {
+  .guide-card { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .guide-backdrop { align-items: flex-end; padding: 0; }
+  .guide-mockup { height: 180px; }
+}
