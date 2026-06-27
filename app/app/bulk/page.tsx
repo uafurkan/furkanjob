@@ -29,6 +29,16 @@ type Item = {
 
 const MAX_ITEMS = 20;
 
+const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
+  en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
+  tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
+  es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
+  fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
+  de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
+  it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
+  pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
+};
+
 // Split the textarea into items: separated by a line of dashes, or — if there are none —
 // one URL/domain/email per line, otherwise the whole text is a single item.
 function parseItems(raw: string): string[] {
@@ -51,7 +61,6 @@ export default function BulkApply() {
   const [items, setItems] = useState<Item[]>([]);
   const [running, setRunning] = useState(false);
   const [includeCoverLetter, setIncludeCoverLetter] = useState(false);
-  const [previewItemIndex, setPreviewItemIndex] = useState<number | null>(null);
   const stopRef = useRef(false);
 
   useEffect(() => {
@@ -86,9 +95,10 @@ export default function BulkApply() {
       } catch {}
 
       const fullName = d.fullName || "";
+      const loc = COVER_LETTER_L10N[d.language || "en"] || COVER_LETTER_L10N.en;
       let initialBody = d.body;
-      if (isSigChecked && fullName && !initialBody.includes("Sincerely,")) {
-        initialBody = initialBody.trim() + `\n\nSincerely,\n${fullName}`;
+      if (isSigChecked && fullName && !initialBody.includes(loc.sincerely)) {
+        initialBody = initialBody.trim() + `\n\n${loc.sincerely}\n${fullName}`;
       }
 
       return {
@@ -267,16 +277,15 @@ export default function BulkApply() {
         if (item.id !== id) return item;
         if (!item.fullName) return { ...item, signatureChecked: checked };
 
-        const sigText = `\n\nSincerely,\n${item.fullName}`;
+        const loc = COVER_LETTER_L10N[item.language || "en"] || COVER_LETTER_L10N.en;
+        const sigText = `\n\n${loc.sincerely}\n${item.fullName}`;
         let newBody = item.body;
         if (checked) {
-          if (!newBody.includes("Sincerely,")) {
+          if (!newBody.includes(loc.sincerely)) {
             newBody = newBody.trim() + sigText;
           }
         } else {
-          if (newBody.includes("Sincerely,")) {
-            newBody = newBody.replace(sigText, "").replace(/\n\nSincerely,\n.*$/, "").trim();
-          }
+          newBody = newBody.replace(sigText, "").replace(/\n\n[^\n]+\n[^\n]+$/, "").trim();
         }
 
         return { ...item, signatureChecked: checked, body: newBody };
@@ -507,21 +516,6 @@ export default function BulkApply() {
                             </svg>
                             {it.showInlinePreview ? t("new.hidePreview") : t("new.showPreview")}
                           </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            style={{ fontSize: "var(--text-11)", minHeight: 24, padding: "0 var(--space-2)", gap: 4 }}
-                            onClick={() => setPreviewItemIndex(it.id)}
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                              <line x1="16" y1="13" x2="8" y2="13" />
-                              <line x1="16" y1="17" x2="8" y2="17" />
-                              <polyline points="10 9 9 9 8 9" />
-                            </svg>
-                            {t("new.preview")}
-                          </button>
                         </div>
                       </div>
                       
@@ -555,39 +549,13 @@ export default function BulkApply() {
                               </div>
 
                               <div style={{ color: "var(--content-secondary)", fontSize: "8px" }}>
-                                {(() => {
-                                  const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
-                                    en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
-                                    tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
-                                    es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
-                                    fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
-                                    de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
-                                    it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
-                                    pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
-                                  };
-                                  const lang = it.language || "en";
-                                  const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
-                                  return loc.formatDate(new Date());
-                                })()}
+                                {(COVER_LETTER_L10N[it.language || "en"] || COVER_LETTER_L10N.en).formatDate(new Date())}
                               </div>
 
                               <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
                                 <strong style={{ color: "var(--content-primary)" }}>{it.company || "Company"}</strong>
                                 <span style={{ color: "var(--content-secondary)" }}>
-                                  {(() => {
-                                    const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
-                                      en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
-                                      tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
-                                      es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
-                                      fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
-                                      de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
-                                      it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
-                                      pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
-                                    };
-                                    const lang = it.language || "en";
-                                    const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
-                                    return loc.hiringTeam;
-                                  })()}
+                                  {(COVER_LETTER_L10N[it.language || "en"] || COVER_LETTER_L10N.en).hiringTeam}
                                 </span>
                               </div>
 
@@ -599,20 +567,7 @@ export default function BulkApply() {
 
                               <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
                                 <span>
-                                  {(() => {
-                                    const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
-                                      en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
-                                      tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
-                                      es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
-                                      fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
-                                      de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
-                                      it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
-                                      pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
-                                    };
-                                    const lang = it.language || "en";
-                                    const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
-                                    return loc.sincerely;
-                                  })()}
+                                  {(COVER_LETTER_L10N[it.language || "en"] || COVER_LETTER_L10N.en).sincerely}
                                 </span>
                                 <strong style={{ color: "var(--content-primary)" }}>Applicant</strong>
                               </div>
