@@ -69,6 +69,10 @@ const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string;
   pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
 };
 
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+
 function saveDraft(draft: SavedDraft) {
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch {}
 }
@@ -839,6 +843,18 @@ export default function NewApplication() {
               <span className="text-secondary" style={{ fontSize: "var(--text-12)", marginLeft: "auto" }}>
                 {body.trim() ? body.trim().split(/\s+/).length : 0} {t("new.words")}
               </span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ fontSize: "var(--text-12)", minHeight: 28, padding: "0 var(--space-2)", gap: 4 }}
+                onClick={() => copyToClipboard(body)}
+                title="Copy email body"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                </svg>
+              </button>
             </div>
             <textarea className="textarea" style={{ minHeight: 260 }} value={body} onChange={(e) => handleBodyChange(e.target.value)} />
             
@@ -918,7 +934,21 @@ export default function NewApplication() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: coverLetterPreviewOpen ? "repeat(auto-fit, minmax(280px, 1fr))" : "1fr", gap: "var(--space-4)" }}>
                 <div className="stack gap-2">
-                  <span className="field-label" style={{ fontSize: "var(--text-12)", opacity: 0.7 }}>{t("new.coverLetterBody")}</span>
+                  <div className="row gap-2" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                    <span className="field-label" style={{ fontSize: "var(--text-12)", opacity: 0.7, margin: 0 }}>{t("new.coverLetterBody")}</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: "var(--text-12)", minHeight: 24, padding: "0 var(--space-2)", gap: 4 }}
+                      onClick={() => copyToClipboard(coverLetterBody)}
+                      title="Copy cover letter body"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                      </svg>
+                    </button>
+                  </div>
                   <textarea
                     className="textarea"
                     style={{ minHeight: 280, height: "100%", resize: "vertical" }}
@@ -930,16 +960,30 @@ export default function NewApplication() {
 
                 {coverLetterPreviewOpen && (
                   <div className="stack gap-2">
-                    <span className="field-label" style={{ fontSize: "var(--text-12)", opacity: 0.7, display: "flex", alignItems: "center", gap: 4 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                        <polyline points="10 9 9 9 8 9" />
-                      </svg>
-                      {t("new.preview")}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "space-between" }}>
+                      <span className="field-label" style={{ fontSize: "var(--text-12)", opacity: 0.7, display: "flex", alignItems: "center", gap: 4, margin: 0 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                          <polyline points="10 9 9 9 8 9" />
+                        </svg>
+                        {t("new.preview")}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ fontSize: "var(--text-12)", minHeight: 24, padding: "0 var(--space-2)", gap: 4 }}
+                        onClick={() => copyToClipboard(coverLetterBody)}
+                        title="Copy cover letter"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                        </svg>
+                      </button>
+                    </div>
                     <div style={{ flex: 1, minHeight: 280, maxHeight: 420, overflowY: "auto", padding: "var(--space-4)", background: "rgba(255,255,255,0.95)", color: "var(--content-primary)", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid var(--glass-stroke)", fontFamily: "Georgia, serif", fontSize: "12px", lineHeight: "1.5", display: "flex", flexDirection: "column", gap: "12px" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                         <strong style={{ fontSize: "13px", color: "var(--content-primary)" }}>{fullName || res?.fullName || "Applicant"}</strong>
@@ -1244,7 +1288,20 @@ export default function NewApplication() {
                 </svg>
                 {t("new.coverLetterTitle")}
               </span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setCoverLetterPreviewOpen(false)}>{t("apps.detail.close")}</button>
+              <div className="row gap-2">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => copyToClipboard(coverLetterBody)}
+                  title="Copy cover letter"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                  </svg>
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setCoverLetterPreviewOpen(false)}>{t("apps.detail.close")}</button>
+              </div>
             </div>
 
             {(() => {
