@@ -1,53 +1,45 @@
 ---
 version: alpha
 name: Paply
-description: iOS 26/27 Liquid Glass design system — refractive glass UI over a rich, aurora-animated backdrop.
+description: iOS 26/27 Liquid Glass — refractive glass UI over a rich, aurora-animated backdrop.
 
 colors:
-  # Backgrounds — cool deep foundation for glass refraction
+  primary: "#6FA8FF"
+  secondary: "#AEB7C4"
+  tertiary: "#5FD0A6"
+
   bg-void: "#0A0C10"
   bg-surface: "#12151C"
   bg-raised: "#1A1F29"
 
-  # Content text — high contrast on void
   content-primary: "#F4F7FB"
   content-secondary: "#AEB7C4"
-  content-tertiary: "#6B7585"
-  content-ghost: "rgba(244, 247, 251, 0.10)"
 
-  # Accent system — restrained system tint; real color comes from glass refraction
   accent: "#6FA8FF"
   accent-bright: "#9CC4FF"
-  accent-secondary: "#7CE0D3"
 
-  # Signal states — semantic colors for feedback
   signal-success: "#5FD0A6"
   signal-warning: "#F2C26B"
   signal-error: "#F2796B"
 
-  # Glow — derived from accent for halos and emphasis
-  glow-core: "rgba(111, 168, 255, 0.55)"
   glow-halo: "rgba(111, 168, 255, 0.18)"
 
-  # Glass material — frosted, semi-transparent
   glass-fill: "rgba(255, 255, 255, 0.06)"
   glass-fill-strong: "rgba(255, 255, 255, 0.10)"
   glass-stroke: "rgba(255, 255, 255, 0.14)"
-  glass-stroke-bright: "rgba(255, 255, 255, 0.28)"
-  glass-specular: "rgba(255, 255, 255, 0.70)"
 
 typography:
   display:
-    fontFamily: "SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif"
+    fontFamily: "SF Pro Display"
     fontWeight: "600"
     lineHeight: "0.95"
     letterSpacing: "-0.02em"
   body:
-    fontFamily: "SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif"
+    fontFamily: "SF Pro Text"
     fontWeight: "400"
     lineHeight: "1.6"
   mono:
-    fontFamily: "SF Mono, ui-monospace, JetBrains Mono, Menlo, monospace"
+    fontFamily: "SF Mono"
     fontWeight: "400"
     letterSpacing: "0.02em"
 
@@ -58,18 +50,11 @@ spacing:
   4: "16px"
   5: "20px"
   6: "24px"
-  7: "28px"
   8: "32px"
-  9: "36px"
-  10: "40px"
   11: "44px"
   12: "48px"
   16: "64px"
   24: "96px"
-  32: "128px"
-  48: "192px"
-  64: "256px"
-  96: "384px"
 
 rounded:
   subtle: "8px"
@@ -80,119 +65,74 @@ rounded:
 components:
   glass:
     backgroundColor: "{colors.glass-fill}"
-    typography: "{typography.body}"
     rounded: "{rounded.lg}"
-    backdropFilter: "blur(18px) saturate(160%)"
-    borderColor: "{colors.glass-stroke}"
-    boxShadow: "0 12px 40px rgba(0, 0, 0, 0.45), inset 1.2px 1.2px 0 rgba(255, 255, 255, 0.25)"
+    padding: "{spacing.6}"
+
   glass-strong:
     backgroundColor: "{colors.glass-fill-strong}"
-    backdropFilter: "blur(30px) saturate(180%)"
-    boxShadow: "0 24px 70px rgba(0, 0, 0, 0.55), inset 1.2px 1.2px 0 rgba(255, 255, 255, 0.3)"
+    rounded: "{rounded.lg}"
+    padding: "{spacing.8}"
 
   button:
     height: "{spacing.11}"
-    padding: "0 {spacing.6}"
+    padding: "{spacing.6}"
     backgroundColor: "{colors.glass-fill}"
     textColor: "{colors.content-primary}"
-    typography: "{typography.body}"
     rounded: "{rounded.pill}"
-    fontSize: "{text.16}"
-    fontWeight: "600"
-    transition: "transform 120ms cubic-bezier(.34, 1.56, .64, 1)"
+    typography: "{typography.body}"
 
   button-primary:
-    backgroundColor: "linear-gradient(180deg, {colors.accent-bright}, {colors.accent})"
+    height: "{spacing.11}"
+    padding: "{spacing.6}"
+    backgroundColor: "{colors.accent}"
     textColor: "#06101f"
-    fontWeight: "700"
-    boxShadow: "0 8px 24px {colors.glow-halo}, 0 0 36px {colors.glow-halo}"
+    rounded: "{rounded.pill}"
+    typography: "{typography.body}"
 
   button-ghost:
     backgroundColor: "transparent"
-    borderColor: "transparent"
-    boxShadow: "none"
+    textColor: "{colors.content-primary}"
+    rounded: "{rounded.pill}"
 
   button-danger:
-    textColor: "{colors.signal-error}"
-    backgroundColor: "rgba(242, 121, 107, 0.08)"
-    borderColor: "rgba(242, 121, 107, 0.4)"
-    boxShadow: "none"
+    backgroundColor: "{colors.signal-error}"
+    textColor: "#ffffff"
+    rounded: "{rounded.pill}"
 
-  button-small:
+  button-sm:
     height: "36px"
-    padding: "0 {spacing.4}"
-    fontSize: "{text.14}"
+    padding: "{spacing.4}"
 
   input:
-    backgroundColor: "rgba(255, 255, 255, 0.04)"
+    backgroundColor: "{colors.glass-fill}"
     textColor: "{colors.content-primary}"
-    borderColor: "{colors.glass-stroke}"
     rounded: "{rounded.soft}"
-    padding: "{spacing.3} {spacing.4}"
-    fontSize: "{text.16}"
-    fontFamily: "{typography.body.fontFamily}"
-    transition: "border-color 500ms cubic-bezier(.23, .6, .32, .99), box-shadow 500ms cubic-bezier(.23, .6, .32, .99)"
-
-  input-focus:
-    borderColor: "{colors.accent}"
-    backgroundColor: "rgba(255, 255, 255, 0.06)"
-    boxShadow: "0 0 0 1px {colors.accent}, 0 0 22px {colors.glow-halo}"
+    padding: "{spacing.3}"
+    typography: "{typography.body}"
 
   chip:
-    backgroundColor: "rgba(255, 255, 255, 0.05)"
+    backgroundColor: "{colors.glass-fill}"
     textColor: "{colors.content-secondary}"
-    borderColor: "{colors.glass-stroke}"
     rounded: "{rounded.pill}"
-    padding: "4px 12px"
-    fontSize: "{text.12}"
-    fontWeight: "600"
+    padding: "{spacing.2}"
+    typography: "{typography.body}"
 
   chip-accent:
     backgroundColor: "{colors.glow-halo}"
     textColor: "{colors.accent-bright}"
-    borderColor: "rgba(111, 168, 255, 0.4)"
 
-  chip-success:
-    textColor: "{colors.signal-success}"
-    borderColor: "rgba(95, 208, 166, 0.4)"
+  chip-ok:
+    backgroundColor: "{colors.signal-success}"
+    textColor: "#ffffff"
 
-  chip-warning:
-    textColor: "{colors.signal-warning}"
-    borderColor: "rgba(242, 194, 107, 0.4)"
+  chip-warn:
+    backgroundColor: "{colors.signal-warning}"
+    textColor: "#ffffff"
 
   card:
     backgroundColor: "{colors.glass-fill}"
-    padding: "{spacing.6}"
     rounded: "{rounded.lg}"
-
-text:
-  12: "0.75rem"
-  14: "0.875rem"
-  16: "1rem"
-  18: "1.125rem"
-  22: "1.375rem"
-  28: "1.75rem"
-  36: "2.25rem"
-  48: "3rem"
-  64: "4rem"
-  80: "5rem"
-  110: "6.875rem"
-  160: "10rem"
-  240: "15rem"
-
-duration:
-  micro: "120ms"
-  micro-exit: "350ms"
-  secondary: "500ms"
-  primary: "1100ms"
-  page: "900ms"
-
-easing:
-  standard: "cubic-bezier(.16, 1, .3, 1)"
-  emphatic: "cubic-bezier(.34, 1.56, .64, 1)"
-  exit: "cubic-bezier(.7, 0, .84, 0)"
-  signature: "cubic-bezier(.9, .02, .18, 1)"
-  settle: "cubic-bezier(.23, .6, .32, .99)"
+    padding: "{spacing.6}"
 
 ---
 
@@ -265,17 +205,12 @@ Glass panels achieve depth through:
 3. **Borders**: 1px border in `glass-stroke` (14% white) to define edges.
 4. **Specular Sheen**: `::before` pseudo-element with a subtle white gradient (top-left), `mix-blend-mode: screen`, to simulate light catching the glass edge.
 
-## Animation
+## Shapes
 
-- **dur-micro** (120ms): Micro-interactions (button press, hover).
-- **dur-micro-exit** (350ms): Slightly slower exit animations.
-- **dur-secondary** (500ms): Reveal animations, panel transitions.
-- **dur-primary** (1100ms): Page-level transitions.
-- **ease-standard** (`cubic-bezier(.16, 1, .3, 1)`): Default ease, snappy and natural.
-- **ease-emphatic**: Bouncy ease for delightful interactions.
-- **ease-settle**: Relaxed ease for calm, settling motions.
-
-Reduced-motion: All animations are disabled if `prefers-reduced-motion` is set.
+Rounded corners are applied consistently:
+- Buttons: `radius-pill` (full rounding).
+- Inputs: `radius-soft` (14px, subtle).
+- Cards/Panels: `radius-lg` (22px, prominent).
 
 ## Components
 
@@ -316,12 +251,17 @@ Containers with glass styling and consistent padding:
 - `.card`: `space-6` padding (24px).
 - `.card-pad-lg`: `space-8` padding (32px) for larger cards.
 
-## Shapes
+## Animation
 
-Rounded corners are applied consistently:
-- Buttons: `radius-pill` (full rounding).
-- Inputs: `radius-soft` (14px, subtle).
-- Cards/Panels: `radius-lg` (22px, prominent).
+- **dur-micro** (120ms): Micro-interactions (button press, hover).
+- **dur-micro-exit** (350ms): Slightly slower exit animations.
+- **dur-secondary** (500ms): Reveal animations, panel transitions.
+- **dur-primary** (1100ms): Page-level transitions.
+- **ease-standard** (`cubic-bezier(.16, 1, .3, 1)`): Default ease, snappy and natural.
+- **ease-emphatic**: Bouncy ease for delightful interactions.
+- **ease-settle**: Relaxed ease for calm, settling motions.
+
+Reduced-motion: All animations are disabled if `prefers-reduced-motion` is set.
 
 ## Do's and Don'ts
 
