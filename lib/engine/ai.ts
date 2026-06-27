@@ -458,3 +458,71 @@ Hard rules (follow exactly):
   }
   return null;
 }
+
+// ---------- Deep Cover Letter Rewrite ----------
+export async function aiRewriteCoverLetter(opts: {
+  currentCoverLetter: string;
+  jobText: string;
+  company: string;
+  positions: string[];
+  applicantName?: string;
+  applicantBio?: string;
+  applicantLanguages?: string[];
+  needsVisaSponsorship?: boolean;
+  openToRelocation?: boolean;
+  lang: AppLang;
+  tier?: AiTier;
+}): Promise<string | null> {
+  if (!aiEnabled()) return null;
+
+  const langName = APP_LANGS.find((l) => l.code === opts.lang)?.label || "English";
+  const rolesLine = opts.positions.filter(Boolean).join(", ") || "the advertised role";
+
+  const applicantLines = [
+    opts.applicantName ? `- Full Name: ${opts.applicantName}` : null,
+    opts.applicantBio ? `- Professional Background: ${opts.applicantBio}` : null,
+    opts.applicantLanguages?.length ? `- Languages: ${opts.applicantLanguages.join(", ")}` : null,
+    opts.needsVisaSponsorship ? `- Work Authorization: Requires visa sponsorship` : `- Work Authorization: Authorized to work, no sponsorship needed`,
+    opts.openToRelocation ? `- Relocation: Open to relocation` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const prompt = `You are an elite Cover Letter writer. Your task is to DEEPLY REWRITE and dramatically IMPROVE the cover letter below.
+
+APPLICANT PROFILE:
+${applicantLines || "(profile not available)"}
+
+COMPANY: ${opts.company || "(not specified)"}
+TARGET ROLES: ${rolesLine}
+
+JOB LISTING / CONTEXT (use this to tailor the letter specifically):
+"""
+${opts.jobText.slice(0, 5000)}
+"""
+
+CURRENT COVER LETTER (study this and improve upon it):
+"""
+${opts.currentCoverLetter.slice(0, 3000)}
+"""
+
+INSTRUCTIONS:
+- Write a SIGNIFICANTLY BETTER, deeply tailored cover letter using the job listing context.
+- Mirror the company's language, values, and specific requirements from the job listing.
+- Map the applicant's specific background to exactly what this company needs.
+- Reference concrete details from the job listing (venue type, specific requirements, company culture).
+- Structure into 3 compelling paragraphs:
+  1. Opening: Genuine enthusiasm with a specific reason for THIS company/role, not generic flattery.
+  2. Body: Powerfully connect applicant's skills/experience to the job's specific requirements and culture.
+  3. Closing: Express availability, mention CV/resume is attached (NOT email attachment), invite next steps.
+- Write ONLY the main body paragraphs. Do NOT include: date, applicant name/address, company address, salutation ("Dear..."), or sign-off ("Sincerely..."). Those are added automatically.
+- Write fully in ${langName} at native speaker quality.
+- Be specific, compelling, and avoid generic phrases like "I am a motivated individual".
+- Return STRICT JSON only: {"body": "..."}`;
+
+  const parsed = extractJson<{ body?: string }>(await complete(prompt, 1200, opts.tier || "free"));
+  if (parsed?.body && typeof parsed.body === "string" && parsed.body.trim()) {
+    return parsed.body.trim();
+  }
+  return null;
+}

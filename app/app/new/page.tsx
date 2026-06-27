@@ -106,6 +106,8 @@ export default function NewApplication() {
   const [coverLetterBody, setCoverLetterBody] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [coverLetterPreviewOpen, setCoverLetterPreviewOpen] = useState(false);
+  const [rewritingCoverLetter, setRewritingCoverLetter] = useState(false);
+  const [rewritingCoverLetter, setRewritingCoverLetter] = useState(false);
 
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {
@@ -531,6 +533,36 @@ export default function NewApplication() {
       setRefining(null);
     }
   }
+
+  async function rewriteCoverLetter() {
+    if (!res || !coverLetterBody.trim() || rewritingCoverLetter) return;
+    setRewritingCoverLetter(true);
+    setMsg({ kind: "ok", text: t("new.rewriteCoverLetterTitle") });
+    try {
+      const r = await fetch("/api/rewrite-cover-letter", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          currentCoverLetter: coverLetterBody,
+          jobText: text,
+          company: res.company,
+          positions: res.applyFor && res.applyFor.length ? res.applyFor : (res.positions || []),
+          language: res.language || "en",
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.body) throw new Error(d.error || "rewrite failed");
+      setCoverLetterBody(d.body);
+      setMsg({ kind: "ok", text: t("new.rewriteCoverLetterDone") });
+      setTimeout(() => setMsg(null), 3000);
+    } catch {
+      setMsg({ kind: "warn", text: t("new.rewriteCoverLetterFailed") });
+      setTimeout(() => setMsg(null), 4000);
+    } finally {
+      setRewritingCoverLetter(false);
+    }
+  }
+
 
   const restoredLabel = draftRestoredAt
     ? t("new.draftRestored").replace("{time}", new Date(draftRestoredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))

@@ -285,6 +285,64 @@ export default function BulkApply() {
     try { localStorage.setItem("paply:pref:includeSignature", String(checked)); } catch {}
   }
 
+  const [rewritingItemId, setRewritingItemId] = useState<number | null>(null);
+
+  async function rewriteCoverLetterForItem(id: number) {
+    const it = items.find((x) => x.id === id);
+    if (!it || !it.coverLetterBody?.trim() || rewritingItemId === id) return;
+    setRewritingItemId(id);
+    try {
+      const r = await fetch("/api/rewrite-cover-letter", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          currentCoverLetter: it.coverLetterBody,
+          jobText: it.input,
+          company: it.company || "",
+          positions: it.positions || [],
+          language: it.language || "en",
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.body) throw new Error(d.error || "rewrite failed");
+      update(id, { coverLetterBody: d.body });
+    } catch {
+      // silently fail
+    } finally {
+      setRewritingItemId(null);
+    }
+  }
+
+
+  const [rewritingItemId, setRewritingItemId] = useState<number | null>(null);
+
+  async function rewriteCoverLetterForItem(id: number) {
+    const it = items.find((x) => x.id === id);
+    if (!it || !it.coverLetterBody?.trim() || rewritingItemId === id) return;
+    setRewritingItemId(id);
+    try {
+      const r = await fetch("/api/rewrite-cover-letter", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          currentCoverLetter: it.coverLetterBody,
+          jobText: it.input,
+          company: it.company || "",
+          positions: it.positions || [],
+          language: it.language || "en",
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.body) throw new Error(d.error || "rewrite failed");
+      update(id, { coverLetterBody: d.body });
+    } catch {
+      // silently fail
+    } finally {
+      setRewritingItemId(null);
+    }
+  }
+
+
   const statusClass: Record<Status, string> = {
     queued: "", analyzing: "", drafted: "chip-accent", sending: "",
     sent: "chip-ok", failed: "chip-warn", skipped: "chip-warn",
@@ -742,79 +800,7 @@ export default function BulkApply() {
           )}
         </div>
       )}
-      {previewItemIndex !== null && (
-        <div className="confirm-overlay" onClick={() => setPreviewItemIndex(null)}>
-          <div className="confirm-modal cl-preview-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 680, width: "94%", maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column", padding: "var(--space-4)" }}>
-            <div className="detail-header" style={{ borderBottom: "1px solid var(--border-soft)", paddingBottom: "var(--space-3)", marginBottom: "var(--space-3)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span className="detail-company" style={{ fontSize: "var(--text-16)", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <polyline points="10 9 9 9 8 9" />
-                </svg>
-                {t("new.coverLetterTitle")} ({t("new.preview")})
-              </span>
-              <button className="btn btn-sm" onClick={() => setPreviewItemIndex(null)}>{t("apps.detail.close")}</button>
-            </div>
-            
-            {/* Styled "A4" Document Preview Box */}
-            {(() => {
-              const item = items.find(x => x.id === previewItemIndex);
-              if (!item) return null;
-              
-              const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
-                en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
-                tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
-                es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
-                fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
-                de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
-                it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
-                pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
-              };
-              const lang = item.language || "en";
-              const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
-              const dateStr = loc.formatDate(new Date());
-              
-              return (
-                <div style={{ flex: 1, overflowY: "auto", padding: "var(--space-4) var(--space-5)", background: "#ffffff", color: "#1e293b", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid #e2e8f0", fontFamily: "Georgia, serif", fontSize: "14px", lineHeight: "1.6", display: "flex", flexDirection: "column", gap: "16px" }}>
-                  
-                  {/* Sender Details */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                    <strong style={{ fontSize: "16px", color: "#0f172a" }}>Applicant</strong>
-                  </div>
-                  
-                  {/* Date */}
-                  <div style={{ color: "#64748b", fontSize: "12px", marginTop: "4px" }}>
-                    {dateStr}
-                  </div>
-                  
-                  {/* Company Info */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
-                    <strong style={{ color: "#0f172a" }}>{item.company}</strong>
-                    <span style={{ color: "#475569" }}>{loc.hiringTeam}</span>
-                  </div>
-                  
-                  {/* Document Body Paragraphs */}
-                  <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "14px", color: "#334155", textAlign: "justify" }}>
-                    {(item.coverLetterBody || "").split(/\n+/).filter(s => s.trim().length > 0).map((p, i) => (
-                      <p key={i} style={{ margin: 0 }}>{p}</p>
-                    ))}
-                  </div>
-                  
-                  {/* Closing */}
-                  <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span>{loc.sincerely}</span>
-                    <strong style={{ color: "#0f172a" }}>Applicant</strong>
-                  </div>
-                  
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
+      
     </div>
   );
 }
