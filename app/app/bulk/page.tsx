@@ -223,6 +223,24 @@ export default function BulkApply() {
     setItems((prev) => prev.map((x) => (x.id === id ? res : x)));
   }
 
+  async function sendAllDrafts() {
+    const toSend = items.filter((it) => it.status === "drafted" && it.to.trim());
+    if (!toSend.length) return;
+    setRunning(true);
+    stopRef.current = false;
+    for (const base of toSend) {
+      if (stopRef.current) {
+        update(base.id, { status: "skipped", error: t("bulk.stopped") });
+        continue;
+      }
+      update(base.id, { status: "sending" });
+      const res = await sendItem(base);
+      setItems((prev) => prev.map((x) => (x.id === base.id ? res : x)));
+    }
+    setRunning(false);
+    stopRef.current = false;
+  }
+
   const statusClass: Record<Status, string> = {
     queued: "", analyzing: "", drafted: "chip-accent", sending: "",
     sent: "chip-ok", failed: "chip-warn", skipped: "chip-warn",
@@ -542,6 +560,19 @@ export default function BulkApply() {
               )}
             </div>
           ))}
+
+          {items.some((it) => it.status === "drafted" && it.to.trim()) && (
+            <div className="row gap-3" style={{ justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
+              <button
+                className="btn btn-primary"
+                data-loading={running}
+                onClick={sendAllDrafts}
+                disabled={running}
+              >
+                ✉️ {t("bulk.sendAll")}
+              </button>
+            </div>
+          )}
         </div>
       )}
       {previewItemIndex !== null && (
