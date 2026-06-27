@@ -23,6 +23,8 @@ type Item = {
   error?: string;
   expanded?: boolean;
   showInlinePreview?: boolean;
+  fullName?: string;
+  signatureChecked?: boolean;
 };
 
 const MAX_ITEMS = 20;
@@ -74,15 +76,32 @@ export default function BulkApply() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "error");
+
+      let isSigChecked = d.includeSignature || false;
+      try {
+        const sigPref = localStorage.getItem("paply:pref:includeSignature");
+        if (sigPref !== null) {
+          isSigChecked = sigPref === "true";
+        }
+      } catch {}
+
+      const fullName = d.fullName || "";
+      let initialBody = d.body;
+      if (isSigChecked && fullName && !initialBody.includes("Sincerely,")) {
+        initialBody = initialBody.trim() + `\n\nSincerely,\n${fullName}`;
+      }
+
       return {
         ...it,
         status: d.emailSource === "none" ? "skipped" : "drafted",
         company: d.company, country: d.country, emailSource: d.emailSource,
-        to: (d.emails || []).join(", "), subject: d.subject, body: d.body,
-        coverLetterBody: d.coverLetterBody || d.body,
+        to: (d.emails || []).join(", "), subject: d.subject, body: initialBody,
+        coverLetterBody: d.coverLetterBody || initialBody,
         includeCoverLetter: includeCoverLetter,
         language: d.language, positions: d.positions, overLimit: d.overLimit,
         error: d.emailSource === "none" ? t("bulk.noEmail") : undefined,
+        fullName: fullName,
+        signatureChecked: isSigChecked,
       };
     } catch (e: any) {
       return { ...it, status: "failed", error: e.message };
@@ -242,6 +261,30 @@ export default function BulkApply() {
     stopRef.current = false;
   }
 
+  function handleSignatureToggle(id: number, checked: boolean) {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        if (!item.fullName) return { ...item, signatureChecked: checked };
+
+        const sigText = `\n\nSincerely,\n${item.fullName}`;
+        let newBody = item.body;
+        if (checked) {
+          if (!newBody.includes("Sincerely,")) {
+            newBody = newBody.trim() + sigText;
+          }
+        } else {
+          if (newBody.includes("Sincerely,")) {
+            newBody = newBody.replace(sigText, "").replace(/\n\nSincerely,\n.*$/, "").trim();
+          }
+        }
+
+        return { ...item, signatureChecked: checked, body: newBody };
+      })
+    );
+    try { localStorage.setItem("paply:pref:includeSignature", String(checked)); } catch {}
+  }
+
   const statusClass: Record<Status, string> = {
     queued: "", analyzing: "", drafted: "chip-accent", sending: "",
     sent: "chip-ok", failed: "chip-warn", skipped: "chip-warn",
@@ -360,6 +403,21 @@ export default function BulkApply() {
                     <span className="field-label">{t("new.body")}</span>
                     <textarea className="textarea" style={{ minHeight: 160 }} value={it.body} onChange={(e) => update(it.id, { body: e.target.value })} />
                   </label>
+
+                  {it.fullName && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "-6px", marginBottom: "var(--space-1)" }}>
+                      <input
+                        id={`signature-checkbox-${it.id}`}
+                        type="checkbox"
+                        checked={it.signatureChecked || false}
+                        onChange={(e) => handleSignatureToggle(it.id, e.target.checked)}
+                        style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--accent)" }}
+                      />
+                      <label htmlFor={`signature-checkbox-${it.id}`} style={{ fontSize: "var(--text-13)", cursor: "pointer", fontWeight: 500, userSelect: "none", color: "var(--text-secondary)" }}>
+                        {t("new.addSignature")}
+                      </label>
+                    </div>
+                  )}
 
                   <label className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
                     <input
