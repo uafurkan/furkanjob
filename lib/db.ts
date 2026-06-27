@@ -261,7 +261,7 @@ export async function findUserById(userId: string): Promise<User | null> {
   const rows = await sql`SELECT * FROM users WHERE id=${userId} LIMIT 1`;
   return rows[0] ? mapUser(rows[0] as Record<string, unknown>) : null;
 }
-function proEmails(): string[] {
+export function proEmails(): string[] {
   return (process.env.PRO_EMAILS || "")
     .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
