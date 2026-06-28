@@ -173,13 +173,17 @@ export default function AppGuide({ open, onClose }: { open?: boolean; onClose?: 
       onClick={(e) => { if (e.target === e.currentTarget) dismiss(); }}
     >
       <div className="guide-card glass glass-strong" role="dialog" aria-modal="true">
-        {/* iOS-style drag handle, visible only on mobile via CSS */}
-        <div className="guide-handle" aria-hidden="true" />
-        <button className="guide-skip btn btn-ghost btn-sm" onClick={dismiss}>
-          {t("guide.skip")}
-        </button>
+        {/* Card header: drag handle (mobile only) + skip button side by side */}
+        <div className="guide-card-header">
+          <div className="guide-handle" aria-hidden="true" />
+          <button className="guide-skip btn btn-ghost btn-sm" onClick={dismiss}>
+            {t("guide.skip")}
+          </button>
+        </div>
 
-        {/* Step content — keyed so animations replay on step change */}
+        {/* Step content — keyed so animations replay on step change.
+            guide-footer lives INSIDE here so margin-top:auto pins it to bottom
+            regardless of whether the card has a fixed height (mobile) or auto (desktop). */}
         <div className="guide-step" key={step}>
           <div className="guide-mockup">
             <Mockup />
@@ -189,30 +193,28 @@ export default function AppGuide({ open, onClose }: { open?: boolean; onClose?: 
             <h2 className="guide-title">{t(titleKey)}</h2>
             <p className="guide-sub">{t(subKey)}</p>
           </div>
-        </div>
 
-        <div className="guide-footer">
-          {/* iOS-style pill dots */}
-          <div className="guide-dots" aria-hidden="true">
-            {STEPS.map((_, i) => (
-              <button key={i} className={`guide-dot${i === step ? " active" : ""}`} onClick={() => setStep(i)} />
-            ))}
-          </div>
-
-          <div className="guide-nav">
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => setStep((s) => s - 1)}
-              style={{ visibility: step === 0 ? "hidden" : "visible" }}
-            >
-              {t("guide.prev")}
-            </button>
-            <button
-              className={`btn btn-sm${isLast ? " btn-primary" : ""}`}
-              onClick={() => (isLast ? dismiss() : setStep((s) => s + 1))}
-            >
-              {isLast ? t("guide.done") : t("guide.next")}
-            </button>
+          <div className="guide-footer">
+            <div className="guide-dots" aria-hidden="true">
+              {STEPS.map((_, i) => (
+                <button key={i} className={`guide-dot${i === step ? " active" : ""}`} onClick={() => setStep(i)} />
+              ))}
+            </div>
+            <div className="guide-nav">
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setStep((s) => s - 1)}
+                style={{ visibility: step === 0 ? "hidden" : "visible" }}
+              >
+                {t("guide.prev")}
+              </button>
+              <button
+                className={`btn btn-sm${isLast ? " btn-primary" : ""}`}
+                onClick={() => (isLast ? dismiss() : setStep((s) => s + 1))}
+              >
+                {isLast ? t("guide.done") : t("guide.next")}
+              </button>
+            </div>
           </div>
         </div>
       </div>
