@@ -1034,20 +1034,22 @@
   to   { opacity: 1; transform: none; }
 }
 
-/* Card header: drag handle centred + skip button right */
+/* Card header: skip button right-aligned; drag handle centred (mobile only) */
 .guide-card-header {
-  position: relative;
-  display: flex; align-items: center; justify-content: center;
-  padding: 16px 12px 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  flex-shrink: 0; position: relative;
 }
+/* Drag handle sits absolutely centred on mobile; on desktop it's display:none */
 .guide-handle {
-  display: none; /* shown only on mobile via media query */
+  display: none;
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   width: 36px; height: 4px; border-radius: 2px;
-  background: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.18); pointer-events: none;
 }
 .guide-skip {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
   font-size: var(--text-13); color: var(--content-tertiary);
+  /* inline in flex row — no absolute overlap */
 }
 
 /* Step: flex column; footer uses margin-top:auto to pin to bottom */
@@ -1172,7 +1174,10 @@
 }
 .gm-role-ok   { background: rgba(95,208,166,0.08); border: 1px solid rgba(95,208,166,0.25); }
 .gm-role-drop { background: rgba(255,255,255,0.025); border: 1px solid var(--glass-stroke); }
-.gm-role-icon { font-size: 13px; font-weight: 800; width: 18px; text-align: center; }
+.gm-role-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 18px; flex-shrink: 0;
+}
 .gm-role-ok   .gm-role-icon { color: var(--signal-success); }
 .gm-role-drop .gm-role-icon { color: rgba(255,255,255,0.2); }
 .gm-role-name { font-size: 12px; font-weight: 600; flex: 1; }
@@ -1230,7 +1235,7 @@
 /* ── Step 5: Send ─────────────────────────────── */
 .gm-send { gap: var(--space-3); }
 .gm-envelope {
-  font-size: 38px; line-height: 1;
+  display: flex; color: var(--accent-bright);
   animation: envFly 1.1s var(--ease-emphatic) 0.4s forwards;
 }
 @keyframes envFly {
@@ -1248,6 +1253,7 @@
 .gm-send-key { color: var(--content-tertiary); min-width: 28px; }
 .gm-send-val { color: var(--content-secondary); }
 .gm-sent-badge {
+  display: flex; align-items: center; gap: 6px;
   font-size: 13px; font-weight: 700; color: var(--signal-success);
   padding: 6px 16px; border-radius: var(--radius-pill);
   border: 1px solid rgba(95,208,166,0.4); background: rgba(95,208,166,0.1);

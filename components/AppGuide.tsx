@@ -4,9 +4,69 @@ import { useT } from "@/components/i18n";
 
 const GUIDE_KEY = "paply:guide:seen";
 
+// ── SVG icon set (no emojis) ──────────────────────────────────────────────────
+
+function IcoMail() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2"/>
+      <polyline points="2,4 12,13 22,4"/>
+    </svg>
+  );
+}
+function IcoGlobe() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/>
+    </svg>
+  );
+}
+function IcoClip() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+    </svg>
+  );
+}
+function IcoCheck() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  );
+}
+function IcoX() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  );
+}
+function IcoSend() {
+  return (
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"/>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>
+  );
+}
+function IcoUser() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"/>
+    </svg>
+  );
+}
+
 // ── Step mockup components ────────────────────────────────────────────────────
 
 function WelcomeMock() {
+  const CHIPS = [
+    { Icon: IcoMail,  label: "Email found"    },
+    { Icon: IcoGlobe, label: "Visa language"  },
+    { Icon: IcoClip,  label: "CV attached"    },
+  ];
   return (
     <div className="gm gm-welcome">
       <div className="gm-logo">
@@ -14,9 +74,9 @@ function WelcomeMock() {
         <span className="gm-wordmark">paply</span>
       </div>
       <div className="gm-feat-chips">
-        {(["✉️ Email found", "✈️ Visa language", "📎 CV attached"] as const).map((c, i) => (
-          <span key={c} className="chip gm-chip" style={{ animationDelay: `${i * 280 + 300}ms` }}>
-            {c}
+        {CHIPS.map(({ Icon, label }, i) => (
+          <span key={label} className="chip gm-chip" style={{ animationDelay: `${i * 280 + 300}ms` }}>
+            <Icon />{label}
           </span>
         ))}
       </div>
@@ -38,7 +98,9 @@ function PasteMock() {
         </div>
       </div>
       <div className="gm-paste-hint">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
+        </svg>
         <span>AI agent analyzing…</span>
       </div>
     </div>
@@ -49,12 +111,12 @@ function RolesMock() {
   return (
     <div className="gm gm-roles">
       {[
-        { label: "Waiter", ok: true,  note: "Best fit",             delay: 80  },
-        { label: "Kitchen Hand", ok: true,  note: "",               delay: 320 },
-        { label: "Night Audit", ok: false, note: "lodging role",    delay: 580 },
+        { label: "Waiter",       ok: true,  note: "Best fit",    delay: 80  },
+        { label: "Kitchen Hand", ok: true,  note: "",            delay: 320 },
+        { label: "Night Audit",  ok: false, note: "lodging role", delay: 580 },
       ].map((r) => (
         <div key={r.label} className={`gm-role-row${r.ok ? " gm-role-ok" : " gm-role-drop"}`} style={{ animationDelay: `${r.delay}ms` }}>
-          <span className="gm-role-icon">{r.ok ? "✓" : "✗"}</span>
+          <span className="gm-role-icon">{r.ok ? <IcoCheck /> : <IcoX />}</span>
           <span className="gm-role-name">{r.label}</span>
           {r.note && <span className="gm-role-note">{r.note}</span>}
         </div>
@@ -106,20 +168,22 @@ function AskMock() {
 function SendMock() {
   return (
     <div className="gm gm-send">
-      <div className="gm-envelope">✉️</div>
+      <div className="gm-envelope"><IcoSend /></div>
       <div className="gm-send-meta">
         {([
-          ["To", "careers@duxdine.co.nz"],
-          ["From", "you@gmail.com"],
-          ["📎", "YourCV.pdf"],
-        ] as [string, string][]).map(([k, v]) => (
-          <div key={k} className="gm-send-row">
-            <span className="gm-send-key">{k}</span>
+          [<IcoMail key="m" />, "careers@duxdine.co.nz"],
+          [<IcoUser key="u" />, "you@gmail.com"],
+          [<IcoClip key="c" />, "YourCV.pdf"],
+        ] as [React.ReactNode, string][]).map(([icon, v], i) => (
+          <div key={i} className="gm-send-row">
+            <span className="gm-send-key">{icon}</span>
             <span className="gm-send-val">{v}</span>
           </div>
         ))}
       </div>
-      <div className="gm-sent-badge">✓ Sent</div>
+      <div className="gm-sent-badge">
+        <IcoCheck /> Sent
+      </div>
     </div>
   );
 }
@@ -137,19 +201,20 @@ const STEPS = [
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+// React import for JSX type
+import type React from "react";
+
 export default function AppGuide({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
   const { t } = useT();
 
-  // Auto-show for first-time visitors
   useEffect(() => {
     try {
       if (!localStorage.getItem(GUIDE_KEY)) setVisible(true);
     } catch {}
   }, []);
 
-  // External open trigger (from nav "?" button)
   useEffect(() => {
     if (open) { setStep(0); setVisible(true); }
   }, [open]);
@@ -173,7 +238,7 @@ export default function AppGuide({ open, onClose }: { open?: boolean; onClose?: 
       onClick={(e) => { if (e.target === e.currentTarget) dismiss(); }}
     >
       <div className="guide-card glass glass-strong" role="dialog" aria-modal="true">
-        {/* Card header: drag handle (mobile only) + skip button side by side */}
+        {/* Header row: drag handle (centred, mobile only) + skip button (right) */}
         <div className="guide-card-header">
           <div className="guide-handle" aria-hidden="true" />
           <button className="guide-skip btn btn-ghost btn-sm" onClick={dismiss}>
@@ -181,9 +246,8 @@ export default function AppGuide({ open, onClose }: { open?: boolean; onClose?: 
           </button>
         </div>
 
-        {/* Step content — keyed so animations replay on step change.
-            guide-footer lives INSIDE here so margin-top:auto pins it to bottom
-            regardless of whether the card has a fixed height (mobile) or auto (desktop). */}
+        {/* Step content — keyed so every step animates fresh.
+            guide-footer is INSIDE here; margin-top:auto pins it to the bottom. */}
         <div className="guide-step" key={step}>
           <div className="guide-mockup">
             <Mockup />
