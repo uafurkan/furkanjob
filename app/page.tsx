@@ -6,6 +6,7 @@ import HeroDraft from "@/components/HeroDraft";
 import StepsScene from "@/components/StepsScene";
 import StatStrip from "@/components/StatStrip";
 import HeaderAuthDropdown from "@/components/nav/HeaderAuthDropdown";
+import InstagramLink from "@/components/InstagramLink";
 
 export default async function Landing() {
   const { t } = getT();
@@ -248,9 +249,11 @@ export default async function Landing() {
       </section>
 
       <footer className="landing-foot container text-secondary">
-        <span>
-          <a href="https://paply.me" style={{ textDecoration: "none", color: "inherit" }}>paply.me</a> &nbsp;·&nbsp;
+        <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <a href="https://paply.me" style={{ textDecoration: "none", color: "inherit" }}>paply.me</a>
+          <span style={{ opacity: 0.35 }}>·</span>
           <span style={{ fontSize: "var(--text-12)", opacity: 0.55 }}>by <strong style={{ fontWeight: 600, color: "var(--content-secondary)" }}>Veor</strong></span>
+          <InstagramLink />
         </span>
         <span className="foot-links">
           <Link href="/privacy">{t("foot.privacy")}</Link>
