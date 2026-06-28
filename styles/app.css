@@ -1235,7 +1235,7 @@
 /* ── Step 5: Send ─────────────────────────────── */
 .gm-send { gap: var(--space-3); }
 .gm-envelope {
-  display: flex; color: var(--accent-bright);
+  font-size: 40px; line-height: 1;
   animation: envFly 1.1s var(--ease-emphatic) 0.4s forwards;
 }
 @keyframes envFly {

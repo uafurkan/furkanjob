@@ -168,7 +168,7 @@ function AskMock() {
 function SendMock() {
   return (
     <div className="gm gm-send">
-      <div className="gm-envelope"><IcoSend /></div>
+      <div className="gm-envelope">✉️</div>
       <div className="gm-send-meta">
         {([
           [<IcoMail key="m" />, "careers@duxdine.co.nz"],
