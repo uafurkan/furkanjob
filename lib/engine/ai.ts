@@ -567,6 +567,7 @@ export async function aiRewriteCoverLetter(opts: {
   applicantCurrentCountry?: string;
   needsVisaSponsorship?: boolean;
   openToRelocation?: boolean;
+  cvText?: string | null;
   lang: AppLang;
   tier?: AiTier;
 }): Promise<string | null> {
@@ -590,6 +591,7 @@ export async function aiRewriteCoverLetter(opts: {
 
 APPLICANT PROFILE:
 ${applicantLines || "(profile not available)"}
+${opts.cvText ? `\nAPPLICANT RESUME / CV TEXT:\n"""\n${opts.cvText.slice(0, 3000)}\n"""\n` : ""}
 
 COMPANY: ${opts.company || "(not specified)"}
 TARGET ROLES: ${rolesLine}
