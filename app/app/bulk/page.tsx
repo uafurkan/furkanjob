@@ -281,15 +281,22 @@ export default function BulkApply() {
         const loc = COVER_LETTER_L10N[item.language || "en"] || COVER_LETTER_L10N.en;
         const sigText = `\n\n${loc.sincerely}\n${item.fullName}`;
         let newBody = item.body;
+        let newCoverLetterBody = item.coverLetterBody;
         if (checked) {
           if (!newBody.includes(loc.sincerely)) {
             newBody = newBody.trim() + sigText;
           }
+          if (newCoverLetterBody && !newCoverLetterBody.includes(loc.sincerely)) {
+            newCoverLetterBody = newCoverLetterBody.trim() + sigText;
+          }
         } else {
           newBody = newBody.replace(sigText, "").replace(/\n\n[^\n]+\n[^\n]+$/, "").trim();
+          if (newCoverLetterBody && newCoverLetterBody.includes(loc.sincerely)) {
+            newCoverLetterBody = newCoverLetterBody.replace(sigText, "").replace(/\n\n[^\n]+\n[^\n]+$/, "").trim();
+          }
         }
 
-        return { ...item, signatureChecked: checked, body: newBody };
+        return { ...item, signatureChecked: checked, body: newBody, coverLetterBody: newCoverLetterBody };
       })
     );
     try { localStorage.setItem("paply:pref:includeSignature", String(checked)); } catch {}
@@ -643,13 +650,6 @@ export default function BulkApply() {
                                 {(it.coverLetterBody || "").split(/\n+/).filter(s => s.trim().length > 0).map((p, i) => (
                                   <p key={i} style={{ margin: 0 }}>{p}</p>
                                 ))}
-                              </div>
-
-                              <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
-                                <span>
-                                  {(COVER_LETTER_L10N[it.language || "en"] || COVER_LETTER_L10N.en).sincerely}
-                                </span>
-                                <strong style={{ color: "var(--content-primary)" }}>Applicant</strong>
                               </div>
                             </div>
                           </div>

@@ -302,6 +302,9 @@ export default function NewApplication() {
           prev.map((d, i) => (i === selectedDraftIndex ? { ...d, body: d.body.trim() + sigText } : d))
         );
       }
+      if (coverLetterBody && !coverLetterBody.includes("Sincerely,")) {
+        setCoverLetterBody((prev) => prev.trim() + sigText);
+      }
     } else {
       if (body.includes("Sincerely,")) {
         const cleanBody = body.replace(sigText, "").replace(/\n\nSincerely,\n.*$/, "").trim();
@@ -309,6 +312,10 @@ export default function NewApplication() {
         setCurrentDrafts((prev) =>
           prev.map((d, i) => (i === selectedDraftIndex ? { ...d, body: cleanBody } : d))
         );
+      }
+      if (coverLetterBody && coverLetterBody.includes("Sincerely,")) {
+        const cleanCl = coverLetterBody.replace(sigText, "").replace(/\n\nSincerely,\n.*$/, "").trim();
+        setCoverLetterBody(cleanCl);
       }
     }
   };
@@ -390,9 +397,9 @@ export default function NewApplication() {
       let initialClBody = d.coverLetterBody;
       if (!initialClBody) {
         initialClBody = parsedDrafts[0].body;
-        if (d.fullName) {
-          initialClBody = initialClBody.trim() + `\n\nSincerely,\n${d.fullName}`;
-        }
+      }
+      if (isSigChecked && d.fullName && !initialClBody.includes("Sincerely,")) {
+        initialClBody = initialClBody.trim() + `\n\nSincerely,\n${d.fullName}`;
       }
       setCoverLetterBody(initialClBody);
       setDraftRestoredAt(null);
@@ -1172,7 +1179,6 @@ export default function NewApplication() {
                     <div style={{ flex: 1, minHeight: 280, maxHeight: 420, overflowY: "auto", padding: "var(--space-4) var(--space-4)", background: "#ffffff", color: "#1e293b", borderRadius: "var(--radius-sm)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)", border: "1px solid #e2e8f0", fontFamily: "Georgia, serif", fontSize: "12px", lineHeight: "1.5", display: "flex", flexDirection: "column", gap: "12px" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                         <strong style={{ fontSize: "13px", color: "#0f172a" }}>{fullName || res?.fullName || "Applicant"}</strong>
-                        <span style={{ fontSize: "11px", color: "#64748b" }}>{contactEmail || res?.contactEmail || ""}</span>
                       </div>
 
                       <div style={{ color: "#64748b", fontSize: "10px", marginTop: "2px" }}>

@@ -448,8 +448,7 @@ Rules for the cover letter:
   1. Greeting: A warm local greeting based on the target country/cues (e.g., "Kia Ora," for NZ/AU, "Hola," for Spain/Spanish countries, "Bonjour," for France, "Hallo," for Germany, "Ciao," for Italy, "Olá," for Portugal/Brazil, or "Dear Hiring Team,"/localized equivalent for others).
   2. Introduction: State interest in the role at the specific company, demonstrating genuine enthusiasm. Reference some specific details of their venue or brand (cuisine, location, team culture, etc.).
   3. Experience/Why Me: Map the applicant's background, bio, and languages to the specific business needs. ${profile.currentCountry ? `Mention that they are currently based in ${profile.currentCountry} and ready to step into this role.` : ""}
-  4. Conclusion: Reiterate interest, state that the resume/CV is enclosed, and express interest in discussing further.
-  5. Closing sign-off: E.g., "Sincerely," followed by the applicant's name on a new line.
+  4. Conclusion: Reiterate interest, state that the resume/CV is enclosed, and express interest in discussing further. DO NOT include a signature, sign-off, or your name at the end.
 - Keep it concise, grounded, and highly customized. Avoid clichés and generic flattery.
 - Focus on operational readiness, consistency under pressure, and specific task experience (e.g., floor service, back-of-house, fast-paced environments). Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
 - Invent no fake details.`;
@@ -615,8 +614,7 @@ INSTRUCTIONS:
   1. Greeting: A warm local greeting based on the target country/cues (e.g., "Kia Ora," for NZ/AU, "Hola," for Spain/Spanish countries, "Bonjour," for France, "Hallo," for Germany, "Ciao," for Italy, "Olá," for Portugal/Brazil, or "Dear Hiring Team,"/localized equivalent for others).
   2. Opening: Genuine enthusiasm with a specific reason for THIS company/role, not generic flattery.
   3. Body: Powerfully connect applicant's skills/experience to the job's specific requirements and culture. ${opts.applicantCurrentCountry ? `Mention that they are currently based in ${opts.applicantCurrentCountry} and ready to start/relocate.` : ""}
-  4. Closing: Express availability, mention CV/resume is attached, invite next steps.
-  5. Closing sign-off: E.g., "Sincerely," followed by the applicant's name on a new line.
+  4. Closing: Express availability, mention CV/resume is attached, invite next steps. DO NOT include a signature, sign-off, or your name at the end.
 - Do NOT include applicant details, date, or company address at the top. Those are added automatically.
 - Write fully in ${langName} at native speaker quality.
 - Be specific, compelling, and avoid generic phrases like "I am a motivated individual".
