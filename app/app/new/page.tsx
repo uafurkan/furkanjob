@@ -557,7 +557,15 @@ export default function NewApplication() {
       const d = await r.json();
       if (!r.ok || !d.body) throw new Error(d.error || "refine failed");
       setBodyBeforeRefine(prev);
-      setBody(d.body);
+      
+      let finalBody = d.body;
+      if (signatureChecked && fullName && !finalBody.includes("Sincerely,")) {
+        finalBody = finalBody.trim() + `\n\nSincerely,\n${fullName}`;
+      }
+      setBody(finalBody);
+      setCurrentDrafts((prevDrafts) =>
+        prevDrafts.map((draft, i) => (i === selectedDraftIndex ? { ...draft, body: finalBody } : draft))
+      );
     } catch {
       setMsg({ kind: "warn", text: t("new.refine.failed") });
     } finally {
@@ -599,7 +607,16 @@ export default function NewApplication() {
   function applyAskRevision() {
     if (!askRevisedBody) return;
     setBodyBeforeRefine(body);
-    setBody(askRevisedBody);
+    
+    let finalBody = askRevisedBody;
+    if (signatureChecked && fullName && !finalBody.includes("Sincerely,")) {
+      finalBody = finalBody.trim() + `\n\nSincerely,\n${fullName}`;
+    }
+    setBody(finalBody);
+    setCurrentDrafts((prev) =>
+      prev.map((d, i) => (i === selectedDraftIndex ? { ...d, body: finalBody } : d))
+    );
+    
     setAskRevisedBody(null);
     setAskResponse("Revision applied!");
   }
@@ -931,7 +948,18 @@ export default function NewApplication() {
                   <button
                     type="button"
                     className="refine-chip refine-undo"
-                    onClick={() => { setBody(bodyBeforeRefine); setBodyBeforeRefine(null); }}
+                    onClick={() => {
+                      if (!bodyBeforeRefine) return;
+                      let finalBody = bodyBeforeRefine;
+                      if (signatureChecked && fullName && !finalBody.includes("Sincerely,")) {
+                        finalBody = finalBody.trim() + `\n\nSincerely,\n${fullName}`;
+                      }
+                      setBody(finalBody);
+                      setCurrentDrafts((prev) =>
+                        prev.map((draft, i) => (i === selectedDraftIndex ? { ...draft, body: finalBody } : draft))
+                      );
+                      setBodyBeforeRefine(null);
+                    }}
                   >
                     ↩ {t("new.refine.undo")}
                   </button>
