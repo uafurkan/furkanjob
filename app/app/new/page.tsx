@@ -357,6 +357,11 @@ export default function NewApplication() {
     setStage(t("new.stage.analyzing"));
     setMsg(null);
     setRes(null);
+    setAskResponse(null);
+    setAskRevisedBody(null);
+    setAskError(null);
+    setShowCustomInput(false);
+    setCustomQuestion("");
     const stageTimer1 = setTimeout(() => setStage(t("new.stage.searching")), 1400);
     const stageTimer = setTimeout(() => setStage(t("new.stage.drafting")), 3800);
     try {
