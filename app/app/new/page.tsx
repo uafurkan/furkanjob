@@ -930,7 +930,7 @@ export default function NewApplication() {
               </div>
             )}
 
-            {res.draftSource === "ai" && (
+            {true && (
               <div className="refine-row" aria-busy={Boolean(refining)}>
                 <span className="refine-label">{t("new.refine")}</span>
                 {(["shorter", "warmer", "formal", "regenerate"] as const).map((a) => (
@@ -968,7 +968,7 @@ export default function NewApplication() {
             )}
 
             {/* Ask AI Chat Panel */}
-            {res?.draftSource === "ai" && (
+            {true && (
               <div style={{
                 background: "rgba(30, 41, 59, 0.55)",
                 backdropFilter: "blur(12px)",
