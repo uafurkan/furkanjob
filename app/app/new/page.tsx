@@ -107,6 +107,12 @@ export default function NewApplication() {
   const [contactEmail, setContactEmail] = useState("");
   const [coverLetterPreviewOpen, setCoverLetterPreviewOpen] = useState(false);
   const [rewritingCoverLetter, setRewritingCoverLetter] = useState(false);
+  const [askLoading, setAskLoading] = useState(false);
+  const [askResponse, setAskResponse] = useState<string | null>(null);
+  const [askRevisedBody, setAskRevisedBody] = useState<string | null>(null);
+  const [askError, setAskError] = useState<string | null>(null);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customQuestion, setCustomQuestion] = useState("");
 
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {
@@ -381,7 +387,14 @@ export default function NewApplication() {
       }
       setSubject(parsedDrafts[0].subject);
       setBody(initialBody);
-      setCoverLetterBody(d.coverLetterBody || initialBody);
+      let initialClBody = d.coverLetterBody;
+      if (!initialClBody) {
+        initialClBody = parsedDrafts[0].body;
+        if (d.fullName) {
+          initialClBody = initialClBody.trim() + `\n\nSincerely,\n${d.fullName}`;
+        }
+      }
+      setCoverLetterBody(initialClBody);
       setDraftRestoredAt(null);
       if (d.emailSource === "none") {
         setMsg({ kind: "warn", text: t("new.noEmailFound") });
@@ -442,7 +455,14 @@ export default function NewApplication() {
       }
       setSubject(parsedDrafts[0].subject);
       setBody(initialBody);
-      setCoverLetterBody(d.coverLetterBody || initialBody);
+      let initialClBody = d.coverLetterBody;
+      if (!initialClBody) {
+        initialClBody = parsedDrafts[0].body;
+        if (d.fullName) {
+          initialClBody = initialClBody.trim() + `\n\nSincerely,\n${d.fullName}`;
+        }
+      }
+      setCoverLetterBody(initialClBody);
       setDraftRestoredAt(null);
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
@@ -531,6 +551,45 @@ export default function NewApplication() {
     } finally {
       setRefining(null);
     }
+  }
+
+  async function handleAskAI(q: string) {
+    if (!res || !body.trim() || askLoading || !q.trim()) return;
+    setAskLoading(true);
+    setAskResponse(null);
+    setAskRevisedBody(null);
+    setAskError(null);
+    try {
+      const r = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          body,
+          jobText: text,
+          question: q,
+          company: res.company,
+          language: res.language,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Ask AI failed");
+      setAskResponse(d.answer);
+      if (d.revisedBody) {
+        setAskRevisedBody(d.revisedBody);
+      }
+    } catch (e: any) {
+      setAskError(e.message || "An error occurred");
+    } finally {
+      setAskLoading(false);
+    }
+  }
+
+  function applyAskRevision() {
+    if (!askRevisedBody) return;
+    setBodyBeforeRefine(body);
+    setBody(askRevisedBody);
+    setAskRevisedBody(null);
+    setAskResponse("Revision applied!");
   }
 
   async function rewriteCoverLetter() {
@@ -867,6 +926,191 @@ export default function NewApplication() {
                 )}
               </div>
             )}
+
+            {/* Ask AI Chat Panel */}
+            {res?.draftSource === "ai" && (
+              <div style={{
+                background: "rgba(30, 41, 59, 0.55)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                borderRadius: "var(--radius-md)",
+                padding: "var(--space-4)",
+                marginTop: "var(--space-3)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--space-3)",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <span style={{ fontSize: "var(--text-14)", fontWeight: 600, color: "#f1f5f9" }}>
+                    Ask about this application
+                  </span>
+                  {(askResponse || askError || askLoading || showCustomInput) && (
+                    <button
+                      type="button"
+                      style={{
+                        marginLeft: "auto",
+                        background: "transparent",
+                        border: "none",
+                        color: "#94a3b8",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4
+                      }}
+                      onClick={() => {
+                        setAskResponse(null);
+                        setAskRevisedBody(null);
+                        setAskError(null);
+                        setShowCustomInput(false);
+                        setCustomQuestion("");
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {[
+                    "Is the tone appropriate for a hospitality role in New Zealand?",
+                    "Should I mention my visa status earlier in the email?",
+                    "Is the email length within the ideal range for a concise application?"
+                  ].map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      disabled={askLoading}
+                      onClick={() => handleAskAI(q)}
+                      style={{
+                        background: "rgba(255, 255, 255, 0.04)",
+                        border: "1px solid rgba(255, 255, 255, 0.08)",
+                        borderRadius: "20px",
+                        padding: "6px 12px",
+                        fontSize: "12px",
+                        color: "#cbd5e1",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: "all 0.2s ease"
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
+                        e.currentTarget.style.color = "#fff";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
+                        e.currentTarget.style.color = "#cbd5e1";
+                      }}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={askLoading}
+                    onClick={() => setShowCustomInput(true)}
+                    style={{
+                      background: "rgba(99, 102, 241, 0.15)",
+                      border: "1px solid rgba(99, 102, 241, 0.3)",
+                      borderRadius: "20px",
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      color: "#a5b4fc",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = "rgba(99, 102, 241, 0.25)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = "rgba(99, 102, 241, 0.15)";
+                    }}
+                  >
+                    + Other...
+                  </button>
+                </div>
+
+                {showCustomInput && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleAskAI(customQuestion);
+                    }}
+                    style={{ display: "flex", gap: 8, marginTop: 4 }}
+                  >
+                    <input
+                      className="input"
+                      value={customQuestion}
+                      onChange={(e) => setCustomQuestion(e.target.value)}
+                      placeholder="Ask anything or request changes (e.g., 'Make it more enthusiastic' or 'Add my barista experience')"
+                      disabled={askLoading}
+                      style={{
+                        flex: 1,
+                        background: "rgba(15, 23, 42, 0.5)",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        color: "#fff"
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-accent btn-sm"
+                      disabled={askLoading || !customQuestion.trim()}
+                    >
+                      Send
+                    </button>
+                  </form>
+                )}
+
+                {askLoading && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#94a3b8", fontSize: "13px", padding: "4px 0" }}>
+                    <span className="spinner" style={{ width: 14, height: 14 }} />
+                    Analyzing draft...
+                  </div>
+                )}
+
+                {askError && (
+                  <div style={{ color: "var(--signal-warning)", fontSize: "13px" }}>
+                    ⚠️ {askError}
+                  </div>
+                )}
+
+                {askResponse && (
+                  <div style={{
+                    background: "rgba(15, 23, 42, 0.4)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: "var(--space-3)",
+                    borderLeft: "3px solid var(--accent)",
+                    marginTop: 4,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "11px", color: "var(--accent)", fontWeight: 600, textTransform: "uppercase" }}>
+                      AI Application Coach
+                    </div>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#e2e8f0", lineHeight: 1.5 }}>
+                      {askResponse}
+                    </p>
+                    {askRevisedBody && (
+                      <button
+                        type="button"
+                        className="btn btn-accent btn-sm"
+                        style={{ alignSelf: "flex-start", marginTop: 4 }}
+                        onClick={applyAskRevision}
+                      >
+                        Apply Revision
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {includeCoverLetter && (
@@ -972,26 +1216,6 @@ export default function NewApplication() {
                         {coverLetterBody.split(/\n+/).filter(s => s.trim().length > 0).map((p, i) => (
                           <p key={i} style={{ margin: 0 }}>{p}</p>
                         ))}
-                      </div>
-
-                      <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-                        <span>
-                          {(() => {
-                            const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
-                              en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
-                              tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
-                              es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
-                              fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
-                              de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
-                              it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
-                              pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
-                            };
-                            const lang = res?.language || "en";
-                            const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
-                            return loc.sincerely;
-                          })()}
-                        </span>
-                        <strong style={{ color: "#0f172a" }}>{fullName || res?.fullName || "Applicant"}</strong>
                       </div>
                     </div>
                   </div>

@@ -46,6 +46,7 @@ export async function POST(req: Request) {
       applicantName: profile?.fullName || user.name || undefined,
       applicantBio: profile?.shortBio || undefined,
       applicantLanguages: profile?.languages || [],
+      applicantCurrentCountry: profile?.currentCountry || undefined,
       needsVisaSponsorship: profile?.needsVisaSponsorship || false,
       openToRelocation: profile?.relocation || false,
       lang,

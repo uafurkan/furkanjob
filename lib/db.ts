@@ -183,6 +183,7 @@ function mapProfile(r: Record<string, unknown>): Profile {
     needsVisaSponsorship: r.needs_visa_sponsorship as boolean,
     targetCountries: parseArr(r.target_countries),
     shortBio: r.short_bio as string | null, availability: r.availability as string | null,
+    currentCountry: (r.current_country as string | null | undefined) ?? null,
     relocation: r.relocation as boolean, tone: r.tone as string,
     includeSignature: r.include_signature as boolean,
     applicationLanguage: r.application_language as string,
@@ -325,15 +326,16 @@ export async function upsertProfile(userId: string, data: Partial<Profile>): Pro
   await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS digest_opt_out BOOLEAN NOT NULL DEFAULT FALSE`;
   await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS reminder_opt_out BOOLEAN NOT NULL DEFAULT FALSE`;
   await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS weekly_goal INTEGER NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS current_country TEXT`;
   const rows = await sql`
     INSERT INTO profiles (id, user_id, full_name, contact_email, phone, languages, target_roles,
-      needs_visa_sponsorship, target_countries, short_bio, availability, relocation, tone,
+      needs_visa_sponsorship, target_countries, short_bio, availability, current_country, relocation, tone,
       include_signature, application_language, default_cv_id,
       has_visa, visa_type, visa_label, visa_countries, completed_at, updated_at, digest_opt_out, reminder_opt_out, weekly_goal)
     VALUES (${id()}, ${userId}, ${data.fullName ?? ""}, ${data.contactEmail ?? null},
       ${data.phone ?? null}, ${arrStr(data.languages)}, ${arrStr(data.targetRoles)},
       ${data.needsVisaSponsorship ?? true}, ${arrStr(data.targetCountries)},
-      ${data.shortBio ?? null}, ${data.availability ?? null}, ${data.relocation ?? true},
+      ${data.shortBio ?? null}, ${data.availability ?? null}, ${data.currentCountry ?? null}, ${data.relocation ?? true},
       ${data.tone ?? "warm-professional"}, ${data.includeSignature ?? false},
       ${data.applicationLanguage ?? "auto"}, ${data.defaultCvId ?? null},
       ${data.hasVisa ?? false}, ${data.visaType ?? null}, ${data.visaLabel ?? null},
@@ -343,7 +345,7 @@ export async function upsertProfile(userId: string, data: Partial<Profile>): Pro
       full_name=EXCLUDED.full_name, contact_email=EXCLUDED.contact_email,
       phone=EXCLUDED.phone, languages=EXCLUDED.languages, target_roles=EXCLUDED.target_roles,
       needs_visa_sponsorship=EXCLUDED.needs_visa_sponsorship, target_countries=EXCLUDED.target_countries,
-      short_bio=EXCLUDED.short_bio, availability=EXCLUDED.availability, relocation=EXCLUDED.relocation,
+      short_bio=EXCLUDED.short_bio, availability=EXCLUDED.availability, current_country=EXCLUDED.current_country, relocation=EXCLUDED.relocation,
       tone=EXCLUDED.tone, include_signature=EXCLUDED.include_signature,
       application_language=EXCLUDED.application_language, default_cv_id=EXCLUDED.default_cv_id,
       has_visa=EXCLUDED.has_visa, visa_type=EXCLUDED.visa_type, visa_label=EXCLUDED.visa_label,

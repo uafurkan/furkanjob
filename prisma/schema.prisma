@@ -59,6 +59,7 @@ model Profile {
   targetCountries       String   @default("[]") // JSON array of ISO-ish names
   shortBio              String?
   availability          String?
+  currentCountry        String?  // Where the user is currently based (e.g. "Turkey", "New Zealand")
   relocation            Boolean  @default(true)
   tone                  String   @default("warm-professional")
   includeSignature      Boolean  @default(false) // CLAUDE.md: no signature block

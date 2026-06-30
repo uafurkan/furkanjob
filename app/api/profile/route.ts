@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     needsVisaSponsorship: Boolean(b.needsVisaSponsorship),
     targetCountries: asArray(b.targetCountries),
     shortBio: b.shortBio?.toString().trim() || null,
+    currentCountry: b.currentCountry?.toString().trim() || null,
     availability: b.availability?.toString().trim() || null,
     relocation: b.relocation === undefined ? true : Boolean(b.relocation),
     tone: b.tone?.toString() || "warm-professional",

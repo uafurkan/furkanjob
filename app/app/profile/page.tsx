@@ -41,6 +41,7 @@ export default async function ProfilePage() {
     needsVisaSponsorship: profile?.needsVisaSponsorship ?? true,
     relocation: profile?.relocation ?? true,
     shortBio: profile?.shortBio || "",
+    currentCountry: profile?.currentCountry || "",
     includeSignature: profile?.includeSignature ?? false,
     digestOptOut: profile?.digestOptOut ?? false,
     reminderOptOut: profile?.reminderOptOut ?? false,

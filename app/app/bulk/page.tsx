@@ -25,6 +25,7 @@ type Item = {
   showInlinePreview?: boolean;
   fullName?: string;
   signatureChecked?: boolean;
+  thinking?: boolean;
 };
 
 const MAX_ITEMS = 20;
@@ -287,6 +288,67 @@ export default function BulkApply() {
 
   const [rewritingItemId, setRewritingItemId] = useState<number | null>(null);
 
+  async function regenerateWithDeepThinkingForItem(id: number) {
+    const it = items.find((x) => x.id === id);
+    if (!it || it.status === "sending" || it.thinking) return;
+
+    setItems((prev) =>
+      prev.map((x) => (x.id === id ? { ...x, thinking: true, error: undefined } : x))
+    );
+
+    try {
+      const r = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          text: it.input,
+          language: it.language || language,
+          reasoningEffort: "high",
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "error");
+
+      let isSigChecked = it.signatureChecked || false;
+      let initialBody = d.body;
+      if (isSigChecked && d.fullName && !initialBody.includes("Sincerely,")) {
+        initialBody = initialBody.trim() + `\n\nSincerely,\n${d.fullName}`;
+      }
+
+      setItems((prev) =>
+        prev.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: d.emailSource === "none" ? "skipped" : "drafted",
+                company: d.company,
+                country: d.country,
+                emailSource: d.emailSource,
+                to: (d.emails || []).join(", "),
+                subject: d.subject,
+                body: initialBody,
+                coverLetterBody: d.coverLetterBody || initialBody,
+                language: d.language,
+                positions: d.positions,
+                overLimit: d.overLimit,
+                error: d.emailSource === "none" ? t("bulk.noEmail") : undefined,
+                fullName: d.fullName || "",
+                thinking: false,
+              }
+            : x
+        )
+      );
+    } catch (e: any) {
+      setItems((prev) =>
+        prev.map((x) =>
+          x.id === id
+            ? { ...x, thinking: false, error: e.message || "Failed to regenerate" }
+            : x
+        )
+      );
+    }
+  }
+
   async function rewriteCoverLetterForItem(id: number) {
     const it = items.find((x) => x.id === id);
     if (!it || !it.coverLetterBody?.trim() || rewritingItemId === id) return;
@@ -463,17 +525,35 @@ export default function BulkApply() {
                     </div>
                   )}
 
-                  <label className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
-                    <input
-                      type="checkbox"
-                      checked={it.includeCoverLetter || false}
-                      onChange={(e) => update(it.id, { includeCoverLetter: e.target.checked })}
-                      style={{ width: 16, height: 16, accentColor: "var(--accent)" }}
-                    />
-                    <span style={{ fontSize: "var(--text-13)", color: "var(--text-secondary)" }}>
-                      {t("new.coverLetter")}
-                    </span>
-                  </label>
+                  <div className="row gap-4" style={{ alignItems: "center" }}>
+                    <label className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={it.includeCoverLetter || false}
+                        onChange={(e) => update(it.id, { includeCoverLetter: e.target.checked })}
+                        style={{ width: 16, height: 16, accentColor: "var(--accent)" }}
+                      />
+                      <span style={{ fontSize: "var(--text-13)", color: "var(--text-secondary)" }}>
+                        {t("new.coverLetter")}
+                      </span>
+                    </label>
+
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => regenerateWithDeepThinkingForItem(it.id)}
+                      disabled={it.thinking || status === "sending"}
+                      title={t("new.deepThink")}
+                    >
+                      {it.thinking ? (
+                        <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                        </svg>
+                      )}
+                      {t("new.deepThink")}
+                    </button>
+                  </div>
 
                   {it.includeCoverLetter && (
                     <div className="stack gap-3 reveal" style={{ marginTop: "var(--space-1)", borderTop: "1px solid var(--border)", paddingTop: "var(--space-3)" }}>
@@ -733,9 +813,26 @@ export default function BulkApply() {
                     </div>
                   )}
 
-                  <div className="row gap-3">
-                    <button className="btn btn-primary btn-sm" data-loading={it.status === "sending"} onClick={() => sendOne(it.id)} disabled={it.status === "sending" || it.overLimit || !it.to.trim()}>
+                  <div className="row gap-3" style={{ alignItems: "center" }}>
+                    <button className="btn btn-primary btn-sm" data-loading={it.status === "sending"} onClick={() => sendOne(it.id)} disabled={it.status === "sending" || it.overLimit || !it.to.trim() || it.thinking}>
                       {t("new.send")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => regenerateWithDeepThinkingForItem(it.id)}
+                      disabled={it.status === "sending" || it.thinking}
+                      data-loading={it.thinking}
+                      style={{ fontSize: "var(--text-12)", minHeight: 28, padding: "0 var(--space-2)", gap: 4 }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="18" cy="5" r="3" />
+                        <circle cx="6" cy="12" r="3" />
+                        <circle cx="18" cy="19" r="3" />
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                      </svg>
+                      {t("new.deepThink")}
                     </button>
                     {it.overLimit && <Link href="/app/billing" className="btn btn-sm">{t("new.limitPro")}</Link>}
                   </div>

@@ -161,7 +161,22 @@ export function buildDraft(
   const roles = rolesForApplication(analysis, profile);
   const subject = f.subject(roles.join(" / "), analysis.company);
 
-  const lines: string[] = [f.greeting, "", f.intro(roles.join(" / "), analysis.company), ""];
+  let greeting = f.greeting;
+  if (analysis.country.code === "NZ") {
+    greeting = "Kia Ora,";
+  } else if (analysis.country.code === "ES") {
+    greeting = "Hola,";
+  } else if (analysis.country.code === "FR") {
+    greeting = "Bonjour,";
+  } else if (analysis.country.code === "DE") {
+    greeting = "Hallo,";
+  } else if (analysis.country.code === "IT") {
+    greeting = "Ciao,";
+  } else if (analysis.country.code === "PT") {
+    greeting = "Olá,";
+  }
+
+  const lines: string[] = [greeting, "", f.intro(roles.join(" / "), analysis.company), ""];
   if (authorization?.authorized) {
     lines.push(f.visaHeld(authorization.visaLabel || analysis.country.visa, analysis.country.name), "");
   } else if (profile.needsVisaSponsorship) {

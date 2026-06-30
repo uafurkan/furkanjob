@@ -6,13 +6,59 @@ const URL_RE =
   /\bhttps?:\/\/[^\s)"'<>]+|\b(?:www\.)[^\s)"'<>]+|\b[a-z0-9.\-]+\.(?:com|org|net|co\.nz|co\.uk|com\.au|nz|au|us|io|info)\b[^\s)"'<>]*/gi;
 
 const BAD_EMAIL =
-  /(example\.com|sentry\.io|wixpress|@2x|\.png|\.jpg|\.svg|\.gif|domain\.com|email\.com|yourname)/i;
+  /(example\.com|sentry\.io|wixpress|@2x|\.png|\.jpg|\.svg|\.gif|domain\.com|email\.com|yourname|business\.com|company\.com|test\.com|demo\.com|localhost|sample)/i;
 
 export function extractEmails(text: string): string[] {
   const found = (text.match(EMAIL_RE) || [])
     .map((e) => e.trim().toLowerCase().replace(/[.,;:]+$/, ""))
-    .filter((e) => !BAD_EMAIL.test(e));
-  return [...new Set(found)];
+    .filter((e) => {
+      if (BAD_EMAIL.test(e)) return false;
+
+      const parts = e.split("@");
+      if (parts.length !== 2) return false;
+      const local = parts[0];
+      const domain = parts[1];
+
+      // Exclude junk/system local parts
+      const junkLocal = /^(noreply|no-reply|donotreply|do-not-reply|postmaster|hostmaster|webmaster|privacy|legal|terms|abuse|security|billing|accounts|finance|payment|invoice|newsletter|subscribe|feedback|root|test|example|placeholder|yourname)$/i;
+      if (junkLocal.test(local)) return false;
+
+      // Exclude platform domains
+      const platformDomains = /(wix\.com|wixpress|shopify\.com|squarespace\.com|godaddy\.com|wordpress\.com|weebly\.com|sentry\.io)/i;
+      if (platformDomains.test(domain)) return false;
+
+      return true;
+    });
+
+  const unique = [...new Set(found)];
+  if (!unique.length) return [];
+
+  // Group by priority
+  const t1: string[] = [];
+  const t2: string[] = [];
+  const t3: string[] = [];
+
+  const tier1Regex = /^(careers|jobs|recruitment|hr|work|employment|join|hiring|application|apply|talent)/i;
+  const tier2Regex = /^(hello|info|contact|office|manager|welcome|reservations|frontdesk|enquiries|team)/i;
+
+  for (const email of unique) {
+    const local = email.split("@")[0];
+    if (tier1Regex.test(local)) {
+      t1.push(email);
+    } else if (tier2Regex.test(local)) {
+      t2.push(email);
+    } else {
+      t3.push(email);
+    }
+  }
+
+  // Prioritization rule:
+  // If there are hiring/career emails (Tier 1), use them exclusively.
+  // Otherwise, if there are general contact emails (Tier 2), use those.
+  // Otherwise, use Tier 3 emails.
+  if (t1.length > 0) return t1;
+  if (t2.length > 0) return t2;
+  return t3;
 }
 
 export function extractUrls(text: string): string[] {
@@ -211,22 +257,68 @@ function collapseDouble(s: string): string {
 }
 
 export function guessCompany(text: string, emails: string[]): string {
-  // Prefer a content line that names a venue type.
-  const venueLine = text
-    .split("\n")
-    .map((l) => l.trim())
-    .find((l) => /\b(hotel|suites|resort|restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie)\b/i.test(l) && l.length < 80);
-  if (venueLine) return collapseDouble(venueLine.replace(/\s+[-–—|].*$/, "").trim());
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
+  // 1. Try to find a copyright line (very specific to the business owner)
+  for (const line of lines) {
+    if (/(?:©|^\s*(?:copyright|\(c\)))/i.test(line)) {
+      const match = line.match(/(?:©\s*(?:\d{4})?|^\s*copyright\s*(?:\d{4}|[([{'"]+c[)\]}'"]+)?\s*(?:\d{4})?)\s*([^.|\-–—\n]+)/i);
+      if (match && match[1]) {
+        let candidate = match[1]
+          .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation)\b.*/i, "")
+          .replace(/[^a-zA-Z0-9\s]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        // Capitalize words nicely
+        candidate = candidate.replace(/\b\w/g, (c) => c.toUpperCase());
+        if (candidate.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|website|design|powered by)$/i.test(candidate.toLowerCase())) {
+          return collapseDouble(candidate);
+        }
+      }
+    }
+  }
+
+  // 2. Try the email domain name (extremely reliable)
   if (emails.length) {
     const domain = emails[0].split("@")[1] || "";
     const core = domain.split(".")[0];
-    if (core && !/gmail|outlook|hotmail|yahoo|icloud|proton/i.test(core)) {
-      return core.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    if (core && !/gmail|outlook|hotmail|yahoo|icloud|proton|mail/i.test(core)) {
+      const name = core
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+        .trim();
+      if (name && !/^(wix|shopify|squarespace|godaddy|wordpress)$/i.test(name.toLowerCase())) {
+        return name;
+      }
     }
   }
-  const firstLine = text.split("\n").map((l) => l.trim()).find((l) => l.length > 3 && l.length < 80);
-  return firstLine ? collapseDouble(firstLine) : "your company";
+
+  // 3. Prefer a content line that names a venue type, but filter out generic terms and sentences.
+  const JUNK_COMPANY_LINES = /^(home|menu|book|book now|cart|contact|contact us|about|about us|welcome|gallery|skip to content|privacy policy|terms of service|terms & conditions|website by|designed by|powered by|wix|shopify|squarespace|godaddy|wordpress)$/i;
+
+  const venueLine = lines.find((l) => {
+    if (l.length >= 80 || l.length < 3) return false;
+    if (JUNK_COMPANY_LINES.test(l)) return false;
+    // Must contain a hospitality venue term
+    if (!/\b(hotel|suites|resort|restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie)\b/i.test(l)) return false;
+    // Avoid full narrative sentences (e.g. contains "our kitchen uses" or "visit our bar")
+    if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from|cook|making)\b/i.test(l)) return false;
+    return true;
+  });
+
+  if (venueLine) {
+    return collapseDouble(venueLine.replace(/\s+[-–—|].*$/, "").trim());
+  }
+
+  // 4. Fallback to the first non-junk line
+  const fallbackLine = lines.find((l) => {
+    if (l.length < 4 || l.length > 80) return false;
+    if (JUNK_COMPANY_LINES.test(l)) return false;
+    if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from)\b/i.test(l)) return false;
+    return true;
+  });
+
+  return fallbackLine ? collapseDouble(fallbackLine.replace(/\s+[-–—|].*$/, "").trim()) : "your company";
 }
 
 // Lightweight language detection of the pasted business text (for "auto" application language).

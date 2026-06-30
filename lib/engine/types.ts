@@ -11,6 +11,7 @@ export type EngineProfile = {
   targetCountries: string[];
   shortBio?: string | null;
   availability?: string | null;
+  currentCountry?: string | null;
   relocation: boolean;
   includeSignature: boolean;
   tone: string;

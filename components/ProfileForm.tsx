@@ -15,6 +15,7 @@ type Initial = {
   needsVisaSponsorship?: boolean;
   relocation?: boolean;
   shortBio?: string;
+  currentCountry?: string;
   includeSignature?: boolean;
   digestOptOut?: boolean;
   reminderOptOut?: boolean;
@@ -67,6 +68,7 @@ export default function ProfileForm({
   const [visaDoc, setVisaDoc] = useState<string | null>(null);
   const [relocation, setRelocation] = useState(initial.relocation ?? true);
   const [shortBio, setShortBio] = useState(initial.shortBio || "");
+  const [currentCountry, setCurrentCountry] = useState(initial.currentCountry || "");
   const [includeSignature, setIncludeSignature] = useState(initial.includeSignature ?? false);
   const [digestOptOut, setDigestOptOut] = useState(initial.digestOptOut ?? false);
   const [reminderOptOut, setReminderOptOut] = useState(initial.reminderOptOut ?? false);
@@ -194,7 +196,7 @@ export default function ProfileForm({
         body: JSON.stringify({
           fullName, contactEmail,
           languages: split(languages), targetRoles: split(targetRoles), targetCountries: split(targetCountries),
-          needsVisaSponsorship: needsVisa, relocation, shortBio, includeSignature, digestOptOut, reminderOptOut,
+          needsVisaSponsorship: needsVisa, relocation, shortBio, currentCountry, includeSignature, digestOptOut, reminderOptOut,
           weeklyGoal,
           applicationLanguage: appLang, hasVisa, visaType, visaLabel, visaCountries,
         }),
@@ -292,6 +294,11 @@ export default function ProfileForm({
         <label className="field">
           <span className="field-label">{t("pf.shortBio")}</span>
           <textarea className="textarea" style={{ minHeight: 90 }} value={shortBio} onChange={(e) => setShortBio(e.target.value)} placeholder={t("pf.shortBioPh")} />
+        </label>
+
+        <label className="field">
+          <span className="field-label">{t("pf.currentCountry")}</span>
+          <input className="input" value={currentCountry} onChange={(e) => setCurrentCountry(e.target.value)} placeholder={t("pf.currentCountryPh")} />
         </label>
 
         <label className="field">

@@ -29,6 +29,7 @@ export default async function OnboardingPage() {
     needsVisaSponsorship: profile?.needsVisaSponsorship ?? true,
     relocation: profile?.relocation ?? true,
     shortBio: profile?.shortBio || "",
+    currentCountry: profile?.currentCountry || "",
     includeSignature: profile?.includeSignature ?? false,
     applicationLanguage: profile?.applicationLanguage || "auto",
     hasVisa: profile?.hasVisa ?? false,

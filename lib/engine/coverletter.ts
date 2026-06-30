@@ -90,9 +90,6 @@ export async function buildCoverLetterDocx(params: {
                 spacing: { after: 160 },
               })
           ),
-          gap(),
-          new Paragraph({ children: [new TextRun({ text: loc.sincerely, size: sp(11) })] }),
-          new Paragraph({ children: [new TextRun({ text: params.applicantName, size: sp(11) })] }),
         ],
       },
     ],
