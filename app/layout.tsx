@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.svg",
-    apple: [{ url: "/icons/paply-mono-120.png", sizes: "120x120", type: "image/png" }],
+    apple: [{ url: "/icons/paply-square-512.png", sizes: "512x512", type: "image/png" }],
   },
   openGraph: { title: APP, description: "Paste a page, send the application.", url: BASE, siteName: APP, type: "website" },
   other: {
