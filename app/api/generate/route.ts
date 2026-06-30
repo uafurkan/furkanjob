@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { getProfile, getUsage, getDefaultCv, listApplications } from "@/lib/db";
+import { getProfile, getUsage, getDefaultCv, getCvData, listApplications } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
 import { runPipeline } from "@/lib/engine/pipeline";
 import { fetchPageText } from "@/lib/engine/websearch";
@@ -8,6 +8,7 @@ import { aiSubjectVariant } from "@/lib/engine/ai";
 import { aiTier, isOverLimit, planInfo } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
+import { extractPdfText } from "@/lib/cv-extract";
 
 export const runtime = "nodejs";
 
@@ -54,6 +55,19 @@ async function handleGenerate(req: Request) {
 
   const profile = await getProfile(user.id);
   const engineProfile = toEngineProfile(profile, user);
+
+  // Parse CV text once and inject into the engine profile so all AI prompts benefit from it.
+  try {
+    const defaultCv = await getDefaultCv(user.id);
+    if (defaultCv?.id) {
+      const cvBuffer = await getCvData(defaultCv.id);
+      if (cvBuffer) {
+        engineProfile.cvText = await extractPdfText(cvBuffer);
+      }
+    }
+  } catch {
+    // Non-fatal — draft still works without CV text
+  }
 
   const result = await runPipeline({
     text,

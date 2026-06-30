@@ -262,11 +262,17 @@ export async function findUserById(userId: string): Promise<User | null> {
   const rows = await sql`SELECT * FROM users WHERE id=${userId} LIMIT 1`;
   return rows[0] ? mapUser(rows[0] as Record<string, unknown>) : null;
 }
+export function proEmails(): string[] {
+  return (process.env.PRO_EMAILS || "")
+    .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+}
+
 export async function upsertUserByEmail(data: { email: string; name?: string | null; image?: string | null }): Promise<User> {
+  const plan: Plan = proEmails().includes(data.email.toLowerCase()) ? "pro" : "free";
   const rows = await sql`
     INSERT INTO users (id, email, name, image, plan, created_at)
-    VALUES (${id()}, ${data.email}, ${data.name ?? null}, ${data.image ?? null}, 'free', ${now()})
-    ON CONFLICT (email) DO UPDATE SET name=EXCLUDED.name, image=EXCLUDED.image
+    VALUES (${id()}, ${data.email}, ${data.name ?? null}, ${data.image ?? null}, ${plan}, ${now()})
+    ON CONFLICT (email) DO UPDATE SET name=EXCLUDED.name, image=EXCLUDED.image, plan=GREATEST(users.plan, EXCLUDED.plan)
     RETURNING *
   `;
   return mapUser(rows[0] as Record<string, unknown>);

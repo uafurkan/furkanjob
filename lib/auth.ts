@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import { upsertUserByEmail, upsertGoogleAccount, findUserById } from "./db";
+import { upsertUserByEmail, upsertGoogleAccount, findUserById, setUserPlan, proEmails } from "./db";
 import { encrypt } from "./crypto";
 
 const GOOGLE_ID = process.env.GOOGLE_CLIENT_ID;
@@ -57,10 +57,17 @@ export const authOptions: NextAuthOptions = {
         // Store the auth provider for downstream checks.
         if (account?.provider) (token as any).provider = account.provider;
       }
-      // keep plan fresh
+      // keep plan fresh; auto-upgrade PRO_EMAILS accounts without requiring sign-out
       if ((token as any).userId) {
         const u = await findUserById((token as any).userId);
-        if (u) (token as any).plan = u.plan;
+        if (u) {
+          if (u.plan === "free" && u.email && proEmails().includes(u.email.toLowerCase())) {
+            await setUserPlan(u.id, "pro");
+            (token as any).plan = "pro";
+          } else {
+            (token as any).plan = u.plan;
+          }
+        }
       }
       return token;
     },

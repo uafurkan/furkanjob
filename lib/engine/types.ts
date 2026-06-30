@@ -21,6 +21,8 @@ export type EngineProfile = {
   hasVisa?: boolean;
   visaLabel?: string | null;
   visaCountries?: string[];
+  // Raw text extracted from the applicant's CV PDF — injected into AI prompts for richer, more specific drafts.
+  cvText?: string | null;
 };
 
 export type Draft = { subject: string; body: string };

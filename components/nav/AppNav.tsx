@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useT, LangToggle } from "@/components/i18n";
+import AppGuide from "@/components/AppGuide";
 
 const MAIN_TABS = [
   { href: "/app/home", key: "nav.home", icon: IconHome },
@@ -53,6 +54,7 @@ export default function AppNav({ name, plan, isAdmin }: { name?: string | null; 
   const { t } = useT();
   const dockHidden = useDockAutoHide();
   const isActive = (href: string) => path === href || path.startsWith(href + "/");
+  const [guideOpen, setGuideOpen] = useState(false);
 
   return (
     <>
@@ -64,12 +66,16 @@ export default function AppNav({ name, plan, isAdmin }: { name?: string | null; 
         <div className="topbar-right">
           {isAdmin && <Link href="/admin" className="chip" style={{ textDecoration: "none" }}>Admin</Link>}
           {plan && <span className={`chip${plan === "pro" ? " chip-accent" : ""}`}>{plan === "pro" ? t("plan.pro") : t("plan.free")}</span>}
+          <button className="btn btn-sm btn-ghost btn-icon-only" onClick={() => setGuideOpen(true)} title={t("guide.open")} aria-label={t("guide.open")}>
+            <IconHelp />
+          </button>
           <LangToggle />
           <button className="btn btn-sm btn-ghost" onClick={() => signOut({ callbackUrl: "/" })}>
             {t("nav.signout")}
           </button>
         </div>
       </header>
+      <AppGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
 
       {/* Floating dock (macOS-style) — primary navigation on every viewport. */}
       <nav className={`tabbar${dockHidden ? " dock-hidden" : ""}`} aria-label="Navigation">
@@ -124,6 +130,15 @@ function IconSpark() {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
       <path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z" />
+    </svg>
+  );
+}
+function IconHelp() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3" />
+      <circle cx="12" cy="17" r=".5" fill="currentColor" stroke="none" />
     </svg>
   );
 }

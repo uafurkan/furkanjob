@@ -1,0 +1,25 @@
+name: Design System Lint
+
+on:
+  push:
+    paths:
+      - "DESIGN.md"
+      - "styles/**"
+  pull_request:
+    paths:
+      - "DESIGN.md"
+      - "styles/**"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --save-dev @google/design.md
+      - run: npx designmd lint DESIGN.md
+      - name: Design lint successful
+        if: success()
+        run: echo "✓ Design system is valid and consistent"

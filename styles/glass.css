@@ -46,8 +46,8 @@
               background var(--dur-micro-exit) var(--ease-settle);
 }
 .btn::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent 40%); mix-blend-mode: screen;
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 45%);
 }
 .btn:hover { border-color: var(--glass-stroke-bright); box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.35), 0 10px 26px rgba(0, 0, 0, 0.34), 0 0 24px var(--glow-halo); }
 .btn:active { transform: scale(0.985); }
@@ -60,19 +60,10 @@
   box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.6), 0 8px 24px var(--glow-halo), 0 0 36px var(--glow-halo);
 }
 .btn-primary:hover { box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.7), 0 12px 30px var(--glow-core), 0 0 48px var(--glow-core); }
-.btn-primary:disabled, .btn-primary[aria-disabled="true"], .btn-primary[data-loading="true"] {
-  color: rgba(6, 16, 31, 0.65);
-}
 .btn-ghost { background: transparent; border-color: transparent; box-shadow: none; }
 .btn-ghost:hover { background: var(--glass-fill); border-color: var(--glass-stroke); }
-.btn-ghost:disabled, .btn-ghost[aria-disabled="true"], .btn-ghost[data-loading="true"] {
-  color: var(--content-tertiary);
-}
 .btn-danger { color: var(--signal-error); border-color: rgba(242, 121, 107, 0.4); background: rgba(242, 121, 107, 0.08); box-shadow: none; }
 .btn-danger:hover { background: rgba(242, 121, 107, 0.16); border-color: rgba(242, 121, 107, 0.6); }
-.btn-danger:disabled, .btn-danger[aria-disabled="true"], .btn-danger[data-loading="true"] {
-  color: rgba(242, 121, 107, 0.5);
-}
 .btn-sm { min-height: 36px; padding: 0 var(--space-4); font-size: var(--text-14); }
 .btn-block { display: flex; width: 100%; }
 
@@ -84,6 +75,17 @@
   animation: sweep 1.1s var(--ease-standard) infinite;
 }
 @keyframes sweep { 0% { left: -40%; } 100% { left: 100%; } }
+
+/* variant overrides for disabled/loading — must come AFTER the generic .btn[data-loading] rule */
+.btn-primary:disabled, .btn-primary[aria-disabled="true"], .btn-primary[data-loading="true"] {
+  color: rgba(6, 16, 31, 0.75);
+}
+.btn-ghost:disabled, .btn-ghost[aria-disabled="true"], .btn-ghost[data-loading="true"] {
+  color: var(--content-tertiary);
+}
+.btn-danger:disabled, .btn-danger[aria-disabled="true"], .btn-danger[data-loading="true"] {
+  color: rgba(242, 121, 107, 0.5);
+}
 
 /* ---------- Inputs ---------- */
 .field { display: block; }

@@ -444,6 +444,24 @@ const en: Dict = {
   "landing.faq.a4": "New Zealand (AEWV), Australia (TSS 482), United States (H-2B), Canada (LMIA), and the United Kingdom (Skilled Worker). The agent detects the country from the paste and adapts the visa language automatically.",
   "landing.faq.q5": "Is my CV stored securely?",
   "landing.faq.a5": "Yes. Your CV is stored encrypted in the database and is only ever attached to emails you explicitly send. You can delete it at any time from your profile page.",
+
+  "guide.skip": "Skip",
+  "guide.next": "Next →",
+  "guide.prev": "← Back",
+  "guide.done": "Let's go! →",
+  "guide.open": "How it works",
+  "guide.s0.title": "Welcome to paply",
+  "guide.s0.sub": "Your AI job-application agent. Paste a page, get a tailored draft, send from your inbox — in under a minute.",
+  "guide.s1.title": "Paste any job listing",
+  "guide.s1.sub": "Copy text from a hotel, restaurant or business page — or paste a URL. The agent finds the contact email, even if it's buried deep on the site.",
+  "guide.s2.title": "Smart role matching",
+  "guide.s2.sub": "The AI reads what the business actually offers and picks only the roles that genuinely fit you — no more sending Night Audit applications to restaurants.",
+  "guide.s3.title": "Personalised draft in seconds",
+  "guide.s3.sub": "AI writes the email using your CV, in the right language, with the correct visa-sponsorship wording for that country. The fit score shows how strong the match is.",
+  "guide.s4.title": "Ask AI about your application",
+  "guide.s4.sub": "Tap a suggested question or type your own. The assistant stays focused on this application only — tone, length, visa wording, anything.",
+  "guide.s5.title": "Send from your own inbox",
+  "guide.s5.sub": "Your application — with your CV attached — goes out from your Gmail. We only send, never read. You'll see it in your Sent folder.",
 };
 
 const tr: Dict = {
@@ -885,6 +903,24 @@ const tr: Dict = {
   "landing.faq.a4": "Yeni Zelanda (AEWV), Avustralya (TSS 482), ABD (H-2B), Kanada (LMIA) ve Birleşik Krallık (Skilled Worker). Ajan ülkeyi yapıştırılan metinden algılar ve vize dilini otomatik olarak uyarlar.",
   "landing.faq.q5": "CV'm güvenli şekilde saklanıyor mu?",
   "landing.faq.a5": "Evet. CV'n veritabanında şifreli olarak saklanır ve yalnızca açıkça gönderdiğin maillere eklenir. Profil sayfandan istediğin zaman silebilirsin.",
+
+  "guide.skip": "Geç",
+  "guide.next": "İleri →",
+  "guide.prev": "← Geri",
+  "guide.done": "Başlayalım! →",
+  "guide.open": "Nasıl çalışır",
+  "guide.s0.title": "paply'a hoş geldin",
+  "guide.s0.sub": "Yapay zeka destekli iş başvuru ajanın. Bir sayfa yapıştır, kişisel taslak al, gelen kutundan gönder — bir dakikadan kısa sürede.",
+  "guide.s1.title": "İş ilanını yapıştır",
+  "guide.s1.sub": "Bir otel, restoran veya işletme sayfasından metin kopyala ya da URL yapıştır. Ajan, sitede gizlenmiş olsa bile iletişim e-postasını bulur.",
+  "guide.s2.title": "Akıllı rol eşleştirme",
+  "guide.s2.sub": "AI işletmenin gerçekte ne sunduğunu okur ve yalnızca sana uyan rolleri seçer — restorana Night Audit başvurusu göndermek artık geçmişte kaldı.",
+  "guide.s3.title": "Saniyeler içinde kişisel taslak",
+  "guide.s3.sub": "AI e-postayı CV'nle, doğru dilde ve o ülkenin vize diliyle yazar. Uyum skoru eşleşmenin ne kadar güçlü olduğunu gösterir.",
+  "guide.s4.title": "Başvurunu AI'ya sor",
+  "guide.s4.sub": "Önerilen soruyu seç ya da kendininkini yaz. Asistan yalnızca bu başvuruya odaklanır — ton, uzunluk, vize ifadesi, her şeyi sorabilirsin.",
+  "guide.s5.title": "Kendi gelen kutundan gönder",
+  "guide.s5.sub": "CV'n ekli başvurun Gmail'inden gönderilir. Biz sadece göndeririz, asla okumayız. Gönderildi klasöründe görürsün.",
 };
 
 const DICTS: Record<Lang, Dict> = { en, tr };

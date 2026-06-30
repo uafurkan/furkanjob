@@ -12,7 +12,7 @@ export type RoleMatch = {
   venue: VenueType;
 };
 
-export type VenueType = "hotel" | "restaurant" | "cafe" | "bar" | "generic";
+export type VenueType = "hotel" | "restaurant" | "cafe" | "bar" | "farm" | "generic";
 
 type Category = {
   id: string;
@@ -20,6 +20,8 @@ type Category = {
   // Roles that only make sense where there is lodging (a hotel/motel/lodge). They are dropped
   // when the venue is a standalone restaurant/cafe/bar.
   accommodationOnly?: boolean;
+  // Roles that only make sense on a farm/vineyard/agricultural setting.
+  farmOnly?: boolean;
 };
 
 // Canonical role categories with the synonyms that map onto them. Mirrors detect.ts POSITION_RULES
@@ -31,18 +33,19 @@ const CATEGORIES: Category[] = [
   { id: "concierge", accommodationOnly: true, keywords: ["concierge"] },
   { id: "reservations", accommodationOnly: true, keywords: ["reservation", "booking"] },
   { id: "porter", accommodationOnly: true, keywords: ["porter", "bellhop", "bellboy", "valet", "doorman", "luggage"] },
-  { id: "food_service", keywords: ["waiter", "waitress", "server", "serving", "food service", "f&b", "food and beverage", "dining room", "table service", "front of house", "foh", "busser", "runner", "host", "hostess"] },
+  { id: "food_service", keywords: ["waiter", "waitress", "server", "serving", "food service", "f&b", "food and beverage", "food & beverage", "dining room", "table service", "front of house", "foh", "busser", "runner", "host", "hostess"] },
   { id: "kitchen", keywords: ["kitchen", "chef", "cook", "kitchen hand", "commis", "sous chef", "prep cook", "dishwasher", "kitchen porter", "line cook", "culinary"] },
   { id: "barista", keywords: ["barista", "coffee", "café", "cafe"] },
   { id: "bar", keywords: ["bartender", "bar staff", "bar back", "barback", "cocktail", "mixologist", "bar attendant"] },
   { id: "events", keywords: ["event", "banquet", "function", "catering", "conference"] },
   { id: "management", keywords: ["manager", "management", "supervisor", "head of", "general manager", "duty manager", "team lead"] },
-  // generic cleaner: only accommodation-leaning if paired with rooms; treat as non-accommodation by default.
   { id: "cleaning", keywords: ["cleaner", "cleaning"] },
+  { id: "farm", farmOnly: true, keywords: ["farm worker", "farm hand", "farmhand", "vineyard", "harvest", "picking", "pruning", "orchard", "crop", "agricultural", "seasonal worker", "field work", "grower", "horticulture"] },
 ];
 
 function categoriesOf(role: string): string[] {
-  const r = ` ${role.toLowerCase()} `;
+  // Normalize & → "and" so "Food & Beverage" matches "food and beverage" keyword
+  const r = ` ${role.toLowerCase().replace(/\s*&\s*/g, " and ")} `;
   const hits = CATEGORIES.filter((c) => c.keywords.some((k) => r.includes(k))).map((c) => c.id);
   return [...new Set(hits)];
 }
@@ -51,12 +54,18 @@ function isAccommodationCategory(id: string): boolean {
   return Boolean(CATEGORIES.find((c) => c.id === id)?.accommodationOnly);
 }
 
+function isFarmCategory(id: string): boolean {
+  return Boolean(CATEGORIES.find((c) => c.id === id)?.farmOnly);
+}
+
 // Infer the venue from the roles the business actually advertises (plus optional raw text).
 export function inferVenue(businessPositions: string[], text?: string): VenueType {
   const cats = new Set(businessPositions.flatMap(categoriesOf));
   const t = (text || "").toLowerCase();
   const hasLodging = [...cats].some(isAccommodationCategory) || /\b(hotel|motel|lodge|inn|resort|b&b|bed and breakfast|accommodation|guesthouse)\b/.test(t);
   if (hasLodging) return "hotel";
+  const hasFarm = cats.has("farm") || /\b(vineyard|winery|orchard|farm|harvest|picking|horticulture|agricultural)\b/.test(t);
+  if (hasFarm) return "farm";
   // A real kitchen or table service = restaurant, even when the place also pulls coffee (Barista).
   if (cats.has("kitchen") || cats.has("food_service") || /\b(restaurant|bistro|eatery|dining|brasserie|trattoria)\b/.test(t)) return "restaurant";
   if (cats.has("barista") || /\b(cafe|café|coffee)\b/.test(t)) return "cafe";
@@ -66,9 +75,12 @@ export function inferVenue(businessPositions: string[], text?: string): VenueTyp
 
 // Which categories does a given venue plausibly employ?
 function venueAcceptsCategory(venue: VenueType, categoryId: string): boolean {
-  if (venue === "hotel" || venue === "generic") return true; // hotels run lodging + food + bar + events
-  // Standalone restaurant/cafe/bar: no lodging roles.
-  if (isAccommodationCategory(categoryId)) return false;
+  // Hotels and farms with restaurants are multi-department — accept all categories.
+  if (venue === "hotel" || venue === "generic") return true;
+  // Farm venues accept farm roles + hospitality (many farms have restaurants/cellar door).
+  if (venue === "farm") return true;
+  // Standalone restaurant/cafe/bar: no lodging or farm-only roles.
+  if (isAccommodationCategory(categoryId) || isFarmCategory(categoryId)) return false;
   return true;
 }
 
@@ -115,10 +127,11 @@ export function pickRelevantRoles(
   if (dropped.length && applyFor.length) {
     reason = `${dropped.join(" / ")} ${dropped.length > 1 ? "are" : "is"} not a fit for a ${venue}; applying as ${applyFor.join(" / ")}.`;
   } else if (dropped.length && !applyFor.length) {
-    // Nothing fit. Stretch: the venue-appropriate business positions, else the least-bad target.
-    const stretch = bizPositions.length ? bizPositions.slice(0, 1) : targets.slice(0, 1);
-    reason = `None of your target roles directly match this ${venue}; suggesting ${stretch.join(" / ")}.`;
-    return { applyFor: stretch, dropped, reason, venue };
+    // Nothing fit. Keep the user's own target roles as a stretch — don't substitute a
+    // completely unrelated role (e.g. don't suggest "Waiter" to someone targeting "Farm Worker").
+    // The AI layer will assess fit and may flag low score or blocked eligibility.
+    reason = `None of your target roles directly match this ${venue}; applying anyway as ${targets.slice(0, 2).join(" / ")}.`;
+    return { applyFor: targets.slice(0, 2), dropped: [], reason, venue };
   }
 
   return { applyFor: applyFor.length ? applyFor : bizPositions.slice(0, 2), dropped, reason, venue };

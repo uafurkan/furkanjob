@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { getProfile } from "@/lib/db";
+import { getProfile, getDefaultCv, getCvData } from "@/lib/db";
 import { aiTier } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
 import { APP_LANGS, type AppLang } from "@/lib/engine/template";
 import { aiRewriteCoverLetter } from "@/lib/engine/ai";
+import { extractPdfText } from "@/lib/cv-extract";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,16 @@ export async function POST(req: Request) {
     const profile = await getProfile(user.id);
     const tier = aiTier(user.plan);
 
+    // Parse CV text for richer rewrite
+    let cvText: string | null = null;
+    try {
+      const defaultCv = await getDefaultCv(user.id);
+      if (defaultCv?.id) {
+        const buf = await getCvData(defaultCv.id);
+        if (buf) cvText = await extractPdfText(buf);
+      }
+    } catch {}
+
     const validLangs = APP_LANGS.map((l) => l.code) as string[];
     const lang: AppLang = (validLangs.includes(langCode) ? langCode : "en") as AppLang;
 
@@ -49,6 +60,7 @@ export async function POST(req: Request) {
       applicantCurrentCountry: profile?.currentCountry || undefined,
       needsVisaSponsorship: profile?.needsVisaSponsorship || false,
       openToRelocation: profile?.relocation || false,
+      cvText,
       lang,
       tier,
     });

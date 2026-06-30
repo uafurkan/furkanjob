@@ -1,5 +1,5 @@
 // Orchestrates: understand (AI-first, heuristic fallback) → find emails if none → resolve language → draft.
-import { analyze, detectTextLang, countryByCode, type Analysis } from "./detect";
+import { analyze, detectTextLang, countryByCode, pickBestEmail, type Analysis } from "./detect";
 import { findEmails } from "./websearch";
 import { buildDraft, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
 import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, type AiTier, type Eligibility } from "./ai";
@@ -76,7 +76,7 @@ export async function runPipeline(opts: {
   }
 
   // Emails: deterministic extraction from text, else real web search. Never generated.
-  let emails = analysis.emails;
+  let emails = pickBestEmail(analysis.emails);
   let emailSource: PipelineResult["emailSource"] = emails.length ? "text" : "none";
   let checkedOrigins: string[] = [];
   if (!emails.length && searchWeb) {
@@ -89,7 +89,7 @@ export async function runPipeline(opts: {
       address: analysis.address,
       phone: analysis.phone,
     });
-    emails = found.emails;
+    emails = pickBestEmail(found.emails);
     emailSource = found.source;
     checkedOrigins = found.checkedOrigins;
   }
