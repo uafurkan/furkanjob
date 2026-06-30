@@ -292,10 +292,11 @@ export function guessCompany(text: string, emails: string[]): string {
   // 1. Try to find a copyright line (very specific to the business owner)
   for (const line of lines) {
     if (/(?:©|^\s*(?:copyright|\(c\)))/i.test(line)) {
-      const match = line.match(/(?:©\s*(?:\d{4})?|^\s*copyright\s*(?:\d{4}|[([{'"]+c[)\]}'"]+)?\s*(?:\d{4})?)\s*([^.|\-–—\n]+)/i);
+      const match = line.match(/(?:^\s*(?:copyright|©)(?:\s+©|\s+\([c]\))?\s*(?:\d{4})?|©\s*(?:\d{4})?)\s*([^.|\-–—\n]+)/i);
       if (match && match[1]) {
         let candidate = match[1]
           .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation)\b.*/i, "")
+          .replace(/\b20\d{2}\b/g, "")
           .replace(/[^a-zA-Z0-9\s]/g, "")
           .replace(/\s+/g, " ")
           .trim();
