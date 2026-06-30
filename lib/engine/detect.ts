@@ -1,7 +1,7 @@
 // Extract emails/URLs and detect country, positions and company from pasted business text.
 import type { CountryRule } from "./rules";
 
-const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.(?:com|co\.nz|co\.uk|com\.au|org|net|nz|au|uk|us|ca|ie|es|fr|de|it|pt|nl|ch|at|dk|se|no|fi|be|cz|pl|gr|io|info|biz|co)/gi;
 const URL_RE =
   /\bhttps?:\/\/[^\s)"'<>]+|\b(?:www\.)[^\s)"'<>]+|\b[a-z0-9.\-]+\.(?:com|org|net|co\.nz|co\.uk|com\.au|nz|au|us|io|info)\b[^\s)"'<>]*/gi;
 
