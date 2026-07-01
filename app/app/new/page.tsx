@@ -81,6 +81,7 @@ export default function NewApplication() {
   const [stage, setStage] = useState<string | null>(null);
   const [res, setRes] = useState<GenResult | null>(null);
   const [to, setTo] = useState("");
+  const [toInput, setToInput] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -838,7 +839,84 @@ export default function NewApplication() {
 
           <label className="field">
             <span className="field-label">{t("new.to")}</span>
-            <input className="input" value={to} onChange={(e) => setTo(e.target.value)} placeholder="name@business.com" />
+            <div
+              className={`email-pill-container${recipientIssue?.kind === "invalid" && recipientIssue.value === toInput ? " invalid" : ""}`}
+              onClick={() => {
+                const inp = document.getElementById("email-pill-input-field");
+                if (inp) inp.focus();
+              }}
+            >
+              {to.split(/[,;]/).map((e) => e.trim()).filter(Boolean).map((email, idx, emailPills) => {
+                const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+                return (
+                  <span key={idx} className={`email-pill${isValid ? "" : " invalid"}`}>
+                    {email}
+                    <button
+                      type="button"
+                      className="email-pill-remove"
+                      onClick={(evt) => {
+                        evt.stopPropagation();
+                        const updated = emailPills.filter((_, i) => i !== idx).join(", ");
+                        setTo(updated);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                );
+              })}
+              <input
+                id="email-pill-input-field"
+                className="email-pill-input"
+                placeholder={to.split(/[,;]/).map((e) => e.trim()).filter(Boolean).length === 0 ? "name@business.com" : ""}
+                value={toInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const emailPills = to.split(/[,;]/).map((item) => item.trim()).filter(Boolean);
+                  if (/[\s,;]/.test(val)) {
+                    const parts = val.split(/[\s,;]+/);
+                    const lastPart = parts.pop() || "";
+                    const completed = parts.map(p => p.trim()).filter(Boolean);
+                    
+                    const isLastValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lastPart);
+                    if (isLastValid) {
+                      completed.push(lastPart);
+                      setTo([...emailPills, ...completed].join(", "));
+                      setToInput("");
+                    } else {
+                      setTo([...emailPills, ...completed].join(", "));
+                      setToInput(lastPart);
+                    }
+                  } else {
+                    setToInput(val);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  const emailPills = to.split(/[,;]/).map((item) => item.trim()).filter(Boolean);
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const trimmed = toInput.trim();
+                    if (trimmed) {
+                      setTo([...emailPills, trimmed].join(", "));
+                      setToInput("");
+                    }
+                  } else if (e.key === "Backspace" && !toInput) {
+                    if (emailPills.length > 0) {
+                      const updated = emailPills.slice(0, -1).join(", ");
+                      setTo(updated);
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  const trimmed = toInput.trim();
+                  const emailPills = to.split(/[,;]/).map((item) => item.trim()).filter(Boolean);
+                  if (trimmed) {
+                    setTo([...emailPills, trimmed].join(", "));
+                    setToInput("");
+                  }
+                }}
+              />
+            </div>
             {recipientIssue?.kind === "typo" && (
               <span className="email-check-warn" style={{ marginTop: 4 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

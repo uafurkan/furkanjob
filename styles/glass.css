@@ -129,3 +129,76 @@ select option { color: #12151c; background: #ffffff; }
 .reveal { opacity: 0; transform: translateY(16px); animation: reveal var(--dur-secondary) var(--ease-standard) forwards; }
 @keyframes reveal { to { opacity: 1; transform: none; } }
 .delay-1 { animation-delay: 60ms; } .delay-2 { animation-delay: 120ms; } .delay-3 { animation-delay: 180ms; } .delay-4 { animation-delay: 240ms; }
+
+/* ---------- Email Pill Input ---------- */
+.email-pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-stroke);
+  border-radius: var(--radius-soft);
+  transition: border-color var(--dur-secondary) var(--ease-settle), box-shadow var(--dur-secondary) var(--ease-settle), background var(--dur-secondary) var(--ease-settle);
+  cursor: text;
+}
+.email-pill-container:focus-within {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 22px var(--glow-halo);
+}
+.email-pill-container.invalid {
+  border-color: var(--signal-error);
+}
+.email-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: var(--text-12);
+  font-weight: 500;
+  color: var(--content-primary);
+  background: rgba(111, 168, 255, 0.12);
+  border: 1px solid rgba(111, 168, 255, 0.3);
+  border-radius: var(--radius-subtle);
+  user-select: none;
+}
+.email-pill.invalid {
+  color: var(--signal-error);
+  background: rgba(242, 121, 107, 0.12);
+  border-color: rgba(242, 121, 107, 0.4);
+}
+.email-pill-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--content-tertiary);
+  cursor: pointer;
+  padding: 0;
+  font-size: 8px;
+  line-height: 1;
+}
+.email-pill-remove:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--content-primary);
+}
+.email-pill-input {
+  flex: 1;
+  min-width: 140px;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 4px 0;
+  color: var(--content-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-16);
+}
+
