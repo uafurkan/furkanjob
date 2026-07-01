@@ -356,7 +356,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
       clean = clean.replace(/\b\d{4}\b/g, ""); // e.g. 2016
       
       // Split on separators if followed by typical footer noise words (website, design, powered, etc.)
-      const parts = clean.split(/\s*[-–—|•·/]\s*(?:website|design|powered|privacy|terms|all\s+rights|cookie|link|login|legal|wdw)/i);
+      const parts = clean.split(/\s*[-–—|•·/]\s*(?:website|design|powered|privacy|terms|all\s+rights|cookie|link|login|legal|wdw|staah)/i);
       clean = parts[0];
       
       // Also split on pipe or bullet points unconditionally since they are standard footer separators
@@ -364,13 +364,19 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
 
       // Remove common suffixes like "all rights reserved", "ltd", etc.
       clean = clean
-        .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation|wdw)\b.*/i, "")
+        .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation|wdw|staah)\b.*/i, "")
         .replace(/[^a-zA-Z0-9\s&]/g, "") // Keep alphanumeric, spaces, and ampersand
         .replace(/\s+/g, " ")
         .trim();
         
       // Capitalize words nicely
       clean = clean.replace(/\b\w/g, (c) => c.toUpperCase());
+      
+      // Skip if it's just developer credits
+      const IS_JUNK_CREDIT = /^(designed\s*(?:&|and)?\s*developed(?:\s+by)?|designed\s+by|developed\s+by|website\s+design|web\s+design|powered\s+by|created\s+by|built\s+by|design\s+by|staah)$/i;
+      if (IS_JUNK_CREDIT.test(clean)) {
+        continue;
+      }
       
       if (clean.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|website|design|powered by|privacy|terms|login)$/i.test(clean.toLowerCase())) {
         return collapseDouble(clean);
@@ -386,11 +392,13 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     const core = domain.split(".")[0];
     if (core) {
       if (!ISP_DOMAINS.test(core)) {
-        const name = core
+        let name = core
+          .replace(/(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i, " $1")
           .replace(/[-_]/g, " ")
-          .replace(/\b\w/g, (c) => c.toUpperCase())
+          .replace(/\s+/g, " ")
           .trim();
-        if (name && !/^(wix|shopify|squarespace|godaddy|wordpress)$/i.test(name.toLowerCase())) {
+        name = name.replace(/\b\w/g, (c) => c.toUpperCase());
+        if (name && name.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress)$/i.test(name.toLowerCase())) {
           return name;
         }
       } else {
@@ -500,7 +508,12 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
         const hostname = new URL(urlStr).hostname;
         const parts = hostname.replace(/^www\./, "").split(".");
         if (parts.length >= 2) {
-          const name = parts[0].replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
+          let name = parts[0]
+            .replace(/(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i, " $1")
+            .replace(/[-_]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+          name = name.replace(/\b\w/g, c => c.toUpperCase());
           if (name && name.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|site|home)$/i.test(name.toLowerCase())) {
             return name;
           }
