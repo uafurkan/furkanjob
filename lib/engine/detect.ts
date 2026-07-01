@@ -355,10 +355,16 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
       clean = clean.replace(/\b\d{4}\s*[-–—,]\s*\d{4}\b/g, ""); // e.g. 2016-2026
       clean = clean.replace(/\b\d{4}\b/g, ""); // e.g. 2016
       
-      // Remove common suffixes like "all rights reserved", "ltd", etc. and split on separators
+      // Split on separators if followed by typical footer noise words (website, design, powered, etc.)
+      const parts = clean.split(/\s*[-–—|•·/]\s*(?:website|design|powered|privacy|terms|all\s+rights|cookie|link|login|legal)/i);
+      clean = parts[0];
+      
+      // Also split on pipe or bullet points unconditionally since they are standard footer separators
+      clean = clean.split(/\s*[|•·]\s*/)[0];
+
+      // Remove common suffixes like "all rights reserved", "ltd", etc.
       clean = clean
         .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation)\b.*/i, "")
-        .split(/\s*[|•·]\s*/)[0]
         .replace(/[^a-zA-Z0-9\s&]/g, "") // Keep alphanumeric, spaces, and ampersand
         .replace(/\s+/g, " ")
         .trim();
