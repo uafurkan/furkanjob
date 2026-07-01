@@ -347,20 +347,27 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
 
   // 1. Try to find a copyright line (very specific to the business owner)
   for (const line of lines) {
-    if (/(?:©|^\s*(?:copyright|\(c\)))/i.test(line)) {
-      const match = line.match(/(?:^\s*(?:copyright|©)(?:\s+©|\s+\([c]\))?\s*(?:\d{4})?|©\s*(?:\d{4})?)\s*([^.|\-–—\n]+)/i);
-      if (match && match[1]) {
-        let candidate = match[1]
-          .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation)\b.*/i, "")
-          .replace(/\b20\d{2}\b/g, "")
-          .replace(/[^a-zA-Z0-9\s]/g, "")
-          .replace(/\s+/g, " ")
-          .trim();
-        // Capitalize words nicely
-        candidate = candidate.replace(/\b\w/g, (c) => c.toUpperCase());
-        if (candidate.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|website|design|powered by)$/i.test(candidate.toLowerCase())) {
-          return collapseDouble(candidate);
-        }
+    if (/(?:©|copyright|\(c\))/i.test(line)) {
+      // Remove copyright symbol, (c), and "copyright" case-insensitively
+      let clean = line.replace(/(copyright|©|\(c\))/ig, "").trim();
+      
+      // Remove year ranges or lists (e.g., "2016-2026", "2016 - 2026", "2016, 2018", "2016")
+      clean = clean.replace(/\b\d{4}\s*[-–—,]\s*\d{4}\b/g, ""); // e.g. 2016-2026
+      clean = clean.replace(/\b\d{4}\b/g, ""); // e.g. 2016
+      
+      // Remove common suffixes like "all rights reserved", "ltd", etc. and split on separators
+      clean = clean
+        .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation)\b.*/i, "")
+        .split(/\s*[|•·]\s*/)[0]
+        .replace(/[^a-zA-Z0-9\s&]/g, "") // Keep alphanumeric, spaces, and ampersand
+        .replace(/\s+/g, " ")
+        .trim();
+        
+      // Capitalize words nicely
+      clean = clean.replace(/\b\w/g, (c) => c.toUpperCase());
+      
+      if (clean.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|website|design|powered by|privacy|terms|login)$/i.test(clean.toLowerCase())) {
+        return collapseDouble(clean);
       }
     }
   }
