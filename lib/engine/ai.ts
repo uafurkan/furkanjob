@@ -120,7 +120,10 @@ Return STRICT JSON ONLY, no prose, exactly these keys:
    - IGNORE generic website navigation labels, headings, and UI elements (e.g., NEVER return 'Home', 'Menu', 'Book Now', 'Contact Us', 'Cart', 'Welcome', 'About Us', 'Opening Hours', 'Follow Us').
    - IGNORE legal entities or cookie notice texts (e.g., drop 'Ltd', 'Pty Ltd', 'Inc', 'Cookie Policy', 'Privacy Policy', 'Terms of Service').
    - Deduplicate repeated logo/header text (e.g. 'Hotel MontrealHotel Montreal' -> 'Hotel Montreal').
-   - If unsure, infer the company name from copyright lines (e.g., '© 2026 The Green View Hotel') or the domain of emails/links in the text. Do not return generic phrases like 'Restaurant' or 'Cafe' unless it is part of the actual brand name.",
+   - If unsure, infer the company name from copyright lines (e.g., '© 2026 The Green View Hotel') or the domain of emails/links in the text.
+   - NEVER return generic email provider names (like 'Gmail', 'Yahoo', 'Hotmail', 'Outlook', 'Proton', 'ProtonMail') or ISP names (like 'Xtra', 'Spark', 'Slingshot', 'Orcon', 'Clear') as the company name.
+   - If the only email is on a generic provider/ISP (e.g. 'zephyrestaurantnz@gmail.com'), do NOT return 'Gmail'. Instead, extract and clean the brand name from the username/prefix part of the email address (e.g., 'zephyrestaurantnz@gmail.com' -> 'Zephyr Restaurant').
+   - Do not return generic phrases like 'Restaurant' or 'Cafe' unless it is part of the actual brand name.",
   "countryCode": "ISO 3166-1 alpha-2 code for the destination country: one of NZ, AU, US, CA, UK, DE, ES, FR, IT, NL, PT, IE, AT, CH, GR, SE, DK, NO, BE, FI, CZ, PL — or XX if genuinely unknown. Infer from postal address, phone country/area code, email TLD (.co.nz, .com.au, .co.uk, .ca, .de, .es, .fr, .it, .nl, .pt, .be, .fi, .cz, .pl), and city names.",
   "language": "the language the application email should be written in to best match this business: one of en, tr, es, fr, de, it, pt",
   "positions": ["1-3 realistic hospitality roles to apply for, inferred from the venue type (hotel/restaurant/cafe/bar) if none are explicitly advertised"]

@@ -48,7 +48,10 @@ export async function runPipeline(opts: {
   if (aiEnabled()) {
     const ai = await aiAnalyze(text, tier);
     if (ai) {
-      if (ai.company) analysis.company = ai.company;
+      const BLACKLISTED_COMPANIES = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|mynet|superonline|ttmail|turknet|kablonet|google)$/i;
+      if (ai.company && !BLACKLISTED_COMPANIES.test(ai.company.toLowerCase().trim())) {
+        analysis.company = ai.company;
+      }
       if (ai.countryCode && ai.countryCode !== "XX") analysis.country = countryByCode(ai.countryCode);
       if (ai.positions?.length) analysis.positions = ai.positions;
       if (ai.language) aiLang = ai.language;

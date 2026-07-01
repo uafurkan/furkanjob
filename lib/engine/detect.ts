@@ -378,13 +378,31 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   if (emails.length) {
     const domain = emails[0].split("@")[1] || "";
     const core = domain.split(".")[0];
-    if (core && !ISP_DOMAINS.test(core)) {
-      const name = core
-        .replace(/[-_]/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-        .trim();
-      if (name && !/^(wix|shopify|squarespace|godaddy|wordpress)$/i.test(name.toLowerCase())) {
-        return name;
+    if (core) {
+      if (!ISP_DOMAINS.test(core)) {
+        const name = core
+          .replace(/[-_]/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase())
+          .trim();
+        if (name && !/^(wix|shopify|squarespace|godaddy|wordpress)$/i.test(name.toLowerCase())) {
+          return name;
+        }
+      } else {
+        // If it's a generic email provider, try to clean the username (e.g. "zephyrrestaurantnz" -> "Zephyr Restaurant")
+        const username = emails[0].split("@")[0] || "";
+        const genericUsernames = /^(info|jobs|careers|recruitment|apply|applications|hello|contact|enquiries|office|admin|reception|general|support|service|help|sales|booking|bookings|reservations|events|manager|gm|owner|director|staff|work|mail)$/i;
+        if (!genericUsernames.test(username)) {
+          let cleaned = username
+            .replace(/(?:nz|au|uk|usa?)$/i, "")
+            .replace(/(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i, " $1")
+            .replace(/[-_]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+          cleaned = cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+          if (cleaned.length > 2) {
+            return cleaned;
+          }
+        }
       }
     }
   }
