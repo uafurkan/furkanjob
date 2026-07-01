@@ -324,17 +324,76 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     }
   }
 
-  // 3. Prefer a content line that names a venue type, but filter out generic terms and sentences.
-  const JUNK_COMPANY_LINES = /^(home|menu|book|book now|cart|contact|contact us|about|about us|welcome|gallery|skip to content|privacy policy|terms of service|terms & conditions|website by|designed by|powered by|wix|shopify|squarespace|godaddy|wordpress)$/i;
+  // Lines we should always skip when searching for a company name
+  const JUNK_COMPANY_LINES = /^(home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|skip to content|privacy policy|terms of service|terms & conditions|website by|designed by|powered by|wix|shopify|squarespace|godaddy|wordpress|facebook|instagram|twitter|linkedin|day|breakfast|lunch|dinner|starters|main courses|sides|desserts|cheeseboard|toast)$/i;
+  const DISCLAIMER_RE = /\b(subject to change|please inform|dietar|allerg|cannot guarantee|gluten free|we cannot|may contain|restrictions|gift card|gift voucher|certificate|sign up|newsletter|stay in the loop)\b/i;
 
+  // 3. Detect a concatenated page title (e.g. "Mister D DiningMister D Dining, Napier...")
+  //    Scrapers often merge <title> with the first heading, producing a doubled brand name.
+  for (const line of lines.slice(0, 5)) {
+    if (line.length < 10 || line.length > 200) continue;
+    if (JUNK_COMPANY_LINES.test(line)) continue;
+    if (/^https?:\/\//i.test(line)) continue;
+    // Try progressively shorter prefixes to find one that repeats
+    for (let len = Math.min(40, Math.floor(line.length / 2)); len >= 4; len--) {
+      const prefix = line.slice(0, len);
+      const rest = line.slice(len);
+      if (rest.toLowerCase().startsWith(prefix.toLowerCase())) {
+        let candidate = prefix.trim().replace(/\s*[-–—,|:].*/g, "").trim();
+        if (candidate.length >= 3 && !/^(home|menu|book|cart|contact|about|welcome|the|and|for)$/i.test(candidate)) {
+          return collapseDouble(candidate);
+        }
+      }
+    }
+  }
+
+  // 4. Look for the brand in an "About Us" section (e.g. "Mister D is a little bit country...")
+  const aboutIdx = lines.findIndex(l => /^about\s*us$/i.test(l));
+  if (aboutIdx >= 0 && aboutIdx + 1 < lines.length) {
+    const aboutLine = lines[aboutIdx + 1];
+    const m = aboutLine.match(/^(.{3,35}?)\s+(?:is|was|are|has|have|offers?|provides?|serves?|opened|started|began)\b/i);
+    if (m) {
+      const candidate = m[1].trim();
+      if (candidate.length >= 3 && !JUNK_COMPANY_LINES.test(candidate) && !DISCLAIMER_RE.test(candidate)) {
+        return collapseDouble(candidate);
+      }
+    }
+  }
+
+  // 5. Frequency-based: find a short capitalized phrase that appears 3+ times (strong brand signal)
+  const brandCounts = new Map<string, number>();
+  const fullText = lines.join(" ");
+  // Match capitalized word(s) like "Mister D" or "Black Barn" (2–4 words, first word capitalized)
+  const brandRe = /\b([A-Z][a-zA-Z']*(?:\s+[A-Z][a-zA-Z']*){0,2}(?:\s+[A-Z])?)\b/g;
+  let bm: RegExpExecArray | null;
+  while ((bm = brandRe.exec(fullText)) !== null) {
+    const brand = bm[1].trim();
+    if (brand.length >= 4 && brand.length <= 35
+      && !/^(The|And|For|With|Add|Our|All|New|Day|Hot|Big|Free|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Saturday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Greek|Asian|Italian|French|GFO|ONLINE|RESTAURANT|BOOKINGS|RISE|SHINE|CROWDS|LOVE|THESE|HAPPY|HENS|LAY|EGGS|SIDE|KICKS|BAKERS|CORNER|STARTERS|MAIN|COURSES|SIDES|DESSERTS|AUTUMN|MATCH|FOR THE TABLE)$/i.test(brand)
+    ) {
+      brandCounts.set(brand, (brandCounts.get(brand) || 0) + 1);
+    }
+  }
+  let bestBrand = "";
+  let bestCount = 2; // need at least 3 occurrences
+  for (const [brand, count] of brandCounts) {
+    if (count > bestCount) {
+      bestBrand = brand;
+      bestCount = count;
+    }
+  }
+  if (bestBrand) return collapseDouble(bestBrand);
+
+  // 6. Prefer a content line that names a venue type, but filter out generic terms and sentences.
   const venueLine = lines.find((l) => {
     if (l.length >= 60 || l.length < 3) return false;
     if (JUNK_COMPANY_LINES.test(l)) return false;
     if (/^https?:\/\//i.test(l) || /^www\./i.test(l)) return false;
     if (/\b(book online|make a reservation|online bookings|restaurant bookings|skip to content|click to|find us)\b/i.test(l)) return false;
+    if (DISCLAIMER_RE.test(l)) return false;
     // Must contain a hospitality venue term
     if (!/\b(hotel|suites|resort|restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub)\b/i.test(l)) return false;
-    // Avoid full narrative sentences (e.g. contains "our kitchen uses" or "visit our bar")
+    // Avoid full narrative sentences
     if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from|cook|making|some)\b/i.test(l)) return false;
     return true;
   });
@@ -343,10 +402,9 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     return collapseDouble(venueLine.replace(/\s+[-–—|].*$/, "").trim());
   }
 
-  // 5. Try to guess from URLs if available (better than generic fallback lines)
+  // 7. Try to guess from URLs if available
   if (urls.length) {
     try {
-      // Find the first URL that is not a social media or generic platform
       const validUrl = urls.find(u => !/\b(facebook|instagram|twitter|x|linkedin|google|youtube|tiktok|apple|android|wix|squarespace|shopify|wordpress)\b/i.test(u));
       if (validUrl) {
         const urlStr = validUrl.startsWith("http") ? validUrl : "https://" + validUrl;
@@ -362,14 +420,18 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     } catch (e) {}
   }
 
-  // 6. Fallback to the first non-junk line
+  // 8. Fallback to the first non-junk, non-disclaimer line
   const fallbackLine = lines.find((l) => {
     if (l.length < 4 || l.length >= 60) return false;
     if (JUNK_COMPANY_LINES.test(l)) return false;
     if (/^https?:\/\//i.test(l) || /^www\./i.test(l)) return false;
     if (/\b(book online|make a reservation|online bookings|restaurant bookings|skip to content|click to|find us|stay in the loop)\b/i.test(l)) return false;
+    if (DISCLAIMER_RE.test(l)) return false;
     if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from|some)\b/i.test(l)) return false;
     if (/\b(telephone|phone|email|fax|call us|mobile|tel|address)\s*[:]/i.test(l)) return false;
+    // Skip common menu/food content lines
+    if (/^\d+\s*$/.test(l) || /\b(add|served with|choice of|extra|GFO?|DF|vegan)\b/i.test(l)) return false;
+    if (/\$\s*\d|\d+\.\d{2}$|\b\d{2}\s*(GF|DF|V)\b/.test(l)) return false;
     return true;
   });
 
