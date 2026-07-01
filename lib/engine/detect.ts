@@ -384,6 +384,44 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     }
   }
 
+  // 1.5. Heuristic: If we have both emails and urls, and the email domain is generic (e.g. exploretekapo.com)
+  //      but a URL domain contains a specific venue term (e.g. tekapomotel.co.nz has "motel"),
+  //      prefer the URL domain as the company name!
+  const venueTerms = /(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i;
+  if (emails.length && urls.length) {
+    const emailDomain = emails[0].split("@")[1] || "";
+    const emailCore = emailDomain.split(".")[0];
+    if (emailCore && !venueTerms.test(emailCore)) {
+      const bestUrl = urls.find(u => {
+        if (/\b(facebook|instagram|twitter|x|linkedin|google|youtube|tiktok|apple|android|wix|squarespace|shopify|wordpress)\b/i.test(u)) return false;
+        try {
+          const urlStr = u.startsWith("http") ? u : "https://" + u;
+          const hostname = new URL(urlStr).hostname;
+          const core = hostname.replace(/^www\./, "").split(".")[0];
+          return venueTerms.test(core);
+        } catch {
+          return false;
+        }
+      });
+      if (bestUrl) {
+        try {
+          const urlStr = bestUrl.startsWith("http") ? bestUrl : "https://" + bestUrl;
+          const hostname = new URL(urlStr).hostname;
+          const core = hostname.replace(/^www\./, "").split(".")[0];
+          let name = core
+            .replace(/(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i, " $1")
+            .replace(/[-_]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+          name = name.replace(/\b\w/g, c => c.toUpperCase());
+          if (name && name.length > 2) {
+            return name;
+          }
+        } catch {}
+      }
+    }
+  }
+
   // 2. Try the email domain name (extremely reliable)
   // Blacklist known ISP/generic email providers that are NOT the business name.
   const ISP_DOMAINS = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|optus|bigpond|internode|iinet|aapt|tpg|dodo|telstra|singtel|starhub|maxis|celcom|digi|tm|bsnl|jio|airtel|tata|idea|mynet|superonline|ttmail|turknet|kablonet|shaw|rogers|telus|bell|sympatico|videotron|cogeco|eastlink|sasktel|btinternet|btconnect|virginmedia|talktalk|blueyonder|ntlworld|plusnet|gmx|web|t-online|freenet|alice|libero|virgilio|wanadoo|orange|sfr|free|neuf|laposte|cox|comcast|charter|spectrum|roadrunner|twc|verizon|att|bellsouth|sbcglobal|earthlink|windstream|suddenlink|optonline|netzero|juno|mac|sky|hushmail|hush|rediffmail|yandex|mailru|rambler|farmside|actrix|westnet|adam|netspace|chariot|tassie|picknowl|ozemail)$/i;
