@@ -286,7 +286,7 @@ function collapseDouble(s: string): string {
   return compact;
 }
 
-export function guessCompany(text: string, emails: string[]): string {
+export function guessCompany(text: string, emails: string[], urls: string[] = []): string {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
   // 1. Try to find a copyright line (very specific to the business owner)
@@ -328,12 +328,14 @@ export function guessCompany(text: string, emails: string[]): string {
   const JUNK_COMPANY_LINES = /^(home|menu|book|book now|cart|contact|contact us|about|about us|welcome|gallery|skip to content|privacy policy|terms of service|terms & conditions|website by|designed by|powered by|wix|shopify|squarespace|godaddy|wordpress)$/i;
 
   const venueLine = lines.find((l) => {
-    if (l.length >= 80 || l.length < 3) return false;
+    if (l.length >= 60 || l.length < 3) return false;
     if (JUNK_COMPANY_LINES.test(l)) return false;
+    if (/^https?:\/\//i.test(l) || /^www\./i.test(l)) return false;
+    if (/\b(book online|make a reservation|online bookings|restaurant bookings|skip to content|click to|find us)\b/i.test(l)) return false;
     // Must contain a hospitality venue term
-    if (!/\b(hotel|suites|resort|restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie)\b/i.test(l)) return false;
+    if (!/\b(hotel|suites|resort|restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub)\b/i.test(l)) return false;
     // Avoid full narrative sentences (e.g. contains "our kitchen uses" or "visit our bar")
-    if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from|cook|making)\b/i.test(l)) return false;
+    if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from|cook|making|some)\b/i.test(l)) return false;
     return true;
   });
 
@@ -341,15 +343,41 @@ export function guessCompany(text: string, emails: string[]): string {
     return collapseDouble(venueLine.replace(/\s+[-–—|].*$/, "").trim());
   }
 
-  // 4. Fallback to the first non-junk line
+  // 5. Try to guess from URLs if available (better than generic fallback lines)
+  if (urls.length) {
+    try {
+      // Find the first URL that is not a social media or generic platform
+      const validUrl = urls.find(u => !/\b(facebook|instagram|twitter|x|linkedin|google|youtube|tiktok|apple|android|wix|squarespace|shopify|wordpress)\b/i.test(u));
+      if (validUrl) {
+        const urlStr = validUrl.startsWith("http") ? validUrl : "https://" + validUrl;
+        const hostname = new URL(urlStr).hostname;
+        const parts = hostname.replace(/^www\./, "").split(".");
+        if (parts.length >= 2) {
+          const name = parts[0].replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
+          if (name && name.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|site|home)$/i.test(name.toLowerCase())) {
+            return name;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 6. Fallback to the first non-junk line
   const fallbackLine = lines.find((l) => {
-    if (l.length < 4 || l.length > 80) return false;
+    if (l.length < 4 || l.length >= 60) return false;
     if (JUNK_COMPANY_LINES.test(l)) return false;
-    if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from)\b/i.test(l)) return false;
+    if (/^https?:\/\//i.test(l) || /^www\./i.test(l)) return false;
+    if (/\b(book online|make a reservation|online bookings|restaurant bookings|skip to content|click to|find us|stay in the loop)\b/i.test(l)) return false;
+    if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from|some)\b/i.test(l)) return false;
+    if (/\b(telephone|phone|email|fax|call us|mobile|tel|address)\s*[:]/i.test(l)) return false;
     return true;
   });
 
-  return fallbackLine ? collapseDouble(fallbackLine.replace(/\s+[-–—|].*$/, "").trim()) : "your company";
+  if (fallbackLine) {
+    return collapseDouble(fallbackLine.replace(/\s+[-–—|].*$/, "").trim());
+  }
+
+  return "your company";
 }
 
 // Lightweight language detection of the pasted business text (for "auto" application language).
@@ -437,12 +465,13 @@ export type Analysis = {
 export function analyze(text: string): Analysis {
   const emails = extractEmails(text);
   const loc = extractLocation(text);
+  const urls = extractUrls(text);
   return {
     emails,
-    urls: extractUrls(text),
+    urls,
     country: detectCountry(text),
     positions: detectPositions(text),
-    company: guessCompany(text, emails),
+    company: guessCompany(text, emails, urls),
     locality: loc.locality,
     address: loc.address,
     phone: extractPhone(text) || undefined,
