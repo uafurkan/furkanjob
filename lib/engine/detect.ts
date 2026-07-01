@@ -293,6 +293,58 @@ function collapseDouble(s: string): string {
 export function guessCompany(text: string, emails: string[], urls: string[] = []): string {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
+  // 0. Facebook page detection: when the user copies a Facebook business page,
+  //    the page name appears prominently (in a heading or in metadata like "Page · Restaurant").
+  //    Pattern: a line followed by a "X followers · Y following" line or "Page · Category" pattern,
+  //    OR a line with the format "X likes · X followers" which always follows the page name.
+  const fullText = lines.join("\n");
+  // Check if this looks like a Facebook page paste
+  if (/\b(followers?|following|takipçi|tak(i|ı)p)\b/i.test(fullText) || /facebook\.com/i.test(fullText)) {
+    // Strategy A: Find a line where next line contains "followers" or "likes"
+    for (let i = 0; i < Math.min(lines.length - 1, 30); i++) {
+      const nextLine = lines[i + 1] || "";
+      if (/\b(follower|following|likes?|takipçi|takip)\b/i.test(nextLine)) {
+        const candidate = lines[i].trim();
+        // Must not be a URL, navigation item, or too long
+        if (
+          candidate.length >= 3 && candidate.length <= 80 &&
+          !/^https?:\/\//i.test(candidate) &&
+          !/^(home|about|photos|videos|events|posts|community|info|shop|services)$/i.test(candidate)
+        ) {
+          return collapseDouble(candidate);
+        }
+      }
+    }
+    // Strategy B: look for "Page · Category" pattern — the line before it is the page name
+    for (let i = 1; i < Math.min(lines.length, 30); i++) {
+      if (/^(page|sayfa)\s*[·•·]\s*\S/i.test(lines[i])) {
+        const candidate = lines[i - 1].trim();
+        if (
+          candidate.length >= 3 && candidate.length <= 80 &&
+          !/^https?:\/\//i.test(candidate) &&
+          !/^(home|about|photos|videos|events|posts|community|info|shop|services|posts|gönderiler|hakkında|fotoğraflar)$/i.test(candidate)
+        ) {
+          return collapseDouble(candidate);
+        }
+      }
+    }
+    // Strategy C: find any short line between nav items that looks like a proper name
+    //  ("Gönderiler Hakkında Fotoğraflar" suggests FB, name is likely near those)
+    const fbNavIdx = lines.findIndex(l => /^(gönderiler|posts|hakkında|about)$/i.test(l));
+    if (fbNavIdx > 1) {
+      for (let i = Math.max(0, fbNavIdx - 3); i < fbNavIdx; i++) {
+        const candidate = lines[i].trim();
+        if (
+          candidate.length >= 3 && candidate.length <= 80 &&
+          !/^https?:\/\//i.test(candidate) &&
+          !/^\d+/.test(candidate)
+        ) {
+          return collapseDouble(candidate);
+        }
+      }
+    }
+  }
+
   // 1. Try to find a copyright line (very specific to the business owner)
   for (const line of lines) {
     if (/(?:©|^\s*(?:copyright|\(c\)))/i.test(line)) {
@@ -314,10 +366,12 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   }
 
   // 2. Try the email domain name (extremely reliable)
+  // Blacklist known ISP/generic email providers that are NOT the business name.
+  const ISP_DOMAINS = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|optus|bigpond|internode|iinet|aapt|tpg|dodo|telstra|singtel|starhub|maxis|celcom|digi|tm|bsnl|jio|airtel|tata|idea)$/i;
   if (emails.length) {
     const domain = emails[0].split("@")[1] || "";
     const core = domain.split(".")[0];
-    if (core && !/gmail|outlook|hotmail|yahoo|icloud|proton|mail/i.test(core)) {
+    if (core && !ISP_DOMAINS.test(core)) {
       const name = core
         .replace(/[-_]/g, " ")
         .replace(/\b\w/g, (c) => c.toUpperCase())
@@ -366,11 +420,11 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
 
   // 5. Frequency-based: find a short capitalized phrase that appears 3+ times (strong brand signal)
   const brandCounts = new Map<string, number>();
-  const fullText = lines.join(" ");
+  const spaceJoinedText = lines.join(" ");
   // Match capitalized word(s) like "Mister D" or "Black Barn" (2–4 words, first word capitalized)
   const brandRe = /\b([A-Z][a-zA-Z']*(?:\s+[A-Z][a-zA-Z']*){0,2}(?:\s+[A-Z])?)\b/g;
   let bm: RegExpExecArray | null;
-  while ((bm = brandRe.exec(fullText)) !== null) {
+  while ((bm = brandRe.exec(spaceJoinedText)) !== null) {
     const brand = bm[1].trim();
     if (brand.length >= 4 && brand.length <= 35
       && !/^(The|And|For|With|Add|Our|All|New|Day|Hot|Big|Free|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Saturday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Greek|Asian|Italian|French|GFO|ONLINE|RESTAURANT|BOOKINGS|RISE|SHINE|CROWDS|LOVE|THESE|HAPPY|HENS|LAY|EGGS|SIDE|KICKS|BAKERS|CORNER|STARTERS|MAIN|COURSES|SIDES|DESSERTS|AUTUMN|MATCH|FOR THE TABLE)$/i.test(brand)
