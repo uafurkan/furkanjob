@@ -113,6 +113,8 @@ export default function NewApplication() {
   const [askError, setAskError] = useState<string | null>(null);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customQuestion, setCustomQuestion] = useState("");
+  const [fetchingUrl, setFetchingUrl] = useState(false);
+  const fetchedUrlRef = useRef<string | null>(null);
 
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {
@@ -346,6 +348,47 @@ export default function NewApplication() {
       textareaRef.current?.focus();
     }
   }
+
+  // Auto-fetch URL: when the textarea contains only a URL, automatically scrape it.
+  function looksLikeUrl(s: string): boolean {
+    const t = s.trim();
+    if (/\n/.test(t)) return false; // multi-line → not a bare URL
+    return /^https?:\/\/\S+$/i.test(t) || /^www\.\S+$/i.test(t) || /^[a-z0-9][a-z0-9.-]*\.(com|co\.nz|co\.uk|com\.au|nz|au|org|net|io|ca|de|fr|es|it|nl|pt|ie|at|ch|gr|se|dk|no|be|fi|cz|pl)(\/.*)?\.?$/i.test(t);
+  }
+
+  useEffect(() => {
+    const trimmed = text.trim();
+    if (!trimmed || !looksLikeUrl(trimmed) || fetchingUrl || analyzing) return;
+    // Don't re-fetch if we already fetched this exact URL
+    if (fetchedUrlRef.current === trimmed) return;
+    
+    const timer = setTimeout(async () => {
+      // Re-check in case text changed during the delay
+      if (!looksLikeUrl(text.trim())) return;
+      setFetchingUrl(true);
+      setMsg({ kind: "ok", text: t("new.fetchingUrl") || "Fetching page content…" });
+      try {
+        const r = await fetch("/api/fetch-page", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ url: text.trim() }),
+        });
+        const d = await r.json();
+        if (r.ok && d.text) {
+          fetchedUrlRef.current = trimmed;
+          setText(d.text);
+          setMsg({ kind: "ok", text: t("new.fetchedUrl") || "Page content loaded — ready to analyze!" });
+        } else {
+          setMsg({ kind: "warn", text: d.error || "Could not fetch the page." });
+        }
+      } catch {
+        setMsg({ kind: "warn", text: "Could not fetch the page." });
+      } finally {
+        setFetchingUrl(false);
+      }
+    }, 600); // Small delay so typing a URL doesn't trigger mid-type
+    return () => clearTimeout(timer);
+  }, [text, fetchingUrl, analyzing]);
 
   const srcLabel = (s: string) =>
     ({ text: t("new.src.text"), "page-scrape": t("new.src.scrape"), "web-search": t("new.src.web"), none: t("new.src.none") } as Record<string, string>)[s] || s;
@@ -696,7 +739,7 @@ export default function NewApplication() {
               </button>
             )}
           </div>
-          <textarea ref={textareaRef} className="textarea" placeholder={t("new.placeholder")} value={text} onChange={(e) => setText(e.target.value)} />
+          <textarea ref={textareaRef} className="textarea" placeholder={t("new.placeholder")} value={text} onChange={(e) => setText(e.target.value)} disabled={fetchingUrl} style={fetchingUrl ? { opacity: 0.6 } : undefined} />
           <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("new.urlHint")}</span>
         </label>
 
@@ -721,7 +764,7 @@ export default function NewApplication() {
         <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{auto ? t("new.fullNote") : t("new.semiNote")}</span>
 
         <div className="row gap-3 wrap">
-          <button className="btn btn-primary" data-loading={analyzing || sending} onClick={analyze} disabled={analyzing || sending}>
+          <button className="btn btn-primary" data-loading={analyzing || sending || fetchingUrl} onClick={analyze} disabled={analyzing || sending || fetchingUrl}>
             {analyzing ? (stage || t("new.analyzing")) : sending ? t("new.sending") : auto ? t("new.analyzeSend") : t("new.analyze")}
           </button>
           <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>⌘↵</span>
