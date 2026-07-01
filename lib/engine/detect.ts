@@ -98,12 +98,12 @@ export function extractUrls(text: string): string[] {
   return [...new Set(found)];
 }
 
-const COUNTRY_RULES: (CountryRule & { test: RegExp })[] = [
+const COUNTRY_RULES: (CountryRule & { test: RegExp; testCaseSensitive?: RegExp })[] = [
   {
     code: "NZ",
     name: "New Zealand",
     visa: "Accredited Employer Work Visa (AEWV) sponsorship",
-    test: /\b(new zealand|nz\b|auckland|wellington|christchurch|queenstown|kiwi|\.co\.nz|\.nz\b|nzd)\b/i,
+    test: /\b(new zealand|nz\b|auckland|wellington|christchurch|queenstown|kiwi|\.co\.nz|\.nz\b|nzd|napier|hamilton|tauranga|dunedin|nelson|palmerston north|rotorua|new plymouth|hastings|whangarei|invercargill|gisborne|ahuriri|wanaka|taupo|marlborough|hawke's bay|hawkes bay|otago|canterbury|waikato|bay of plenty)\b/i,
   },
   {
     code: "AU",
@@ -146,7 +146,8 @@ const COUNTRY_RULES: (CountryRule & { test: RegExp })[] = [
     code: "FR",
     name: "France",
     visa: "French work visa / employer sponsorship",
-    test: /\b(france|french|paris|lyon|marseille|bordeaux|nice|toulouse|\.fr\b)\b/i,
+    test: /\b(france|french|paris|lyon|marseille|bordeaux|toulouse|\.fr\b)\b/i,
+    testCaseSensitive: /\bNice\b/,
   },
   {
     code: "IT",
@@ -235,7 +236,10 @@ const COUNTRY_RULES: (CountryRule & { test: RegExp })[] = [
 ];
 
 export function detectCountry(text: string): CountryRule {
-  for (const r of COUNTRY_RULES) if (r.test.test(text)) return { code: r.code, name: r.name, visa: r.visa };
+  for (const r of COUNTRY_RULES) {
+    if (r.test.test(text)) return { code: r.code, name: r.name, visa: r.visa };
+    if (r.testCaseSensitive && r.testCaseSensitive.test(text)) return { code: r.code, name: r.name, visa: r.visa };
+  }
   return { code: "XX", name: "the destination country", visa: "work visa sponsorship" };
 }
 
