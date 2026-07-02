@@ -38,8 +38,15 @@ function resolveProvider(tier: AiTier): Resolved | null {
   return tier === "pro" ? (premiumProvider() || freeProvider()) : (freeProvider() || premiumProvider());
 }
 
+let hasWarnedAboutDisabledAi = false;
+
 export function aiEnabled(): boolean {
-  return resolveProvider("free") !== null || resolveProvider("pro") !== null;
+  const enabled = resolveProvider("free") !== null || resolveProvider("pro") !== null;
+  if (!enabled && !hasWarnedAboutDisabledAi) {
+    console.error("AI is disabled: No API key configured. Set FREE_AI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY.");
+    hasWarnedAboutDisabledAi = true;
+  }
+  return enabled;
 }
 
 // One text completion for the given tier. Returns the raw assistant text, or null on any failure.
