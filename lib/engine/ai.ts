@@ -79,24 +79,48 @@ async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoni
       headers: { "content-type": "application/json", authorization: `Bearer ${r.apiKey}` },
       body: JSON.stringify(bodyFields),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error(`AI API error: HTTP ${res.status} - ${errText}`);
+      return null;
+    }
     const data = await res.json();
     const out = data?.choices?.[0]?.message?.content;
     return typeof out === "string" ? out.trim() : null;
-  } catch {
+  } catch (err) {
+    console.error("AI API connection/request failed:", err);
     return null;
   }
 }
 
 function extractJson<T>(out: string | null): T | null {
   if (!out) return null;
-  try {
-    const a = out.indexOf("{");
-    const b = out.lastIndexOf("}");
-    if (a < 0 || b < 0) return null;
-    return JSON.parse(out.slice(a, b + 1)) as T;
-  } catch {
+  const a = out.indexOf("{");
+  const b = out.lastIndexOf("}");
+  if (a < 0 || b < 0) {
+    console.error("JSON parsing error: No curly braces found in output:", out);
     return null;
+  }
+  const jsonStr = out.slice(a, b + 1);
+  try {
+    return JSON.parse(jsonStr) as T;
+  } catch (err) {
+    // Attempt parsing with common LLM formatting fixes (trailing commas and literal newlines inside strings)
+    try {
+      let fixed = jsonStr
+        .replace(/,\s*}/g, "}")
+        .replace(/,\s*\]/g, "]");
+      
+      // Escape literal newlines inside double-quoted string values
+      fixed = fixed.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (match, p1) => {
+        return '"' + p1.replace(/\n/g, '\\n').replace(/\r/g, '\\r') + '"';
+      });
+      
+      return JSON.parse(fixed) as T;
+    } catch (parseErr) {
+      console.error("JSON parsing error: Failed to parse sliced JSON string. Raw output:", out, "Error:", err, "Resilient try error:", parseErr);
+      return null;
+    }
   }
 }
 
