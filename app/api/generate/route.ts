@@ -113,6 +113,9 @@ async function handleGenerate(req: Request) {
     // Don't surface the grammatical fallback ("the destination country") as a country label.
     country: result.analysis.country.code === "XX" ? "" : result.analysis.country.name,
     positions: result.analysis.positions,
+    // Global intelligence: organization type + job vs study application.
+    orgType: result.orgType,
+    intent: result.intent,
     // Smart role fit + suitability/eligibility.
     applyFor: result.applyFor,
     droppedRoles: result.droppedRoles,

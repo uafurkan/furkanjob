@@ -1,5 +1,6 @@
 // Extract emails/URLs and detect country, positions and company from pasted business text.
 import type { CountryRule } from "./rules";
+import { detectOrgType, detectIntent, type OrgType, type Intent } from "./professions";
 
 export function decodeHtmlEntities(str: string): string {
   if (!str) return "";
@@ -18,7 +19,10 @@ export function decodeHtmlEntities(str: string): string {
     });
 }
 
-const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.(?:com|co\.nz|co\.uk|com\.au|org|net|nz|au|uk|us|ca|ie|es|fr|de|it|pt|nl|ch|at|dk|se|no|fi|be|cz|pl|gr|io|info|biz|co)/gi;
+// Global TLD coverage: second-level combos first (co.nz, edu.au, ac.uk, com.ng…), then long
+// gTLDs, then any 2-letter ccTLD — so university (.edu / .ac.xx) and worldwide business
+// addresses (.ng, .tr, .in, .br, .za…) are all extracted, never missed.
+const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.(?:(?:co|com|org|net|ac|edu|gov)\.[a-z]{2}|education|university|academy|healthcare|hospital|clinic|dental|health|careers|jobs|agency|clinic|farm|restaurant|cafe|hotel|travel|online|store|shop|site|tech|digital|solutions|services|group|global|team|email|works|world|life|care|school|college|institute|com|org|net|edu|gov|mil|int|info|biz|io|co|me|dev|app|xyz|[a-z]{2})\b/gi;
 const URL_RE =
   /\bhttps?:\/\/[^\s)"'<>]+|\b(?:www\.)[^\s)"'<>]+|\b[a-z0-9.\-]+\.(?:com|org|net|co\.nz|co\.uk|com\.au|nz|au|us|io|info)\b[^\s)"'<>]*/gi;
 
@@ -267,24 +271,73 @@ export function countryByCode(code: string): CountryRule {
   return r ? { code: r.code, name: r.name, visa: r.visa } : { code: "XX", name: "the destination country", visa: "work visa sponsorship" };
 }
 
+// Cross-industry position detection. Ordered specific → generic; every rule maps page text to a
+// clean role label. Covers hospitality, healthcare, engineering/IT, trades, agriculture,
+// education, logistics, retail, office, beauty, childcare, security — the full global market.
 const POSITION_RULES: { test: RegExp; label: string }[] = [
+  // Hospitality
   { test: /\bfront desk|receptionist|front office|check.in|guest service/i, label: "Front Desk" },
-  { test: /\bkitchen|chef|cook|kitchen hand|commis|sous chef|prep cook|dishwasher|kitchen porter/i, label: "Kitchen" },
+  { test: /\bkitchen|chef|cook\b|kitchen hand|commis|sous chef|prep cook|dishwasher|kitchen porter|baker|pastry|butcher/i, label: "Kitchen" },
   { test: /\bwait(er|ress)|server|serving|food service|f&b|dining room|table service/i, label: "Food & Beverage Service" },
-  { test: /\bhousekeep|room attendant|cleaner|laundry|turndown/i, label: "Housekeeping" },
-  { test: /\bbarista|coffee|café\b/i, label: "Barista" },
-  { test: /\bbartender|bar staff|bar\b|cocktail|mixologist/i, label: "Bar" },
+  { test: /\bhousekeep|room attendant|laundry|turndown/i, label: "Housekeeping" },
+  { test: /\bbarista\b/i, label: "Barista" },
+  { test: /\bbartender|bar staff|cocktail|mixologist|sommelier/i, label: "Bar" },
   { test: /\bconcierge|guest relations|guest experience/i, label: "Concierge" },
-  { test: /\bmanager|management|supervisor|head of|general manager/i, label: "Management" },
-  { test: /\bnight auditor|night shift|night manager/i, label: "Night Auditor" },
-  { test: /\breservations|booking(s)?\b/i, label: "Reservations" },
+  { test: /\bnight auditor|night manager/i, label: "Night Auditor" },
   { test: /\bporter|bellhop|valet|doorman|luggage/i, label: "Porter / Valet" },
-  { test: /\bevent|banquet|function|catering/i, label: "Events / Banquet" },
+  { test: /\bbanquet|catering staff/i, label: "Events / Banquet" },
+  // Healthcare
+  { test: /\bdentist|dental surgeon|orthodontist|periodontist|endodontist|oral surgeon/i, label: "Dentist" },
+  { test: /\bdental (assistant|nurse|hygienist|technician|receptionist)|oral health therapist/i, label: "Dental Assistant / Hygienist" },
+  { test: /\bphysician|general practitioner|\bGP\b|medical officer|surgeon\b|psychiatrist|p(a)?ediatrician|cardiologist|dermatologist|an(a)?esthesi|radiologist|\bdoctors?\b/i, label: "Doctor / Physician" },
+  { test: /\bnurse|nursing|midwif/i, label: "Nurse" },
+  { test: /\bcaregiver|care worker|support worker|aged care|elderly care|\bcarer\b|personal care assistant|disability support|healthcare assistant/i, label: "Care Worker" },
+  { test: /\bpharmacist|pharmacy (technician|assistant)|dispensary/i, label: "Pharmacist" },
+  { test: /\bphysiotherap|physical therapist|occupational therapist|chiropract|osteopath|speech therapist|dietitian|paramedic|optometrist|radiographer|sonographer/i, label: "Allied Health" },
+  { test: /\bveterinar|vet nurse\b/i, label: "Veterinary" },
+  { test: /\b(laboratory|lab) (technician|scientist|assistant)|phlebotom/i, label: "Laboratory Technician" },
+  // Engineering & IT
+  { test: /\bsoftware (engineer|developer)|web developer|front.?end|back.?end|full.?stack|mobile developer|devops|data (scientist|engineer|analyst)|machine learning|qa engineer|programmer|cybersecurity/i, label: "Software / IT" },
+  { test: /\bit support|help.?desk|system administrator|sysadmin|network (engineer|administrator)/i, label: "IT Support" },
+  { test: /\b(mechanical|electrical|civil|structural|chemical|process|mechatronic|aerospace|automotive|marine|mining|geotechnical|environmental|industrial|project|site) engineer/i, label: "Engineer" },
+  // Trades & construction
+  { test: /\belectrician|electrical apprentice/i, label: "Electrician" },
+  { test: /\bplumber|plumbing|gasfitter|drainlayer/i, label: "Plumber" },
+  { test: /\bcarpenter|carpentry|joiner|cabinet maker|formwork/i, label: "Carpenter / Builder" },
+  { test: /\bwelder|welding|fabricator|boilermaker/i, label: "Welder / Fabricator" },
+  { test: /\bmechanic|automotive technician|auto electrician|panel beater|diesel technician/i, label: "Mechanic" },
+  { test: /\bplasterer|tiler|roofer|glazier|bricklayer|scaffolder|hvac|refrigeration technician/i, label: "Construction Trades" },
+  { test: /\blabourer|laborer|construction worker|site worker|groundworker|demolition/i, label: "Construction Labourer" },
+  { test: /\blandscap|gardener|groundskeeper/i, label: "Landscaping / Gardening" },
+  // Agriculture / seasonal
+  { test: /\bfarm (worker|hand|assistant)|farmhand|dairy|milking|harvest|fruit pick|picker|pruning|pruner|orchard|vineyard|winery|cellar (hand|door)|packhouse|horticultur|greenhouse|shearer|beekeep|aquaculture|seasonal work/i, label: "Farm / Seasonal Work" },
+  { test: /\bfisherman|deckhand|fishing crew/i, label: "Fishing Crew" },
+  // Transport, logistics, manufacturing
+  { test: /\b(truck|delivery|bus) driver|courier|forklift|\bhgv\b|\blgv\b|heavy vehicle|excavator|crane operator|machine operator/i, label: "Driver / Operator" },
+  { test: /\bwarehouse|order picker|packer\b|storeperson|stock (controller|hand)|dispatch/i, label: "Warehouse" },
+  { test: /\bfactory (worker|hand|operator)|production (worker|operator|line)|assembly line|process worker/i, label: "Factory / Production" },
+  // Education
+  { test: /\bteacher|teaching assistant|tutor|lecturer|professor|instructor|early childhood educator|kindergarten teacher|esl\b|tefl/i, label: "Teaching / Education" },
+  // Retail, office, service
+  { test: /\bretail (assistant|associate|staff)|shop assistant|sales (assistant|associate|representative|rep)\b|cashier|checkout|merchandis/i, label: "Retail / Sales" },
+  { test: /\boffice (assistant|administrator|manager)|administrative assistant|administration officer|secretary|data entry|clerk\b/i, label: "Administration" },
+  { test: /\baccountant|bookkeep|payroll|finance (officer|assistant|manager)|auditor/i, label: "Accounting / Finance" },
+  { test: /\bcustomer (service|support|care)|call cent(re|er)|contact cent(re|er)/i, label: "Customer Service" },
+  { test: /\bmarketing (assistant|coordinator|manager|specialist)|social media (manager|coordinator)|content (creator|writer)|copywriter|graphic design/i, label: "Marketing / Creative" },
+  // Beauty, childcare, security, cleaning
+  { test: /\bhairdresser|hair stylist|barber\b|beautician|beauty therapist|nail technician|spa therapist|makeup artist|massage therapist/i, label: "Hair & Beauty" },
+  { test: /\bnanny|au pair|childcare|child care|daycare|creche|early learning/i, label: "Childcare" },
+  { test: /\bsecurity (guard|officer|staff)|crowd control/i, label: "Security" },
+  { test: /\bcleaner|cleaning (staff|position|role)|janitor|custodian/i, label: "Cleaner" },
+  // Generic (kept last so specific roles win the dedupe ordering)
+  { test: /\breservations|booking(s)? (agent|officer|coordinator)/i, label: "Reservations" },
+  { test: /\bmanager|management|supervisor|head of|general manager|team lead/i, label: "Management" },
 ];
 
 export function detectPositions(text: string): string[] {
   const hits = POSITION_RULES.filter((p) => p.test.test(text)).map((p) => p.label);
-  return hits.length ? [...new Set(hits)] : [];
+  // Rules are ordered specific → generic; cap so a busy page doesn't flood the pipeline.
+  return hits.length ? [...new Set(hits)].slice(0, 6) : [];
 }
 
 // Collapse a brand string that was duplicated by scraped logo markup:
@@ -436,7 +489,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   // 1.5. Heuristic: If we have both emails and urls, and the email domain is generic (e.g. exploretekapo.com)
   //      but a URL domain contains a specific venue term (e.g. tekapomotel.co.nz has "motel"),
   //      prefer the URL domain as the company name!
-  const venueTerms = /(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i;
+  const venueTerms = /(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort|clinic|dental|medical|health|pharmacy|farm|orchard|vineyard|winery|university|college|academy|school|institute|engineering|construction|builders|logistics|garage|salon|studio)/i;
   if (emails.length && urls.length) {
     const emailDomain = emails[0].split("@")[1] || "";
     const emailCore = emailDomain.split(".")[0];
@@ -711,6 +764,10 @@ export type Analysis = {
   locality?: string;
   address?: string;
   phone?: string;
+  // What kind of organization the page is about (clinic, hotel, university, farm…) and
+  // whether the user is applying for a JOB or for STUDY (university/school admissions).
+  orgType: OrgType;
+  intent: Intent;
 };
 
 export function analyze(text: string): Analysis {
@@ -718,14 +775,18 @@ export function analyze(text: string): Analysis {
   const emails = extractEmails(decoded);
   const loc = extractLocation(decoded);
   const urls = extractUrls(decoded);
+  const positions = detectPositions(decoded);
+  const orgType = detectOrgType(decoded, positions);
   return {
     emails,
     urls,
     country: detectCountry(decoded),
-    positions: detectPositions(decoded),
+    positions,
     company: guessCompany(decoded, emails, urls),
     locality: loc.locality,
     address: loc.address,
     phone: extractPhone(decoded) || undefined,
+    orgType,
+    intent: detectIntent(decoded, orgType),
   };
 }

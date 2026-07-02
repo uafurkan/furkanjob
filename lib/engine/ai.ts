@@ -5,6 +5,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Draft, DraftOption, GenerateInput, EngineProfile } from "./types";
 import { APP_LANGS, type AppLang } from "./template";
+import { VALID_ORG_TYPES, isFormalOrg, regulatedRoles, type OrgType, type Intent } from "./professions";
 
 export type AiTier = "free" | "pro";
 
@@ -137,46 +138,53 @@ export type AiAnalysis = {
   countryCode?: string; // NZ | AU | US | CA | UK | XX
   language?: AppLang;
   positions?: string[];
+  orgType?: OrgType;    // hotel | restaurant | clinic | dental_clinic | hospital | university | farm | …
+  intent?: Intent;      // "job" (employment application) or "study" (university/school admissions)
 };
 
 export async function aiAnalyze(text: string, tier: AiTier = "free"): Promise<AiAnalysis | null> {
   if (!aiEnabled()) return null;
-  const prompt = `You are the analysis engine of a job-application assistant. A user pasted RAW text scraped/copied from a business's website. This text may contain noisy elements like header/footer menus, cookie banners, booking systems, social media links, copyright notices, and platform/builder templates (e.g., Wix, Shopify, Squarespace, GoDaddy, WordPress). Read it like a careful human and return clean, structured facts.
+  const prompt = `You are the analysis engine of a global application assistant. Users apply to ANY kind of organization worldwide — hotels, restaurants, dental clinics, hospitals, engineering firms, IT companies, farms, construction companies, schools, universities, retail stores, salons, logistics companies, offices — for jobs OR for university/school admission. A user pasted RAW text scraped/copied from an organization's website. This text may contain noisy elements like header/footer menus, cookie banners, booking systems, social media links, copyright notices, and platform/builder templates (e.g., Wix, Shopify, Squarespace, GoDaddy, WordPress). Read it like a careful human and return clean, structured facts.
 
 Return STRICT JSON ONLY, no prose, exactly these keys:
 {
-  "company": "the clean, human-readable brand name of the business/employer. CRITICAL rules:
-   - Identify the actual local venue or employer name (e.g. 'The Green View Hotel' or 'Rosebud Cafe').
+  "company": "the clean, human-readable name of the organization/employer/institution. CRITICAL rules:
+   - Identify the actual local organization name (e.g. 'The Green View Hotel', 'Smile Dental Care', 'Technical University of Munich').
    - IGNORE website builders, hosting platforms, or web design credits (e.g., NEVER return 'Wix', 'Shopify', 'Squarespace', 'GoDaddy', 'WordPress', 'Theme', or 'Website Design by X').
    - IGNORE generic website navigation labels, headings, accessibility links, and UI elements (e.g., NEVER return 'Skip to Content', 'Skip to Main Content', 'Skip Navigation', 'Home', 'Menu', 'Book Now', 'Contact Us', 'Cart', 'Welcome', 'About Us', 'Opening Hours', 'Follow Us').
    - IGNORE legal entities or cookie notice texts (e.g., drop 'Ltd', 'Pty Ltd', 'Inc', 'Cookie Policy', 'Privacy Policy', 'Terms of Service').
    - Deduplicate repeated logo/header text (e.g. 'Hotel MontrealHotel Montreal' -> 'Hotel Montreal').
-   - If unsure, infer the company name from copyright lines (e.g., '© 2026 The Green View Hotel') or the domain of emails/links in the text.
-   - NEVER return generic email provider names (like 'Gmail', 'Yahoo', 'Hotmail', 'Outlook', 'Proton', 'ProtonMail') or ISP names (like 'Xtra', 'Spark', 'Slingshot', 'Orcon', 'Clear') as the company name.
+   - If unsure, infer the name from copyright lines (e.g., '© 2026 The Green View Hotel') or the domain of emails/links in the text.
+   - NEVER return generic email provider names (like 'Gmail', 'Yahoo', 'Hotmail', 'Outlook', 'Proton', 'ProtonMail') or ISP names (like 'Xtra', 'Spark', 'Slingshot', 'Orcon', 'Clear') as the organization name.
    - If the only email is on a generic provider/ISP (e.g. 'zephyrestaurantnz@gmail.com'), do NOT return 'Gmail'. Instead, extract and clean the brand name from the username/prefix part of the email address (e.g., 'zephyrestaurantnz@gmail.com' -> 'Zephyr Restaurant').
-   - Do not return generic phrases like 'Restaurant' or 'Cafe' unless it is part of the actual brand name.",
+   - Do not return generic phrases like 'Restaurant' or 'Clinic' unless it is part of the actual brand name.",
   "countryCode": "ISO 3166-1 alpha-2 code for the destination country: one of NZ, AU, US, CA, UK, DE, ES, FR, IT, NL, PT, IE, AT, CH, GR, SE, DK, NO, BE, FI, CZ, PL — or XX if genuinely unknown. Infer from postal address, phone country/area code, email TLD (.co.nz, .com.au, .co.uk, .ca, .de, .es, .fr, .it, .nl, .pt, .be, .fi, .cz, .pl), and city names.",
-  "language": "the language the application email should be written in to best match this business: one of en, tr, es, fr, de, it, pt",
-  "positions": ["1-3 realistic hospitality roles to apply for, inferred from the venue type (hotel/restaurant/cafe/bar) if none are explicitly advertised"]
+  "language": "the language the application email should be written in to best match this organization: one of en, tr, es, fr, de, it, pt",
+  "orgType": "what kind of organization this is — one of: hotel, restaurant, cafe, bar, farm, clinic, dental_clinic, hospital, pharmacy, care_home, university, school, construction, factory, warehouse, logistics, garage, retail, salon, it_company, office, generic",
+  "intent": "job OR study. Use 'study' ONLY when the page is a university/school ADMISSIONS or program page (degree programs, tuition, enrolment, entry requirements, international students) rather than a careers/jobs page. A university's staff-vacancies page is 'job'.",
+  "positions": ["1-3 realistic roles to apply for at THIS organization, in ANY industry — e.g. 'Dentist' or 'Dental Assistant' at a dental clinic, 'Registered Nurse' at a hospital, 'Software Engineer' at a tech company, 'Farm Worker' at an orchard, 'Waiter' at a restaurant, 'Electrician' at a construction firm. Prefer explicitly advertised vacancies; otherwise infer what this organization plausibly hires. If intent is 'study', return the study PROGRAM(S) of interest instead (e.g. 'MSc Computer Science', 'Bachelor of Dentistry')."]
 }
 
 Critical rules:
 - DEDUPLICATE the brand: if the text shows "Hotel MontrealHotel Montreal" return "Hotel Montreal".
 - The NAME can be misleading: a business in New Zealand / Australia / USA / UK / English-Canada is "en" even if its name sounds foreign (e.g. "Hotel Montreal" in Christchurch, New Zealand → countryCode NZ, language en).
-- Output NO email addresses and invent NOTHING. Only the four keys above.
+- Output NO email addresses and invent NOTHING. Only the six keys above.
 
-Business text:
+Organization text:
 """
 ${text.slice(0, 6000)}
 """`;
 
-  const parsed = extractJson<AiAnalysis>(await complete(prompt, 400, tier));
+  const parsed = extractJson<AiAnalysis>(await complete(prompt, 500, tier));
   if (!parsed) return null;
   const langs = APP_LANGS.map((l) => l.code) as string[];
+  const orgType = typeof parsed.orgType === "string" && (VALID_ORG_TYPES as string[]).includes(parsed.orgType) ? (parsed.orgType as OrgType) : undefined;
   return {
     company: typeof parsed.company === "string" && parsed.company.trim() ? parsed.company.trim().slice(0, 120) : undefined,
     countryCode: typeof parsed.countryCode === "string" ? parsed.countryCode.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2) : undefined,
     language: typeof parsed.language === "string" && langs.includes(parsed.language) ? (parsed.language as AppLang) : undefined,
+    orgType,
+    intent: parsed.intent === "study" ? "study" : parsed.intent === "job" ? "job" : undefined,
     positions: Array.isArray(parsed.positions)
       ? parsed.positions.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4)
       : undefined,
@@ -203,6 +211,7 @@ export async function aiAssessFit(opts: {
   countryVisa: string;           // e.g. "Accredited Employer Work Visa (AEWV)"
   businessPositions: string[];   // what the page seems to offer
   profile: EngineProfile;
+  orgType?: OrgType;             // detected organization type (clinic, hotel, university, farm…)
   lang?: AppLang;
   tier?: AiTier;
 }): Promise<FitAssessment | null> {
@@ -214,6 +223,10 @@ export async function aiAssessFit(opts: {
     : profile.needsVisaSponsorship
     ? `Needs visa sponsorship to work in ${opts.countryName} (${opts.countryVisa}).`
     : `Does not need visa sponsorship.`;
+  const regulated = regulatedRoles(profile.targetRoles);
+  const regulatedLine = regulated.length
+    ? `\n- NOTE: ${regulated.join(", ")} ${regulated.length > 1 ? "are regulated professions" : "is a regulated profession"} — practicing in ${opts.countryName} typically also requires local professional registration/licensure.`
+    : "";
 
   // Build a deterministic prompt with strict rubric-based scoring so the same inputs always produce the same result.
   const prompt = `You are the deterministic matching engine of a job-application assistant. Your output must be EXACTLY
@@ -226,12 +239,13 @@ APPLICANT
 - Target roles (wish list): ${profile.targetRoles.join(", ") || "(none set)"}
 - Languages: ${profile.languages.join(", ") || "(unspecified)"}
 - Open to relocating: ${profile.relocation ? "yes" : "no"}
-${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${visaLine}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${visaLine}${regulatedLine}
 
-THE BUSINESS
+THE ORGANIZATION
 - Name: ${opts.company}
 - Country: ${opts.countryName}
-- Roles it appears to offer: ${opts.businessPositions.join(", ") || "(not explicitly stated — infer from the venue type)"}
+- Type: ${opts.orgType || "unknown"} (could be any industry: hospitality, healthcare/dental, engineering, IT, construction, farm/agriculture, education, retail, logistics, office…)
+- Roles it appears to offer: ${opts.businessPositions.join(", ") || "(not explicitly stated — infer from the organization type)"}
 
 RAW PAGE TEXT:
 """
@@ -286,10 +300,10 @@ Return STRICT JSON ONLY, exactly these keys:
 }
 
 Rules:
-- applyFor must be a subset of realistic roles for this venue. Prefer the applicant's own wording.
-- eligibility.note ONLY from explicit text in the page. If the page says nothing restrictive, status "ok" and note "".
+- applyFor must be a subset of realistic roles for this organization. Prefer the applicant's own wording.
+- eligibility.note ONLY from explicit text in the page — with ONE exception: if the applicant's matched role is a regulated profession (doctor, dentist, nurse, pharmacist, teacher, electrician, plumber…) and they would be moving countries, you may set status "warning" with a short note that local professional registration/licensure is typically required (name the typical body if you are confident, e.g. AHPRA in Australia, GDC/NMC in the UK, dental/medical council elsewhere). Licensing alone is NEVER "blocked" unless the page explicitly requires current local registration.
 - If the applicant needs sponsorship AND the listing says no sponsorship / must already have work rights → status "blocked".
-- If it's implied or country-typical but not stated → status "warning" at most. Never invent a constraint.
+- If it's implied or country-typical but not stated → status "warning" at most. Never invent a constraint from the page.
 - CRITICAL: Be deterministic. Same inputs = same output. Do not vary your assessment.`;
 
   const parsed = extractJson<Partial<FitAssessment>>(await complete(prompt, 600, opts.tier || "free", "low", 0));
@@ -443,31 +457,64 @@ export async function aiCoverLetter(
   { text, analysis, profile }: GenerateInput,
   lang: AppLang = "en",
   tier: AiTier = "free",
-  applyForRoles?: string[]
+  applyForRoles?: string[],
+  context?: { orgType?: OrgType; intent?: Intent }
 ): Promise<string | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
   const rolesForThisJob = (applyForRoles && applyForRoles.length ? applyForRoles : analysis.positions).filter(Boolean);
-  const rolesLine = rolesForThisJob.join(", ") || "Hospitality";
+  const orgType = context?.orgType || analysis.orgType || "generic";
+  const intent = context?.intent || analysis.intent || "job";
+  const formal = isFormalOrg(orgType);
+  const rolesLine = rolesForThisJob.join(", ") || "the most suitable role for this organization";
 
   const currentCountryLine = profile.currentCountry
     ? `- Currently based in: ${profile.currentCountry}`
     : "";
 
-  const prompt = `You are an elite Cover Letter writer. Write a formal, outstanding Cover Letter body for ${profile.fullName || "the applicant"} applying to "${analysis.company}" in ${analysis.country.name} for the roles: ${rolesLine}.
+  // ===== STUDY MODE: motivation/statement letter for admissions =====
+  if (intent === "study") {
+    const prompt = `You are an elite academic Motivation Letter writer. Write a formal, compelling motivation letter body for ${profile.fullName || "the applicant"}, an international applicant to "${analysis.company}" in ${analysis.country.name}, program(s): ${rolesLine}.
+
+APPLICANT INFO:
+- Name: ${profile.fullName || "the applicant"}
+- Languages: ${profile.languages.join(", ") || "(not specified)"}
+${currentCountryLine ? currentCountryLine + "\n" : ""}${profile.shortBio ? `- Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT:\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}
+RAW TEXT FROM THE INSTITUTION'S PAGE (extract curriculum focus, values, research strengths, intake info):
+"""
+${text.slice(0, 4000)}
+"""
+
+Write fully in ${langName} at native speaker quality. Return STRICT JSON only: {"body": "..."}.
+
+Rules:
+- Formal greeting ("Dear Admissions Committee," or localized formal equivalent). Never casual.
+- Structure: (1) motivation for THIS program at THIS institution with one concrete detail from the page; (2) academic/professional background that prepares them, only real facts from the profile/CV; (3) goals — what they intend to do with the qualification; (4) closing — documents available, look forward to the application process. NO signature/sign-off/name at the end.
+- Concise, grounded, zero clichés ("since childhood I have dreamed…" is banned). Invent NO grades, test scores, or qualifications.`;
+    const parsedStudy = extractJson<{ body?: string }>(await complete(prompt, 1000, tier));
+    return parsedStudy?.body || null;
+  }
+
+  // ===== JOB MODE =====
+  const greetingRule = formal
+    ? `A FORMAL professional greeting ("Dear Hiring Team," or the formal local equivalent — e.g. "Sehr geehrte Damen und Herren," in German). This is a ${orgType.replace(/_/g, " ")} — do NOT use casual greetings like "Kia Ora" or "Hola".`
+    : `A warm local greeting based on the target country/cues (e.g., "Kia Ora," for NZ/AU, "Hola," for Spain/Spanish countries, "Bonjour," for France, "Hallo," for Germany, "Ciao," for Italy, "Olá," for Portugal/Brazil, or "Dear Hiring Team,"/localized equivalent for others).`;
+
+  const prompt = `You are an elite Cover Letter writer for ANY industry — hospitality, healthcare/dental, engineering, IT, construction, farm/seasonal work, education, retail, logistics, office. Write a formal, outstanding Cover Letter body for ${profile.fullName || "the applicant"} applying to "${analysis.company}" (a ${orgType.replace(/_/g, " ")}) in ${analysis.country.name} for the roles: ${rolesLine}.
 
 APPLICANT INFO:
 - Name: ${profile.fullName || "the applicant"}
 - Target Roles: ${rolesLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
 ${currentCountryLine ? currentCountryLine + "\n" : ""}- Relocation: ${profile.relocation ? "Yes" : "No"}
-${profile.shortBio ? `- Bio / Professional Background: ${profile.shortBio}\n` : ""}- Work eligibility: ${profile.needsVisaSponsorship ? "Requires visa sponsorship" : "Work authorized"}
+${profile.shortBio ? `- Bio / Professional Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT (use real experience from here):\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}- Work eligibility: ${profile.needsVisaSponsorship ? "Requires visa sponsorship" : "Work authorized"}
 
-THE BUSINESS:
-- Company: ${analysis.company}
+THE ORGANIZATION:
+- Name: ${analysis.company}
+- Type: ${orgType.replace(/_/g, " ")}
 - Location: ${analysis.country.name}
 
-RAW TEXT FROM JOB LISTING / WEBSITE (Study this to extract unique culture, cuisine, venue vibe, or brand focus):
+RAW TEXT FROM JOB LISTING / WEBSITE (Study this to extract the organization's culture, specialties, projects, patient/customer focus, or brand identity):
 """
 ${text.slice(0, 4000)}
 """
@@ -476,16 +523,16 @@ Write the cover letter fully in ${langName} at native speaker quality.
 Return STRICT JSON only: {"body": "..."}.
 
 Rules for the cover letter:
-- Write the full text of the cover letter body, starting with a localized greeting and ending with a closing sign-off.
+- Write the full text of the cover letter body, starting with a greeting.
 - Do NOT include applicant details, date, or company address at the top. Those are added automatically.
 - Structure it professionally:
-  1. Greeting: A warm local greeting based on the target country/cues (e.g., "Kia Ora," for NZ/AU, "Hola," for Spain/Spanish countries, "Bonjour," for France, "Hallo," for Germany, "Ciao," for Italy, "Olá," for Portugal/Brazil, or "Dear Hiring Team,"/localized equivalent for others).
-  2. Introduction: State interest in the role at the specific company, demonstrating genuine enthusiasm. Reference some specific details of their venue or brand (cuisine, location, team culture, etc.).
-  3. Experience/Why Me: Map the applicant's background, bio, and languages to the specific business needs. ${profile.currentCountry ? `Mention that they are currently based in ${profile.currentCountry} and ready to step into this role.` : ""}
+  1. Greeting: ${greetingRule}
+  2. Introduction: State interest in the role at the specific organization, demonstrating genuine enthusiasm. Reference specific details of their work (specialty, projects, location, team culture, etc.).
+  3. Experience/Why Me: Map the applicant's background, bio, and languages to this organization's specific needs — use the vocabulary of THIS field (patient care for clinics, site safety for construction, harvest reliability for farms, stack and shipped work for IT, service quality for hospitality). ${profile.currentCountry ? `Mention that they are currently based in ${profile.currentCountry} and ready to step into this role.` : ""}
   4. Conclusion: Reiterate interest, state that the resume/CV is enclosed, and express interest in discussing further. DO NOT include a signature, sign-off, or your name at the end.
 - Keep it concise, grounded, and highly customized. Avoid clichés and generic flattery.
-- Focus on operational readiness, consistency under pressure, and specific task experience (e.g., floor service, back-of-house, fast-paced environments). Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
-- Invent no fake details.`;
+- Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
+- Invent no fake details, licenses, or qualifications.`;
 
   const parsed = extractJson<{ body?: string }>(await complete(prompt, 1000, tier));
   return parsed?.body || null;
@@ -498,12 +545,85 @@ export async function aiDrafts(
   tier: AiTier = "free",
   authorization?: { authorized: boolean; visaLabel?: string | null },
   applyForRoles?: string[],
-  reasoningEffort: "low" | "high" = "low"
+  reasoningEffort: "low" | "high" = "low",
+  context?: { orgType?: OrgType; intent?: Intent }
 ): Promise<DraftOption[] | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
   const rolesForThisJob = (applyForRoles && applyForRoles.length ? applyForRoles : analysis.positions).filter(Boolean);
-  const rolesLine = rolesForThisJob.join(", ") || "Hospitality (infer suitable roles from the page)";
+  const orgType = context?.orgType || analysis.orgType || "generic";
+  const intent = context?.intent || analysis.intent || "job";
+  const formal = isFormalOrg(orgType);
+
+  const currentCountryLine = profile.currentCountry
+    ? `- Currently based in: ${profile.currentCountry}`
+    : "";
+
+  let thinkingInstruction = "";
+  if (reasoningEffort === "high") {
+    thinkingInstruction = "\n\nDEEP REASONING MODE: Please analyze the page thoroughly. Think deeply about the organization's culture, requirements, and how the applicant's profile maps to it. Craft drafts that show a profound understanding of the organization and look extremely tailored, mature, and professional.";
+  }
+
+  // ===== STUDY MODE: university/school admissions inquiry, not a job application =====
+  if (intent === "study") {
+    const programsLine = rolesForThisJob.join(", ") || "(infer the most relevant program(s) from the page and the applicant's background)";
+    const studyVisa = profile.needsVisaSponsorship || !authorization?.authorized
+      ? `As an international applicant, they will need ${analysis.country.visa}; mention awareness of this process briefly and confidently — never apologetically.`
+      : `They already hold authorization to be in ${analysis.country.name}; no visa discussion needed.`;
+    const studyPrompt = `You are an elite academic-application writer. Write THREE distinct admission/enrolment inquiry emails for ${profile.fullName || "the applicant"}, an international applicant writing to a university/school's admissions office.
+
+1. "Balanced & Personal": Warm-professional. Genuine motivation for THIS institution and program, academic/professional background mapped to entry requirements.
+2. "Short & Direct": Compact and precise — states the program of interest, key qualifications, and the specific questions. Perfect for a busy admissions officer.
+3. "Skills & Bio Focused": Leads with the applicant's academic/professional background and language abilities, then connects them to the program.
+
+=== APPLICANT PROFILE ===
+- Full Name: ${profile.fullName || "(not specified)"}
+- Program(s) of interest: ${programsLine}
+- Languages: ${profile.languages.join(", ") || "(not specified)"}
+${currentCountryLine ? currentCountryLine + "\n" : ""}${profile.shortBio ? `- Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT:\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}- ${studyVisa}
+
+=== THE INSTITUTION ===
+- Name: ${analysis.company}
+- Country: ${analysis.country.name}
+
+=== RAW PAGE TEXT (admissions/program page) ===
+"""
+${text.slice(0, 4000)}
+"""
+${thinkingInstruction}
+
+=== EMAIL STRUCTURE GUIDE ===
+1. OPENING: Formal greeting ("Dear Admissions Team" / "Dear ${analysis.company} Admissions Office" — never casual). Express clear interest in the specific program, referencing ONE concrete detail from the page (curriculum focus, research strength, intake dates…).
+2. BACKGROUND (2-3 sentences): The applicant's academic/professional background and why it prepares them for this program. Only facts from the profile/CV.
+3. PRACTICAL (1-2 sentences): Languages; current location${profile.currentCountry ? ` (currently based in ${profile.currentCountry})` : ""}; brief, confident mention of the student-visa step if relevant.
+4. ASK (1-2 sentences): Politely ask about the application process, entry requirements for international students, or the next intake — pick what the page does NOT already answer.
+5. CLOSING: Mention that their CV/transcripts are available (CV is attached). NO sign-off, name, or signature block — it is appended automatically.
+
+=== OUTPUT FORMAT ===
+Write fully IN ${langName} (subject AND body), native-speaker quality.
+Return STRICT JSON only:
+{
+  "drafts": [
+    { "style": "Balanced & Personal", "subject": "...", "body": "..." },
+    { "style": "Short & Direct", "subject": "...", "body": "..." },
+    { "style": "Skills & Bio Focused", "subject": "...", "body": "..." }
+  ]
+}
+
+=== HARD RULES ===
+- Subject: plain text, NO "SUBJECT:" prefix — specific, e.g. "International Admission Inquiry — MSc Computer Science".
+- Formal register throughout. No bullet points. No clichés, no invented qualifications, grades, or test scores.
+- NO closing salutation/name/signature block at the end.`;
+
+    const parsedStudy = extractJson<{ drafts?: DraftOption[] }>(await complete(studyPrompt, 1800, tier, reasoningEffort));
+    if (parsedStudy?.drafts && Array.isArray(parsedStudy.drafts) && parsedStudy.drafts.length === 3) {
+      return parsedStudy.drafts;
+    }
+    return null;
+  }
+
+  // ===== JOB MODE =====
+  const rolesLine = rolesForThisJob.join(", ") || "(infer 1-2 suitable roles for this organization from the page)";
 
   const sponsorship = authorization?.authorized
     ? `IMPORTANT — the applicant ALREADY HOLDS a valid ${authorization.visaLabel || "work authorization"} that permits them to work in ${analysis.country.name}. They do NOT need any sponsorship. State this clearly and positively as a major advantage: they are legally able to start without the employer arranging or paying for a visa, and they are immediately available. Do NOT ask for sponsorship.`
@@ -511,35 +631,58 @@ export async function aiDrafts(
     ? `The applicant REQUIRES visa sponsorship to work in ${analysis.country.name} (${analysis.country.visa}). State this transparently and confidently — never apologetically.`
     : `The applicant does not need visa sponsorship; do not mention visas.`;
 
-  let thinkingInstruction = "";
-  if (reasoningEffort === "high") {
-    thinkingInstruction = "\n\nDEEP REASONING MODE: Please analyze the job listing thoroughly. Think deeply about the culture, requirements, and how the applicant's profile maps to it. Craft drafts that show a profound understanding of the venue's brand and look extremely tailored, mature, and professional.";
-  }
+  // Casual local greetings suit a cafe or beach hotel; a dental clinic, hospital, engineering
+  // firm, or office expects formal address. The org type decides.
+  const greetingRule = formal
+    ? `   - GREETING RULE: This is a ${orgType.replace(/_/g, " ")} — use a FORMAL professional greeting in ${langName} ("Dear Hiring Team", "Dear ${analysis.company} Team", or the formal local equivalent, e.g. "Sehr geehrte Damen und Herren" in German). Do NOT use casual greetings like "Kia Ora", "Hola", "Ciao", or "Hey".`
+    : `   - GREETING RULE: Customize the greeting based on the target country and local cues:
+     * New Zealand (NZ) (or Australia if there are local/Māori cues in the page text): Start with a warm "Kia Ora" (e.g. "Kia Ora [Company] Team", "Kia Ora [Company] Whānau", or just "Kia Ora").
+     * Spain (ES) (or Spanish-speaking countries): Start with a warm "Hola".
+     * France (FR): "Bonjour". Germany (DE): "Hallo". Italy (IT): "Ciao"/"Buongiorno". Portugal (PT): "Olá".
+     * Otherwise: "Dear Hiring Team" or "Dear [Company] Team".`;
 
-  const currentCountryLine = profile.currentCountry
-    ? `- Currently based in: ${profile.currentCountry}`
-    : "";
+  // Industry-adaptive evidence guidance so a dentist's email doesn't talk about "floor service".
+  const industryHints: Partial<Record<OrgType, string>> = {
+    clinic: "patient care quality, clinical reliability, hygiene/sterilization standards, calm communication with patients",
+    dental_clinic: "patient care quality, chairside manner, clinical precision, hygiene/sterilization standards",
+    hospital: "patient safety, clinical protocols, shift reliability, teamwork across departments",
+    pharmacy: "dispensing accuracy, patient counselling, regulatory compliance",
+    care_home: "compassionate resident care, patience, reliability across shifts",
+    farm: "physical stamina, reliability through the season, machinery/equipment experience, early starts, teamwork in all weather",
+    construction: "site safety awareness, reliability, reading plans, quality workmanship under deadlines",
+    factory: "process discipline, safety compliance, consistency on repetitive tasks, machine operation",
+    warehouse: "pick accuracy, pace, safety compliance, inventory discipline",
+    logistics: "punctuality, route/schedule discipline, clean driving/safety record where relevant",
+    it_company: "concrete technical skills and stack, shipped work, collaboration and code quality",
+    office: "organization, accuracy, professional communication, software proficiency",
+    retail: "customer service, sales awareness, stock management, till reliability",
+    salon: "client experience, technical skill, hygiene standards, retail upselling",
+    school: "classroom presence, planning, safeguarding awareness, parent communication",
+    university: "subject expertise, research/teaching record, collaboration",
+  };
+  const evidenceHint = industryHints[orgType] || "operational readiness, consistency under pressure, and specific task experience relevant to this organization's field";
 
-  const prompt = `You are an elite job-application email writer. Your emails feel genuinely human, mature, and professional — highly grounded and realistic. Write THREE distinct application emails for ${profile.fullName || "the applicant"}.
+  const prompt = `You are an elite job-application email writer. Your emails feel genuinely human, mature, and professional — highly grounded and realistic. Applications may target ANY industry — hospitality, healthcare/dental, engineering, IT, construction, farm/seasonal work, education, retail, logistics, office roles. Adapt vocabulary and register to THIS organization's field. Write THREE distinct application emails for ${profile.fullName || "the applicant"}.
 
-Each draft must have a different style/angle, but ALL must avoid clichés and generic flattery. Focus on operational readiness, consistency under pressure, and specific task experience (e.g., floor service, back-of-house, fast-paced environments). Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
-1. "Balanced & Personal": Warm-professional tone. Opens with genuine interest in the specific venue, connects the applicant's background to the business realistically, states language proficiency levels clearly, and addresses visa status confidently.
-2. "Short & Direct": Compact, high-impact. Every sentence earns its place. Perfect for busy hiring managers. Focuses purely on operational value and readiness to start.
-3. "Skills & Bio Focused": Leads with the applicant's relevant skills and professional background. Highlights multilingual ability, comfort with varying schedules, and ability to adapt to new systems.
+Each draft must have a different style/angle, but ALL must avoid clichés and generic flattery. Focus on concrete evidence: ${evidenceHint}. Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
+1. "Balanced & Personal": Warm-professional tone. Opens with genuine interest in the specific organization, connects the applicant's background to it realistically, states language proficiency levels clearly, and addresses visa status confidently.
+2. "Short & Direct": Compact, high-impact. Every sentence earns its place. Perfect for busy hiring managers. Focuses purely on concrete value and readiness to start.
+3. "Skills & Bio Focused": Leads with the applicant's relevant skills and professional background. Highlights multilingual ability and adaptability.
 
 === APPLICANT PROFILE ===
 - Full Name: ${profile.fullName || "(not specified)"}
 - Applying specifically for: ${rolesLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
 ${currentCountryLine ? currentCountryLine + "\n" : ""}- Open to relocating: ${profile.relocation ? "yes" : "no"}
-${profile.shortBio ? `- Professional Background: ${profile.shortBio}\n` : ""}- ${sponsorship}
+${profile.shortBio ? `- Professional Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT (use real experience from here):\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}- ${sponsorship}
 
-=== THE BUSINESS ===
-- Company: ${analysis.company}
+=== THE ORGANIZATION ===
+- Name: ${analysis.company}
 - Country: ${analysis.country.name}
+- Type: ${orgType.replace(/_/g, " ")}
 
 === RAW PAGE / JOB LISTING TEXT ===
-Study this carefully. Extract concrete, real details — the venue's philosophy, cuisine style, service standards, brand personality, sustainability focus, local partnerships, etc. Use these in the emails.
+Study this carefully. Extract concrete, real details — the organization's philosophy, specialties, service standards, projects, patient/customer focus, brand personality, etc. Use these in the emails.
 """
 ${text.slice(0, 4000)}
 """
@@ -547,17 +690,10 @@ ${thinkingInstruction}
 
 === EMAIL STRUCTURE GUIDE ===
 Each email body must flow through these sections naturally (do NOT use bullet points or numbered lists — write in flowing paragraphs):
-1. OPENING (1-2 sentences): Express genuine interest in the role at the specific company. Reference ONE real, specific detail about the business from the page (their philosophy, a featured dish, their team culture, an award, etc.).
-   - GREETING RULE: Customize the greeting based on the target business country and local cues:
-     * New Zealand (NZ) (or Australia if there are local/Māori cues in the page text): You MUST start the greeting with a warm Māori/local greeting: "Kia Ora" (e.g. "Kia Ora [Company] Team", "Kia Ora [Company] Whānau", or just "Kia Ora").
-     * Spain (ES) (or Spanish-speaking countries): Start with a warm "Hola" (e.g. "Hola [Company] Team" or "Hola").
-     * France (FR) (or French-speaking countries): Start with a warm "Bonjour" (e.g. "Bonjour [Company] Team" or "Bonjour").
-     * Germany (DE) (or German-speaking countries): Start with a warm "Hallo" (e.g. "Hallo [Company] Team" or "Hallo").
-     * Italy (IT): Start with a warm "Ciao" or "Buongiorno" (e.g. "Ciao [Company] Team" or "Ciao").
-     * Portugal (PT) (or Portuguese-speaking countries): Start with a warm "Olá" (e.g. "Olá [Company] Team" or "Olá").
-     * Otherwise, use a standard professional greeting like "Dear Hiring Team" or "Dear [Company] Team".
-2. EXPERIENCE & FIT (2-3 sentences): Map the applicant's professional background and bio to the specific needs of this business. Be concrete about what they bring — service experience, operational reliability, adaptability to fast-paced environments, etc.
-3. LANGUAGES & LOCATION (1-2 sentences): Mention the applicant's languages as a practical asset (e.g. supporting diverse guests or international teams).${profile.currentCountry ? ` Mention that they are currently based in ${profile.currentCountry}.` : ""}
+1. OPENING (1-2 sentences): Express genuine interest in the role at the specific organization. Reference ONE real, specific detail about it from the page (their philosophy, a specialty, their team culture, an award, a project, etc.).
+${greetingRule}
+2. EXPERIENCE & FIT (2-3 sentences): Map the applicant's professional background and bio to the specific needs of this organization. Be concrete about what they bring — ${evidenceHint}.
+3. LANGUAGES & LOCATION (1-2 sentences): Mention the applicant's languages as a practical asset.${profile.currentCountry ? ` Mention that they are currently based in ${profile.currentCountry}.` : ""}
 4. VISA & AVAILABILITY (1 sentence): Address work authorization status directly and confidently — never apologetically. ${authorization?.authorized ? "Emphasize that they already hold valid work authorization as a major advantage." : profile.needsVisaSponsorship ? "State the need for sponsorship transparently." : "Do not mention visas."}
 5. CLOSING (1-2 sentences): Note that the CV/resume is attached. Express genuine interest in contributing to the team. Do NOT include any sign-off, salutation, name, or signature block.
 
@@ -574,11 +710,11 @@ Return STRICT JSON only:
 
 === HARD RULES ===
 - Apply ONLY for the role(s) listed under "Applying specifically for" — do NOT mention or apply for any other role. The subject line names only these role(s).
-- Subject: plain text, NO "SUBJECT:" prefix. Make it specific to the venue and role — never generic like "Job Application".
-- Body: address the email to "Dear Hiring Team" (or "Dear [Company Name] Team"). Write in professional, natural paragraphs — no bullet points, no numbered lists.
-- Reference the company by its correct name and at least one concrete, true detail from the page text. Show you actually know what this business does.
+- Subject: plain text, NO "SUBJECT:" prefix. Make it specific to the organization and role — never generic like "Job Application".
+- Write in professional, natural paragraphs — no bullet points, no numbered lists.
+- Reference the organization by its correct name and at least one concrete, true detail from the page text. Show you actually know what it does.
 - NO "Sincerely"/"Kind regards"/any closing salutation, NO applicant name, email, phone, or signature block at the end — a Gmail signature is appended automatically.
-- Invent NOTHING — no email addresses, no facts not supported by the page or applicant profile. No clichés ("I am a passionate individual"), no fake urgency, no filler phrases.
+- Invent NOTHING — no email addresses, no qualifications, licenses, or facts not supported by the page or applicant profile. No clichés ("I am a passionate individual"), no fake urgency, no filler phrases.
 - Keep the tone mature, confident, and human. These emails should read like a real professional wrote them, not like a template or a chatbot.`;
 
   const parsed = extractJson<{ drafts?: DraftOption[] }>(await complete(prompt, 1800, tier, reasoningEffort));
