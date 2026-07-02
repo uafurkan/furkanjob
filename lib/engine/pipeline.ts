@@ -1,5 +1,5 @@
 // Orchestrates: understand (AI-first, heuristic fallback) → find emails if none → resolve language → draft.
-import { analyze, detectTextLang, countryByCode, pickBestEmail, type Analysis } from "./detect";
+import { analyze, detectTextLang, countryByCode, pickBestEmail, decodeHtmlEntities, type Analysis } from "./detect";
 import { findEmails } from "./websearch";
 import { buildDraft, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
 import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, type AiTier, type Eligibility } from "./ai";
@@ -38,7 +38,8 @@ export async function runPipeline(opts: {
   hints?: { company?: string; country?: string; positions?: string[] };
   reasoningEffort?: "low" | "high";
 }): Promise<PipelineResult> {
-  const { text, profile, tier = "free", searchWeb = true, hints } = opts;
+  const { text: rawText, profile, tier = "free", searchWeb = true, hints } = opts;
+  const text = decodeHtmlEntities(rawText);
 
   // Deterministic baseline (also the no-key fallback). Emails are ALWAYS extracted here, never by the AI.
   const analysis = analyze(text);
@@ -48,7 +49,7 @@ export async function runPipeline(opts: {
   if (aiEnabled()) {
     const ai = await aiAnalyze(text, tier);
     if (ai) {
-      const BLACKLISTED_COMPANIES = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|mynet|superonline|ttmail|turknet|kablonet|google)$/i;
+      const BLACKLISTED_COMPANIES = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|mynet|superonline|ttmail|turknet|kablonet|google|skip to content|skip to main content|skip navigation|skip|home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|privacy policy|terms of service|terms & conditions|website use|disclaimer|wix|shopify|squarespace|godaddy|wordpress|weebly|weweb|facebook|instagram|twitter|linkedin|youtube|tiktok|apple|android|admin login|admin|login|faq|faqs)$/i;
       if (ai.company && !BLACKLISTED_COMPANIES.test(ai.company.toLowerCase().trim())) {
         analysis.company = ai.company;
       }

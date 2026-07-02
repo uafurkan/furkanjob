@@ -117,7 +117,7 @@ Return STRICT JSON ONLY, no prose, exactly these keys:
   "company": "the clean, human-readable brand name of the business/employer. CRITICAL rules:
    - Identify the actual local venue or employer name (e.g. 'The Green View Hotel' or 'Rosebud Cafe').
    - IGNORE website builders, hosting platforms, or web design credits (e.g., NEVER return 'Wix', 'Shopify', 'Squarespace', 'GoDaddy', 'WordPress', 'Theme', or 'Website Design by X').
-   - IGNORE generic website navigation labels, headings, and UI elements (e.g., NEVER return 'Home', 'Menu', 'Book Now', 'Contact Us', 'Cart', 'Welcome', 'About Us', 'Opening Hours', 'Follow Us').
+   - IGNORE generic website navigation labels, headings, accessibility links, and UI elements (e.g., NEVER return 'Skip to Content', 'Skip to Main Content', 'Skip Navigation', 'Home', 'Menu', 'Book Now', 'Contact Us', 'Cart', 'Welcome', 'About Us', 'Opening Hours', 'Follow Us').
    - IGNORE legal entities or cookie notice texts (e.g., drop 'Ltd', 'Pty Ltd', 'Inc', 'Cookie Policy', 'Privacy Policy', 'Terms of Service').
    - Deduplicate repeated logo/header text (e.g. 'Hotel MontrealHotel Montreal' -> 'Hotel Montreal').
    - If unsure, infer the company name from copyright lines (e.g., '© 2026 The Green View Hotel') or the domain of emails/links in the text.

@@ -1,6 +1,23 @@
 // Extract emails/URLs and detect country, positions and company from pasted business text.
 import type { CountryRule } from "./rules";
 
+export function decodeHtmlEntities(str: string): string {
+  if (!str) return "";
+  return str
+    .replace(/&amp;/ig, "&")
+    .replace(/&copy;/ig, "©")
+    .replace(/&reg;/ig, "®")
+    .replace(/&quot;/ig, '"')
+    .replace(/&(apos|#39);/ig, "'")
+    .replace(/&lt;/ig, "<")
+    .replace(/&gt;/ig, ">")
+    .replace(/&nbsp;/ig, " ")
+    .replace(/&#\d+;/g, (match) => {
+      const code = parseInt(match.replace(/[^0-9]/g, ""), 10);
+      return isNaN(code) ? match : String.fromCharCode(code);
+    });
+}
+
 const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.(?:com|co\.nz|co\.uk|com\.au|org|net|nz|au|uk|us|ca|ie|es|fr|de|it|pt|nl|ch|at|dk|se|no|fi|be|cz|pl|gr|io|info|biz|co)/gi;
 const URL_RE =
   /\bhttps?:\/\/[^\s)"'<>]+|\b(?:www\.)[^\s)"'<>]+|\b[a-z0-9.\-]+\.(?:com|org|net|co\.nz|co\.uk|com\.au|nz|au|us|io|info)\b[^\s)"'<>]*/gi;
@@ -290,6 +307,35 @@ function collapseDouble(s: string): string {
   return compact;
 }
 
+function cleanSegment(clean: string): string | null {
+  // Clean up leading/trailing punctuation, dashes, or separators first
+  let s = clean.replace(/^[^a-zA-Z0-9]+/, "").trim();
+  
+  // Split on separators if followed by typical footer noise words (website, design, powered, etc.)
+  const parts = s.split(/\s*(?:[-–—|•·/.]\s*)?(?:website\s+by|design\s+by|web\s+design|created\s+by|created\s+with|proudly\s+created|proudly\s+designed|proudly\s+built|built\s+by|developed\s+by|powered\s+by|site\s+by|hosted\s+by|website\s+developed|website\s+design|guesttraction|weweb|squarespace|wix|shopify|wordpress|mint\s+design|fresh\s+mix\s+digital)\b/i);
+  s = parts[0];
+  
+  // Also split on pipe, bullet points, or dash/hyphen with surrounding spaces unconditionally
+  s = s.split(/\s+[-–—|•·/]\s+/)[0];
+  s = s.split(/\s*[|•·]\s*/)[0];
+
+  // Remove common suffixes like "all rights reserved", "ltd", etc.
+  s = s
+    .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation|wdw|staah)\b.*/i, "")
+    .replace(/[^a-zA-Z0-9\s&]/g, "") // Keep alphanumeric, spaces, and ampersand
+    .replace(/\s+/g, " ")
+    .trim();
+    
+  // Capitalize words nicely
+  s = s.replace(/\b\w/g, (c) => c.toUpperCase());
+  
+  const lower = s.toLowerCase();
+  if (s.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|website|design|powered by|privacy|terms|login|admin|admin login|faq|faqs)$/i.test(lower)) {
+    return collapseDouble(s);
+  }
+  return null;
+}
+
 export function guessCompany(text: string, emails: string[], urls: string[] = []): string {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -348,39 +394,42 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   // 1. Try to find a copyright line (very specific to the business owner)
   for (const line of lines) {
     if (/(?:©|copyright|\(c\))/i.test(line)) {
-      // Remove copyright symbol, (c), and "copyright" case-insensitively
-      let clean = line.replace(/(copyright|©|\(c\))/ig, "").trim();
+      // First, split the line by standard footer dividers: | or • or ·
+      const segments = line.split(/\s*[|•·]\s*/);
+      
+      // Find the segment that contains the copyright symbol/word
+      let copyrightSegment = "";
+      for (const seg of segments) {
+        if (/(?:©|copyright|\(c\))/i.test(seg)) {
+          copyrightSegment = seg;
+          break;
+        }
+      }
+      
+      if (!copyrightSegment) {
+        copyrightSegment = line;
+      }
+      
+      // Remove copyright symbol, (c), and "copyright" case-insensitively from the isolated segment
+      let clean = copyrightSegment.replace(/(copyright|©|\(c\))/ig, "").trim();
       
       // Remove year ranges or lists (e.g., "2016-2026", "2016 - 2026", "2016, 2018", "2016")
       clean = clean.replace(/\b\d{4}\s*[-–—,]\s*\d{4}\b/g, ""); // e.g. 2016-2026
       clean = clean.replace(/\b\d{4}\b/g, ""); // e.g. 2016
       
-      // Split on separators if followed by typical footer noise words (website, design, powered, etc.)
-      const parts = clean.split(/\s*[-–—|•·/]\s*(?:website|design|powered|privacy|terms|all\s+rights|cookie|link|login|legal|wdw|staah)/i);
-      clean = parts[0];
-      
-      // Also split on pipe or bullet points unconditionally since they are standard footer separators
-      clean = clean.split(/\s*[|•·]\s*/)[0];
-
-      // Remove common suffixes like "all rights reserved", "ltd", etc.
-      clean = clean
-        .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation|wdw|staah)\b.*/i, "")
-        .replace(/[^a-zA-Z0-9\s&]/g, "") // Keep alphanumeric, spaces, and ampersand
-        .replace(/\s+/g, " ")
-        .trim();
-        
-      // Capitalize words nicely
-      clean = clean.replace(/\b\w/g, (c) => c.toUpperCase());
-      
-      // Skip if it's just developer credits
-      const IS_JUNK_CREDIT = /^(designed\s*(?:&|and)?\s*developed(?:\s+by)?|designed\s+by|developed\s+by|website\s+design|web\s+design|powered\s+by|created\s+by|built\s+by|design\s+by|staah)$/i;
-      if (IS_JUNK_CREDIT.test(clean)) {
-        continue;
+      // If the remaining text in this segment is empty or just punctuation/noise,
+      // it means the name is likely in one of the adjacent segments (e.g. "Copyright 2026 | Punga Grove")
+      let testClean = clean.replace(/[^a-zA-Z0-9]/g, "").trim();
+      if (testClean.length <= 1) {
+        for (const seg of segments) {
+          if (seg === copyrightSegment) continue;
+          const candidate = cleanSegment(seg);
+          if (candidate) return candidate;
+        }
       }
       
-      if (clean.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|website|design|powered by|privacy|terms|login)$/i.test(clean.toLowerCase())) {
-        return collapseDouble(clean);
-      }
+      const candidate = cleanSegment(clean);
+      if (candidate) return candidate;
     }
   }
 
@@ -460,7 +509,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   }
 
   // Lines we should always skip when searching for a company name
-  const JUNK_COMPANY_LINES = /^(home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|skip to content|privacy policy|terms of service|terms & conditions|website by|designed by|powered by|wix|shopify|squarespace|godaddy|wordpress|facebook|instagram|twitter|linkedin|day|breakfast|lunch|dinner|starters|main courses|sides|desserts|cheeseboard|toast)$/i;
+  const JUNK_COMPANY_LINES = /^(home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|skip to content|privacy policy|terms of service|terms & conditions|website by|designed by|powered by|wix|shopify|squarespace|godaddy|wordpress|facebook|instagram|twitter|linkedin|day|breakfast|lunch|dinner|starters|main courses|sides|desserts|cheeseboard|toast|admin login|admin|login|faq|faqs)$/i;
   const DISCLAIMER_RE = /\b(subject to change|please inform|dietar|allerg|cannot guarantee|gluten free|we cannot|may contain|restrictions|gift card|gift voucher|certificate|sign up|newsletter|stay in the loop)\b/i;
 
   // 3. Detect a concatenated page title (e.g. "Mister D DiningMister D Dining, Napier...")
@@ -665,17 +714,18 @@ export type Analysis = {
 };
 
 export function analyze(text: string): Analysis {
-  const emails = extractEmails(text);
-  const loc = extractLocation(text);
-  const urls = extractUrls(text);
+  const decoded = decodeHtmlEntities(text);
+  const emails = extractEmails(decoded);
+  const loc = extractLocation(decoded);
+  const urls = extractUrls(decoded);
   return {
     emails,
     urls,
-    country: detectCountry(text),
-    positions: detectPositions(text),
-    company: guessCompany(text, emails, urls),
+    country: detectCountry(decoded),
+    positions: detectPositions(decoded),
+    company: guessCompany(decoded, emails, urls),
     locality: loc.locality,
     address: loc.address,
-    phone: extractPhone(text) || undefined,
+    phone: extractPhone(decoded) || undefined,
   };
 }
