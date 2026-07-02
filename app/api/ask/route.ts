@@ -23,6 +23,8 @@ export async function POST(req: Request) {
 
     const data = await req.json().catch(() => ({}));
     const body = String(data?.body || "").trim();
+    const subject = typeof data?.subject === "string" ? data.subject.trim() : undefined;
+    const coverLetter = typeof data?.coverLetter === "string" ? data.coverLetter.trim() : undefined;
     const jobText = String(data?.jobText || "").trim();
     const question = String(data?.question || "").trim();
     const company = typeof data?.company === "string" ? data.company : undefined;
@@ -35,6 +37,8 @@ export async function POST(req: Request) {
 
     const result = await aiAsk({
       body,
+      subject: subject || undefined,
+      coverLetter: coverLetter || undefined,
       jobText,
       question,
       company,

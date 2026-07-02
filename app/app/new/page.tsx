@@ -111,6 +111,8 @@ export default function NewApplication() {
   const [askLoading, setAskLoading] = useState(false);
   const [askResponse, setAskResponse] = useState<string | null>(null);
   const [askRevisedBody, setAskRevisedBody] = useState<string | null>(null);
+  const [askRevisedSubject, setAskRevisedSubject] = useState<string | null>(null);
+  const [askRevisedCoverLetter, setAskRevisedCoverLetter] = useState<string | null>(null);
   const [askError, setAskError] = useState<string | null>(null);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customQuestion, setCustomQuestion] = useState("");
@@ -615,6 +617,8 @@ export default function NewApplication() {
     setAskLoading(true);
     setAskResponse(null);
     setAskRevisedBody(null);
+    setAskRevisedSubject(null);
+    setAskRevisedCoverLetter(null);
     setAskError(null);
     try {
       const r = await fetch("/api/ask", {
@@ -622,6 +626,8 @@ export default function NewApplication() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           body,
+          subject,
+          coverLetter: includeCoverLetter ? coverLetterBody : undefined,
           jobText: text,
           question: q,
           company: res.company,
@@ -631,9 +637,9 @@ export default function NewApplication() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Ask AI failed");
       setAskResponse(d.answer);
-      if (d.revisedBody) {
-        setAskRevisedBody(d.revisedBody);
-      }
+      if (d.revisedBody) setAskRevisedBody(d.revisedBody);
+      if (d.revisedSubject) setAskRevisedSubject(d.revisedSubject);
+      if (d.revisedCoverLetter) setAskRevisedCoverLetter(d.revisedCoverLetter);
     } catch (e: any) {
       setAskError(e.message || "An error occurred");
     } finally {
@@ -642,19 +648,30 @@ export default function NewApplication() {
   }
 
   function applyAskRevision() {
-    if (!askRevisedBody) return;
-    setBodyBeforeRefine(body);
-    
-    let finalBody = askRevisedBody;
-    if (signatureChecked && fullName && !finalBody.includes("Sincerely,")) {
-      finalBody = finalBody.trim() + `\n\nSincerely,\n${fullName}`;
+    if (!askRevisedBody && !askRevisedSubject && !askRevisedCoverLetter) return;
+    if (askRevisedBody) {
+      setBodyBeforeRefine(body);
+      let finalBody = askRevisedBody;
+      if (signatureChecked && fullName && !finalBody.includes("Sincerely,")) {
+        finalBody = finalBody.trim() + `\n\nSincerely,\n${fullName}`;
+      }
+      setBody(finalBody);
+      setCurrentDrafts((prev) =>
+        prev.map((d, i) => (i === selectedDraftIndex ? { ...d, body: finalBody } : d))
+      );
     }
-    setBody(finalBody);
-    setCurrentDrafts((prev) =>
-      prev.map((d, i) => (i === selectedDraftIndex ? { ...d, body: finalBody } : d))
-    );
-    
+    if (askRevisedSubject) {
+      setSubject(askRevisedSubject);
+      setCurrentDrafts((prev) =>
+        prev.map((d, i) => (i === selectedDraftIndex ? { ...d, subject: askRevisedSubject } : d))
+      );
+    }
+    if (askRevisedCoverLetter && includeCoverLetter) {
+      setCoverLetterBody(askRevisedCoverLetter);
+    }
     setAskRevisedBody(null);
+    setAskRevisedSubject(null);
+    setAskRevisedCoverLetter(null);
     setAskResponse("Revision applied!");
   }
 
@@ -1251,15 +1268,27 @@ export default function NewApplication() {
                     <p style={{ margin: 0, fontSize: "13px", color: "#e2e8f0", lineHeight: 1.5 }}>
                       {askResponse}
                     </p>
-                    {askRevisedBody && (
-                      <button
-                        type="button"
-                        className="btn btn-accent btn-sm"
-                        style={{ alignSelf: "flex-start", marginTop: 4 }}
-                        onClick={applyAskRevision}
-                      >
-                        Apply Revision
-                      </button>
+                    {(askRevisedBody || askRevisedSubject || askRevisedCoverLetter) && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                        {askRevisedSubject && (
+                          <p style={{ margin: 0, fontSize: "11px", color: "var(--content-tertiary)" }}>
+                            Subject → <em>{askRevisedSubject}</em>
+                          </p>
+                        )}
+                        {askRevisedCoverLetter && includeCoverLetter && (
+                          <p style={{ margin: 0, fontSize: "11px", color: "var(--content-tertiary)" }}>
+                            Cover letter will also be updated.
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-accent btn-sm"
+                          style={{ alignSelf: "flex-start" }}
+                          onClick={applyAskRevision}
+                        >
+                          Apply Revision
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}

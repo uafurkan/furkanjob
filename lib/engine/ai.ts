@@ -664,14 +664,18 @@ INSTRUCTIONS:
 // ---------- Chat Assistant / Q&A Refinement ----------
 export async function aiAsk(opts: {
   body: string;
+  subject?: string;
+  coverLetter?: string;
   jobText: string;
   question: string;
   company?: string;
   lang: AppLang;
   tier?: AiTier;
-}): Promise<{ answer: string; revisedBody?: string | null } | null> {
+}): Promise<{ answer: string; revisedBody?: string | null; revisedSubject?: string | null; revisedCoverLetter?: string | null } | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === opts.lang)?.label || "English";
+  const subjectSection = opts.subject ? `\nCURRENT SUBJECT: "${opts.subject}"` : "";
+  const coverLetterSection = opts.coverLetter ? `\nCURRENT COVER LETTER:\n"""\n${opts.coverLetter.slice(0, 2000)}\n"""` : "";
   const prompt = `You are an elite AI career coach and application specialist assisting a job applicant.
 You have the current draft of an application email, the business name, the raw text of the job listing, and a user's question or edit instruction about this application.
 
@@ -679,7 +683,7 @@ APPLICANT'S DRAFT:
 """
 ${opts.body}
 """
-
+${subjectSection}${coverLetterSection}
 BUSINESS: ${opts.company || "the company"}
 JOB LISTING / CONTEXT:
 """
@@ -691,25 +695,32 @@ USER'S QUESTION / INSTRUCTION:
 
 INSTRUCTIONS:
 1. Answer the user's question directly, honestly, and helpfully. Keep the answer concise (2-4 sentences max), encouraging, and highly professional.
-2. If the user's prompt is an instruction to modify, improve, shorten, or rewrite the email draft (e.g. "make it more energetic", "mention my barista experience", "make it shorter", "rewrite the greeting"), you MUST also provide the fully rewritten/revised email body in the "revisedBody" field. If the user's prompt is a general question (e.g. "Is this tone appropriate?", "Is the length good?"), you do not need to provide a revised body (leave it null).
-3. If providing a revised body:
-   - Follow all standard hard rules: Do NOT include closing salutations (like "Sincerely"), signatures, applicant name/details at the bottom. A signature is automatically appended.
-   - Address the email to "Dear Hiring Team" or custom greetings as required by the destination country rules (e.g., "Kia Ora" for NZ).
+2. If the user's prompt is an instruction to modify, improve, shorten, or rewrite the email draft (e.g. "make it more energetic", "mention my barista experience", "make it shorter", "also apply for X role"), you MUST also provide the fully rewritten/revised email body in the "revisedBody" field. If the user's prompt is a general question (e.g. "Is this tone appropriate?", "Is the length good?"), leave all revised fields null.
+3. If the instruction changes which roles/positions are targeted (e.g. "also apply for waiter", "add kitchen hand", "only apply for front desk"), you MUST also update:
+   - "revisedSubject": rewrite the email subject to reflect the new set of roles (format: "Role1 / Role2 Application — Company Name")
+   - "revisedCoverLetter": rewrite the cover letter body to mention the updated roles (keep same structure/length, just update role references). If no cover letter was provided, leave null.
+4. If providing a revised body:
+   - Do NOT include closing salutations (like "Sincerely"), signatures, or applicant name/details at the bottom.
+   - Address the email to "Dear Hiring Team" or country-appropriate greetings (e.g., "Kia Ora" for NZ).
    - Write fully in ${langName}.
 
 Return STRICT JSON only:
 {
   "answer": "...",
-  "revisedBody": "..." // or null if no edit was requested
+  "revisedBody": "..." or null,
+  "revisedSubject": "..." or null,
+  "revisedCoverLetter": "..." or null
 }`;
 
-  const parsed = extractJson<{ answer?: string; revisedBody?: string | null }>(
-    await complete(prompt, 1200, opts.tier || "free")
+  const parsed = extractJson<{ answer?: string; revisedBody?: string | null; revisedSubject?: string | null; revisedCoverLetter?: string | null }>(
+    await complete(prompt, 1800, opts.tier || "free")
   );
   if (parsed?.answer) {
     return {
       answer: parsed.answer.trim(),
       revisedBody: parsed.revisedBody?.trim() || null,
+      revisedSubject: parsed.revisedSubject?.trim() || null,
+      revisedCoverLetter: parsed.revisedCoverLetter?.trim() || null,
     };
   }
   return null;
