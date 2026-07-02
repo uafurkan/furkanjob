@@ -655,7 +655,7 @@ const tr: Dict = {
   "new.cvNone": "(CV yok)",
   "new.redirecting": "{seconds} saniye içinde yeni başvuruya geçiliyor...",
   "new.sendingCountdown": "E-posta {seconds} saniye içinde gönderiliyor...",
-  "new.undo": "Geri Al",
+  "new.undo": "Geri al",
   "new.sendCancelled": "Gönderim iptal edildi. Taslağınız korundu.",
   "new.another": "Yeni başvuru",
   "new.chooseDraft": "E-posta Taslak Seçenekleri",

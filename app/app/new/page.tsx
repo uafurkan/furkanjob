@@ -92,17 +92,14 @@ export default function NewApplication() {
   const [cvs, setCvs] = useState<{ id: string; filename: string; isDefault: boolean }[]>([]);
   const [selectedCv, setSelectedCv] = useState<string>("");
   const [msg, setMsg] = useState<{ kind: "ok" | "err" | "warn"; text: string } | null>(null);
-  const [confirmPending, setConfirmPending] = useState<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
   const [refining, setRefining] = useState<string | null>(null);
   const [bodyBeforeRefine, setBodyBeforeRefine] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
-  const redirectTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [undoCountdown, setUndoCountdown] = useState<number | null>(null);
   const undoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pendingSend = useRef<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
+  const pendingSendData = useRef<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
   const [selectedDraftIndex, setSelectedDraftIndex] = useState<number>(0);
   const [currentDrafts, setCurrentDrafts] = useState<{ subject: string; body: string; style: string }[]>([]);
   const [signatureChecked, setSignatureChecked] = useState(false);
@@ -140,21 +137,15 @@ export default function NewApplication() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  // While the confirm modal is open: Enter sends, Escape cancels (no mouse needed).
+  // Escape during undo countdown → undo
   useEffect(() => {
-    if (!confirmPending) return;
+    if (undoCountdown === null) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { e.preventDefault(); setConfirmPending(null); }
-      else if (e.key === "Enter") {
-        e.preventDefault();
-        const p = confirmPending!;
-        setConfirmPending(null);
-        doSend(p, true);
-      }
+      if (e.key === "Escape") { e.preventDefault(); handleUndo(); }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [confirmPending]);
+  }, [undoCountdown]);
 
   // Load the user's document library + CVs (for the attachment pickers).
   useEffect(() => {
@@ -219,17 +210,12 @@ export default function NewApplication() {
     setCoverLetterBody("");
     setMsg(null);
     setDraftRestoredAt(null);
-    if (redirectTimer.current) {
-      clearInterval(redirectTimer.current);
-      redirectTimer.current = null;
-    }
-    setRedirectCountdown(null);
     if (undoTimer.current) {
       clearInterval(undoTimer.current);
       undoTimer.current = null;
     }
     setUndoCountdown(null);
-    pendingSend.current = null;
+    pendingSendData.current = null;
     setSelectedDraftIndex(0);
     setCurrentDrafts([]);
     setFullName("");
@@ -258,28 +244,12 @@ export default function NewApplication() {
     } catch {}
   }, []);
 
-  // Clean up redirect and undo timers on unmount
+  // Clean up undo timer on unmount
   useEffect(() => {
     return () => {
-      if (redirectTimer.current) clearInterval(redirectTimer.current);
       if (undoTimer.current) clearInterval(undoTimer.current);
     };
   }, []);
-
-  // Cancel redirect if user starts editing the content textarea
-  useEffect(() => {
-    if (redirectCountdown !== null) {
-      const cancelRedirect = () => {
-        if (redirectTimer.current) {
-          clearInterval(redirectTimer.current);
-          redirectTimer.current = null;
-        }
-        setRedirectCountdown(null);
-      };
-      textareaRef.current?.addEventListener("input", cancelRedirect);
-      return () => textareaRef.current?.removeEventListener("input", cancelRedirect);
-    }
-  }, [redirectCountdown]);
 
   const handleDraftSelect = (index: number) => {
     setSelectedDraftIndex(index);
@@ -471,7 +441,7 @@ export default function NewApplication() {
       if (d.eligibility?.status === "blocked") {
         setMsg({ kind: "warn", text: t("new.fit.blockedAuto") });
       } else if (auto && !d.overLimit && d.emails.length) {
-        await doSend({ to: toVal, subject: parsedDrafts[0].subject, body: initialBody, meta: d }, true);
+        await executeActualSend({ to: toVal, subject: parsedDrafts[0].subject, body: initialBody, meta: d });
       }
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
@@ -538,17 +508,6 @@ export default function NewApplication() {
     }
   }
 
-  function handleUndo() {
-    if (undoTimer.current) {
-      clearInterval(undoTimer.current);
-      undoTimer.current = null;
-    }
-    setUndoCountdown(null);
-    pendingSend.current = null;
-    setSending(false);
-    setMsg({ kind: "warn", text: t("new.sendCancelled") });
-  }
-
   async function executeActualSend(p: { to: string; subject: string; body: string; meta: GenResult }) {
     setSending(true);
     setMsg(null);
@@ -570,31 +529,12 @@ export default function NewApplication() {
         }),
       });
       const d = await r.json();
-      if (r.status === 402) return setMsg({ kind: "warn", text: t("new.limitReached") });
-
+      if (r.status === 402) { setMsg({ kind: "warn", text: t("new.limitReached") }); return; }
       if (!r.ok) throw new Error(d.error || "Error");
-      clearDraft();
-      setDraftRestoredAt(null);
       const attachLabel = d.coverLetterAttached ? t("new.coverLetterAttached") : d.cvAttached ? t("new.cvAttached") : t("new.cvNone");
-      setMsg({ kind: "ok", text: `${d.sentTo.join(", ")} ${attachLabel}` });
-
-      // Start 10 seconds redirect countdown to reset the page for a new application
-      if (redirectTimer.current) clearInterval(redirectTimer.current);
-      setRedirectCountdown(10);
-      let count = 10;
-      redirectTimer.current = setInterval(() => {
-        count--;
-        if (count <= 0) {
-          if (redirectTimer.current) {
-            clearInterval(redirectTimer.current);
-            redirectTimer.current = null;
-          }
-          setRedirectCountdown(null);
-          discardDraft();
-        } else {
-          setRedirectCountdown(count);
-        }
-      }, 1000);
+      const okText = `${d.sentTo.join(", ")} ${attachLabel}`;
+      discardDraft();
+      setMsg({ kind: "ok", text: okText });
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
     } finally {
@@ -602,45 +542,40 @@ export default function NewApplication() {
     }
   }
 
-  async function doSend(p: { to: string; subject: string; body: string; meta: GenResult }, skipConfirm = false) {
+  function doSend(p: { to: string; subject: string; body: string; meta: GenResult }) {
     if (!p.to.trim()) return setMsg({ kind: "err", text: t("new.enterRecipient") });
-
-    if (!skipConfirm) { setConfirmPending(p); return; }
-
-    // Clear any active undo or redirect timers
+    pendingSendData.current = p;
     if (undoTimer.current) clearInterval(undoTimer.current);
-    if (redirectTimer.current) {
-      clearInterval(redirectTimer.current);
-      redirectTimer.current = null;
-    }
-    setRedirectCountdown(null);
-
-    // Stage variables for Undo
-    pendingSend.current = p;
-    setSending(true);
-    setMsg({ kind: "ok", text: p.to });
     setUndoCountdown(10);
-
     let count = 10;
-    undoTimer.current = setInterval(async () => {
+    undoTimer.current = setInterval(() => {
       count--;
       if (count <= 0) {
-        if (undoTimer.current) {
-          clearInterval(undoTimer.current);
-          undoTimer.current = null;
-        }
+        if (undoTimer.current) { clearInterval(undoTimer.current); undoTimer.current = null; }
         setUndoCountdown(null);
-
-        const targetSend = pendingSend.current;
-        pendingSend.current = null;
-        if (targetSend) {
-          await executeActualSend(targetSend);
-        }
+        const pending = pendingSendData.current;
+        pendingSendData.current = null;
+        if (pending) executeActualSend(pending);
       } else {
         setUndoCountdown(count);
       }
     }, 1000);
   }
+
+  function handleUndo() {
+    if (undoTimer.current) { clearInterval(undoTimer.current); undoTimer.current = null; }
+    setUndoCountdown(null);
+    pendingSendData.current = null;
+  }
+
+  async function handleNewApplication() {
+    if (undoTimer.current) { clearInterval(undoTimer.current); undoTimer.current = null; }
+    setUndoCountdown(null);
+    const pending = pendingSendData.current;
+    pendingSendData.current = null;
+    if (pending) await executeActualSend(pending);
+  }
+
 
   // Recipient sanity check — surface typos/invalid before send (not while empty).
   const recipientIssue = to.trim() ? checkRecipients(to) : null;
@@ -1583,9 +1518,17 @@ export default function NewApplication() {
               </span>
               <div className="row gap-3">
                 {res.overLimit && <Link href="/app/billing" className="btn btn-sm">{t("new.limitPro")}</Link>}
-                <button className="btn btn-primary" data-loading={sending} onClick={() => res && doSend({ to, subject, body, meta: res })} disabled={sending || res.overLimit}>
-                  {sending ? t("new.sending") : t("new.send")}
-                </button>
+                {undoCountdown !== null ? (
+                  <div className="row gap-2" style={{ alignItems: "center" }}>
+                    <span style={{ fontSize: "var(--text-13)", color: "var(--content-secondary)", minWidth: 20, textAlign: "center" }}>{undoCountdown}s</span>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={handleUndo}>↩ {t("new.undo")}</button>
+                    <button type="button" className="btn btn-sm" data-loading={sending} onClick={handleNewApplication}>{t("new.another")} →</button>
+                  </div>
+                ) : (
+                  <button className="btn btn-primary" data-loading={sending} onClick={() => res && doSend({ to, subject, body, meta: res })} disabled={sending || res.overLimit}>
+                    {sending ? t("new.sending") : t("new.send")}
+                  </button>
+                )}
               </div>
             </div>
             <label className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
@@ -1639,76 +1582,8 @@ export default function NewApplication() {
       )}
 
       {msg && (
-        <div className={`notice notice-${msg.kind} reveal`} style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1 }}>
-            <span>{msg.text}</span>
-            {msg.kind === "ok" && redirectCountdown !== null && (
-              <span style={{ fontSize: "var(--text-12)", opacity: 0.85, fontWeight: 500 }}>
-                {t("new.redirecting").replace("{seconds}", String(redirectCountdown))}
-              </span>
-            )}
-            {undoCountdown !== null && (
-              <span style={{ fontSize: "var(--text-12)", opacity: 0.85, fontWeight: 500 }}>
-                {t("new.sendingCountdown").replace("{seconds}", String(undoCountdown))}
-              </span>
-            )}
-          </div>
-          {undoCountdown !== null ? (
-            <button
-              type="button"
-              className="btn btn-sm"
-              style={{ marginLeft: "auto" }}
-              onClick={handleUndo}
-            >
-              ↩ {t("new.undo")}
-            </button>
-          ) : (
-            msg.kind === "ok" && (
-              <button
-                type="button"
-                className="btn btn-sm"
-                style={{ marginLeft: "auto" }}
-                onClick={() => { discardDraft(); textareaRef.current?.focus(); }}
-              >
-                {t("new.another")} →
-              </button>
-            )
-          )}
-        </div>
-      )}
-
-      {confirmPending && (
-        <div className="confirm-overlay" onClick={() => setConfirmPending(null)}>
-          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-body">
-              <p className="confirm-title">{t("new.send")}?</p>
-              <p className="confirm-to">{confirmPending.to}</p>
-              {confirmPending.meta.cv && (
-                <p className="confirm-cv">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-                  {confirmPending.meta.cv.filename}
-                </p>
-              )}
-              {includeCoverLetter && (
-                <p className="confirm-cv" style={{ opacity: 0.75 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  cover_letter.docx
-                </p>
-              )}
-              {docs.filter((d) => selectedDocs.includes(d.id)).map((d) => (
-                <p key={d.id} className="confirm-cv" style={{ opacity: 0.75 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  {d.filename}
-                </p>
-              ))}
-            </div>
-            <div className="confirm-actions">
-              <button className="btn" onClick={() => setConfirmPending(null)}>{t("new.cancel")}</button>
-              <button className="btn btn-primary" onClick={() => { const p = confirmPending; setConfirmPending(null); doSend(p, true); }}>
-                {t("new.send")}
-              </button>
-            </div>
-          </div>
+        <div className={`notice notice-${msg.kind} reveal`}>
+          <span>{msg.text}</span>
         </div>
       )}
 
