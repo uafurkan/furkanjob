@@ -100,6 +100,9 @@ export default function NewApplication() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
   const redirectTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [undoCountdown, setUndoCountdown] = useState<number | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingSend = useRef<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
   const [selectedDraftIndex, setSelectedDraftIndex] = useState<number>(0);
   const [currentDrafts, setCurrentDrafts] = useState<{ subject: string; body: string; style: string }[]>([]);
   const [signatureChecked, setSignatureChecked] = useState(false);
@@ -221,6 +224,12 @@ export default function NewApplication() {
       redirectTimer.current = null;
     }
     setRedirectCountdown(null);
+    if (undoTimer.current) {
+      clearInterval(undoTimer.current);
+      undoTimer.current = null;
+    }
+    setUndoCountdown(null);
+    pendingSend.current = null;
     setSelectedDraftIndex(0);
     setCurrentDrafts([]);
     setFullName("");
@@ -249,10 +258,11 @@ export default function NewApplication() {
     } catch {}
   }, []);
 
-  // Clean up redirect timer on unmount
+  // Clean up redirect and undo timers on unmount
   useEffect(() => {
     return () => {
       if (redirectTimer.current) clearInterval(redirectTimer.current);
+      if (undoTimer.current) clearInterval(undoTimer.current);
     };
   }, []);
 
@@ -528,10 +538,18 @@ export default function NewApplication() {
     }
   }
 
-  async function doSend(p: { to: string; subject: string; body: string; meta: GenResult }, skipConfirm = false) {
-    if (!p.to.trim()) return setMsg({ kind: "err", text: t("new.enterRecipient") });
+  function handleUndo() {
+    if (undoTimer.current) {
+      clearInterval(undoTimer.current);
+      undoTimer.current = null;
+    }
+    setUndoCountdown(null);
+    pendingSend.current = null;
+    setSending(false);
+    setMsg({ kind: "warn", text: t("new.sendCancelled") });
+  }
 
-    if (!skipConfirm) { setConfirmPending(p); return; }
+  async function executeActualSend(p: { to: string; subject: string; body: string; meta: GenResult }) {
     setSending(true);
     setMsg(null);
     try {
@@ -582,6 +600,46 @@ export default function NewApplication() {
     } finally {
       setSending(false);
     }
+  }
+
+  async function doSend(p: { to: string; subject: string; body: string; meta: GenResult }, skipConfirm = false) {
+    if (!p.to.trim()) return setMsg({ kind: "err", text: t("new.enterRecipient") });
+
+    if (!skipConfirm) { setConfirmPending(p); return; }
+
+    // Clear any active undo or redirect timers
+    if (undoTimer.current) clearInterval(undoTimer.current);
+    if (redirectTimer.current) {
+      clearInterval(redirectTimer.current);
+      redirectTimer.current = null;
+    }
+    setRedirectCountdown(null);
+
+    // Stage variables for Undo
+    pendingSend.current = p;
+    setSending(true);
+    setMsg({ kind: "ok", text: p.to });
+    setUndoCountdown(10);
+
+    let count = 10;
+    undoTimer.current = setInterval(async () => {
+      count--;
+      if (count <= 0) {
+        if (undoTimer.current) {
+          clearInterval(undoTimer.current);
+          undoTimer.current = null;
+        }
+        setUndoCountdown(null);
+
+        const targetSend = pendingSend.current;
+        pendingSend.current = null;
+        if (targetSend) {
+          await executeActualSend(targetSend);
+        }
+      } else {
+        setUndoCountdown(count);
+      }
+    }, 1000);
   }
 
   // Recipient sanity check — surface typos/invalid before send (not while empty).
@@ -1589,16 +1647,32 @@ export default function NewApplication() {
                 {t("new.redirecting").replace("{seconds}", String(redirectCountdown))}
               </span>
             )}
+            {undoCountdown !== null && (
+              <span style={{ fontSize: "var(--text-12)", opacity: 0.85, fontWeight: 500 }}>
+                {t("new.sendingCountdown").replace("{seconds}", String(undoCountdown))}
+              </span>
+            )}
           </div>
-          {msg.kind === "ok" && (
+          {undoCountdown !== null ? (
             <button
               type="button"
               className="btn btn-sm"
               style={{ marginLeft: "auto" }}
-              onClick={() => { discardDraft(); textareaRef.current?.focus(); }}
+              onClick={handleUndo}
             >
-              {t("new.another")} →
+              ↩ {t("new.undo")}
             </button>
+          ) : (
+            msg.kind === "ok" && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{ marginLeft: "auto" }}
+                onClick={() => { discardDraft(); textareaRef.current?.focus(); }}
+              >
+                {t("new.another")} →
+              </button>
+            )
           )}
         </div>
       )}
