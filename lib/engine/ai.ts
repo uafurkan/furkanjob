@@ -237,6 +237,8 @@ STRICT RUBRIC below, and flag any hard eligibility constraint the listing itself
 
 APPLICANT
 - Target roles (wish list): ${profile.targetRoles.join(", ") || "(none set)"}
+- Target countries (where they want to go): ${profile.targetCountries.join(", ") || "(none set — treat any destination as acceptable)"}
+- Currently based in: ${profile.currentCountry || "(unspecified)"}
 - Languages: ${profile.languages.join(", ") || "(unspecified)"}
 - Open to relocating: ${profile.relocation ? "yes" : "no"}
 ${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${visaLine}${regulatedLine}
@@ -274,9 +276,10 @@ Calculate fitScore by summing these components:
    - 5: Applicant speaks a language somewhat common in the country
    - 0: No language overlap evident
 
-4. LOCATION & LOGISTICS (0-15 points)
-   - 15: Applicant is in the same country or city, or no location barriers
-   - 10: Applicant is willing to relocate and relocation is feasible
+4. LOCATION & LOGISTICS (0-15 points) — use "Currently based in" and "Target countries"
+   - 15: Applicant is already in the organization's country, or it is one of their target countries and no barriers exist
+   - 10: The organization's country is in the applicant's target countries and they are willing to relocate
+   - 7: Country is NOT in their target list but they are open to relocating
    - 5: Relocation possible but uncertain
    - 0: Significant location barriers and applicant is not open to relocating
 
@@ -301,6 +304,7 @@ Return STRICT JSON ONLY, exactly these keys:
 
 Rules:
 - applyFor must be a subset of realistic roles for this organization. Prefer the applicant's own wording.
+- If the organization's country is NOT among the applicant's target countries, mention that briefly in fitSummary (it may still be a fine opportunity — inform, don't block).
 - eligibility.note ONLY from explicit text in the page — with ONE exception: if the applicant's matched role is a regulated profession (doctor, dentist, nurse, pharmacist, teacher, electrician, plumber…) and they would be moving countries, you may set status "warning" with a short note that local professional registration/licensure is typically required (name the typical body if you are confident, e.g. AHPRA in Australia, GDC/NMC in the UK, dental/medical council elsewhere). Licensing alone is NEVER "blocked" unless the page explicitly requires current local registration.
 - If the applicant needs sponsorship AND the listing says no sponsorship / must already have work rights → status "blocked".
 - If it's implied or country-typical but not stated → status "warning" at most. Never invent a constraint from the page.

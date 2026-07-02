@@ -16,6 +16,7 @@ export function computeProfileScore(
     { key: "languages", done: (profile?.languages?.length || 0) > 0 },
     { key: "roles", done: (profile?.targetRoles?.length || 0) > 0 },
     { key: "countries", done: (profile?.targetCountries?.length || 0) > 0 },
+    { key: "currentCountry", done: !!profile?.currentCountry?.trim() },
     { key: "bio", done: !!profile?.shortBio?.trim() },
     { key: "cv", done: cvCount > 0 },
     { key: "gmail", done: gmailConnected },

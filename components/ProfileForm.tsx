@@ -187,6 +187,10 @@ export default function ProfileForm({
 
   async function save() {
     if (!fullName.trim()) return setMsg({ kind: "err", text: t("pf.nameRequired") });
+    // The AI engine needs these three to reason per-user: role fit, visa path, relocation.
+    if (!split(targetRoles).length) return setMsg({ kind: "err", text: t("pf.rolesRequired") });
+    if (!split(targetCountries).length) return setMsg({ kind: "err", text: t("pf.countriesRequired") });
+    if (!currentCountry.trim()) return setMsg({ kind: "err", text: t("pf.currentCountryRequired") });
     setSaving(true);
     setMsg(null);
     try {
@@ -264,11 +268,11 @@ export default function ProfileForm({
         <div className="form-grid">
           <label className="field">
             <span className="field-label">{t("pf.targetRoles")}</span>
-            <input className="input" value={targetRoles} onChange={(e) => setTargetRoles(e.target.value)} placeholder="Front Desk, Kitchen Serving" />
+            <input className="input" value={targetRoles} onChange={(e) => setTargetRoles(e.target.value)} placeholder="Dentist, Software Engineer, Waiter, Farm Worker…" />
           </label>
           <label className="field">
             <span className="field-label">{t("pf.targetCountries")}</span>
-            <input className="input" value={targetCountries} onChange={(e) => setTargetCountries(e.target.value)} placeholder="New Zealand, Australia, United States" />
+            <input className="input" value={targetCountries} onChange={(e) => setTargetCountries(e.target.value)} placeholder="New Zealand, Australia, Germany, Canada…" />
           </label>
         </div>
 
