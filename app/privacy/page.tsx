@@ -115,6 +115,19 @@ function EN() {
       </section>
 
       <section className="legal-section">
+        <h2>Google API Services User Data Policy</h2>
+        <p>
+          paply&apos;s use and transfer of information received from Google APIs to any other app will adhere to{" "}
+          <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">
+            Google API Services User Data Policy
+          </a>, including the Limited Use requirements. We only request the <code>gmail.send</code> scope, use it
+          solely to send application emails on your explicit, in-app instruction from your own connected inbox,
+          never read, scan, or share the contents of your mailbox, and never use this data for advertising or to
+          train generalized AI/ML models.
+        </p>
+      </section>
+
+      <section className="legal-section">
         <h2>Your rights (GDPR / KVKK)</h2>
         <p>
           You can access, correct, export, or delete your data, and withdraw consent at any time. Disconnecting
@@ -202,6 +215,20 @@ function TR() {
           <li>Gereken asgari Google yetkisini isteriz (yalnızca <code>gmail.send</code>).</li>
           <li>Gmail&apos;inizi istediğiniz an bağlantısını kesebilirsiniz; bu, gönderme erişimimizi iptal eder.</li>
         </ul>
+      </section>
+
+      <section className="legal-section">
+        <h2>Google API Services Kullanıcı Verisi Politikası</h2>
+        <p>
+          paply&apos;nin Google API&apos;lerinden alınan bilgileri kullanımı ve başka bir uygulamaya aktarımı,{" "}
+          <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">
+            Google API Services User Data Policy
+          </a>&apos;na (Sınırlı Kullanım/Limited Use şartları dahil) uygun şekilde gerçekleşir. Yalnızca{" "}
+          <code>gmail.send</code> yetkisini talep ederiz; bunu yalnızca sizin uygulama içinde açıkça verdiğiniz
+          talimatla, kendi bağladığınız gelen kutunuzdan başvuru e-postası göndermek için kullanırız, posta
+          kutunuzun içeriğini asla okumaz/taramaz/paylaşmayız ve bu veriyi reklam veya genel amaçlı yapay
+          zekâ/ML modeli eğitimi için asla kullanmayız.
+        </p>
       </section>
 
       <section className="legal-section">
