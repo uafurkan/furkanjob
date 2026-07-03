@@ -10,59 +10,93 @@ import { VALID_ORG_TYPES, isFormalOrg, regulatedRoles, type OrgType, type Intent
 export type AiTier = "free" | "pro";
 
 type Resolved =
-  | { kind: "anthropic"; model: string }
-  | { kind: "openai"; baseUrl: string; apiKey: string; model: string };
+  | { kind: "anthropic"; model: string; name: string }
+  | { kind: "openai"; baseUrl: string; apiKey: string; model: string; name: string };
 
-function openaiFrom(base: string | undefined, key: string | undefined, model: string | undefined): Resolved | null {
+function openaiFrom(name: string, base: string | undefined, key: string | undefined, model: string | undefined): Resolved | null {
   return key
-    ? { kind: "openai", baseUrl: (base || "https://api.openai.com/v1").replace(/\/+$/, ""), apiKey: key, model: model || "gpt-4o-mini" }
+    ? { kind: "openai", baseUrl: (base || "https://api.openai.com/v1").replace(/\/+$/, ""), apiKey: key, model: model || "gpt-4o-mini", name }
     : null;
 }
 
-// Free tier: a free-but-smart provider (Groq, Gemini, …) configured via FREE_AI_*.
-function freeProvider(): Resolved | null {
-  return openaiFrom(process.env.FREE_AI_BASE_URL, process.env.FREE_AI_API_KEY, process.env.FREE_AI_MODEL);
+// Free tier: a CHAIN of free-but-smart, fast providers (Groq, Gemini, Cerebras, OpenRouter free
+// models, a local Ollama…) configured via FREE_AI_* (legacy single slot, tried first) and
+// numbered FREE_AI_1_*..FREE_AI_6_* slots. Every configured slot is tried in order — if one is
+// slow, rate-limited, or down, the next takes over automatically (see completeWithFallback).
+// This costs nothing extra on the happy path: only one provider actually answers per call.
+function freeProviders(): Resolved[] {
+  const list: Resolved[] = [];
+  const legacy = openaiFrom("free", process.env.FREE_AI_BASE_URL, process.env.FREE_AI_API_KEY, process.env.FREE_AI_MODEL);
+  if (legacy) list.push(legacy);
+  for (let i = 1; i <= 6; i++) {
+    const p = openaiFrom(
+      `free-${i}`,
+      process.env[`FREE_AI_${i}_BASE_URL`],
+      process.env[`FREE_AI_${i}_API_KEY`],
+      process.env[`FREE_AI_${i}_MODEL`]
+    );
+    if (p) list.push(p);
+  }
+  return list;
 }
 
-// Pro tier: premium model. Native Anthropic if present, else a generic OpenAI-compatible AI_*/OPENAI_*.
-function premiumProvider(): Resolved | null {
-  if (process.env.ANTHROPIC_API_KEY) return { kind: "anthropic", model: process.env.ANTHROPIC_MODEL || "claude-opus-4-8" };
-  return openaiFrom(
+// Pro tier: premium model(s). Native Anthropic first if present, then any OpenAI-compatible
+// AI_*/OPENAI_* premium provider — also tried in order as a fallback chain.
+function premiumProviders(): Resolved[] {
+  const list: Resolved[] = [];
+  if (process.env.ANTHROPIC_API_KEY) {
+    list.push({ kind: "anthropic", model: process.env.ANTHROPIC_MODEL || "claude-opus-4-8", name: "anthropic" });
+  }
+  const generic = openaiFrom(
+    "pro",
     process.env.AI_BASE_URL || process.env.OPENAI_BASE_URL,
     process.env.AI_API_KEY || process.env.OPENAI_API_KEY,
     process.env.AI_MODEL || process.env.OPENAI_MODEL
   );
+  if (generic) list.push(generic);
+  return list;
 }
 
-// Resolve a provider for a tier, with graceful cross-fallback so a single configured key works everywhere.
-function resolveProvider(tier: AiTier): Resolved | null {
-  return tier === "pro" ? (premiumProvider() || freeProvider()) : (freeProvider() || premiumProvider());
+// Resolve the full ordered fallback chain for a tier. The other tier's providers are appended
+// at the end so a single configured key still works everywhere, and pro requests get every
+// free provider as a last-resort safety net if all premium providers fail.
+function resolveChain(tier: AiTier): Resolved[] {
+  const free = freeProviders();
+  const pro = premiumProviders();
+  return tier === "pro" ? [...pro, ...free] : [...free, ...pro];
 }
 
 let hasWarnedAboutDisabledAi = false;
 
 export function aiEnabled(): boolean {
-  const enabled = resolveProvider("free") !== null || resolveProvider("pro") !== null;
+  const enabled = resolveChain("free").length > 0 || resolveChain("pro").length > 0;
   if (!enabled && !hasWarnedAboutDisabledAi) {
-    console.error("AI is disabled: No API key configured. Set FREE_AI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY.");
+    console.error("AI is disabled: No API key configured. Set FREE_AI_API_KEY (or FREE_AI_1_API_KEY, FREE_AI_2_API_KEY…), OPENAI_API_KEY, or ANTHROPIC_API_KEY.");
     hasWarnedAboutDisabledAi = true;
   }
   return enabled;
 }
 
-// One text completion for the given tier. Returns the raw assistant text, or null on any failure.
-async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoningEffort: "low" | "high" = "low", temperature: number = 0.4): Promise<string | null> {
-  const r = resolveProvider(tier);
-  if (!r) return null;
+// Per-attempt timeout so a slow/dead provider fails fast and the chain moves on quickly
+// instead of the whole request hanging on the first (possibly unresponsive) provider.
+const PROVIDER_TIMEOUT_MS = 14000;
+
+async function callProvider(
+  r: Resolved,
+  prompt: string,
+  maxTokens: number,
+  reasoningEffort: "low" | "high",
+  temperature: number
+): Promise<string | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), PROVIDER_TIMEOUT_MS);
   try {
     if (r.kind === "anthropic") {
       const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-      const msg = await client.messages.create({
-        model: r.model,
-        max_tokens: maxTokens,
-        temperature,
-        messages: [{ role: "user", content: prompt }],
-      });
+      const msg = await client.messages.create(
+        { model: r.model, max_tokens: maxTokens, temperature, messages: [{ role: "user", content: prompt }] },
+        { signal: ctrl.signal }
+      );
       return msg.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
     }
 
@@ -86,19 +120,36 @@ async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoni
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${r.apiKey}` },
       body: JSON.stringify(bodyFields),
+      signal: ctrl.signal,
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      console.error(`AI API error: HTTP ${res.status} - ${errText}`);
+      console.error(`AI provider "${r.name}" (${r.model}) error: HTTP ${res.status} - ${errText}`);
       return null;
     }
     const data = await res.json();
     const out = data?.choices?.[0]?.message?.content;
     return typeof out === "string" ? out.trim() : null;
   } catch (err) {
-    console.error("AI API connection/request failed:", err);
+    const reason = ctrl.signal.aborted ? `timed out after ${PROVIDER_TIMEOUT_MS}ms` : String(err);
+    console.error(`AI provider "${r.name}" (${r.model}) failed: ${reason}`);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+// One text completion for the given tier. Walks the tier's provider chain in order — the first
+// provider to return a real answer wins. A provider that errors, times out, or returns nothing
+// usable is skipped silently and the next one takes over, so a single flaky/rate-limited
+// provider never takes the whole feature down.
+async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoningEffort: "low" | "high" = "low", temperature: number = 0.4): Promise<string | null> {
+  const chain = resolveChain(tier);
+  for (const r of chain) {
+    const out = await callProvider(r, prompt, maxTokens, reasoningEffort, temperature);
+    if (out) return out;
+  }
+  return null;
 }
 
 function extractJson<T>(out: string | null): T | null {
