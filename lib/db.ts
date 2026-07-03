@@ -613,6 +613,19 @@ export async function listUsers(): Promise<User[]> {
   const rows = await sql`SELECT * FROM users ORDER BY created_at DESC`;
   return rows.map((r) => mapUser(r as Record<string, unknown>));
 }
+
+export async function listUsersWithGmail(): Promise<(User & { gmailAddress: string | null })[]> {
+  const rows = await sql`
+    SELECT u.*, ea.address AS gmail_address
+    FROM users u
+    LEFT JOIN email_accounts ea ON ea.user_id = u.id AND ea.provider = 'google'
+    ORDER BY u.created_at DESC
+  `;
+  return rows.map((r) => ({
+    ...mapUser(r as Record<string, unknown>),
+    gmailAddress: (r.gmail_address as string | null) ?? null,
+  }));
+}
 export async function listAllApplications(limit = 100): Promise<Application[]> {
   const rows = await sql`SELECT * FROM applications ORDER BY created_at DESC LIMIT ${limit}`;
   return rows.map((r) => mapApplication(r as Record<string, unknown>));
