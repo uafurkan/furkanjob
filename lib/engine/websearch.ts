@@ -123,8 +123,11 @@ function toAsciiSlug(s: string): string {
     .trim();
 }
 
+// Generic words to drop from a company name before turning it into a domain guess. Covers
+// hospitality plus every other industry (clinics, farms, universities, trades...) so domain
+// guessing works as well for "Bright Smile Dental Care" as it does for "Aurelia Bay Hotel".
 const DOMAIN_STOPWORDS =
-  /\b(hotel|suites|resort|restaurant|cafe|bistro|lodge|inn|bar|grill|brasserie|kitchen|group|limited|ltd|pty|inc|the|a|an|and|of|at|&)\b/g;
+  /\b(hotel|suites|resort|hostel|motel|restaurant|cafe|bistro|lodge|inn|bar|grill|brasserie|kitchen|dining|eatery|tavern|pub|clinic|dental|hospital|pharmacy|surgery|medical|health|healthcare|care|farm|orchard|vineyard|winery|dairy|university|college|academy|school|institute|engineering|construction|builders|logistics|transport|garage|motors|automotive|salon|studio|spa|group|limited|ltd|pty|inc|the|a|an|and|of|at|&)\b/g;
 
 // Build candidate domain roots from company name + country TLDs.
 // "Aurelia Bay Hotel" + NZ → ["aureliabay.co.nz", "aurelia-bay.co.nz", "aureliabay.com", ...]

@@ -340,6 +340,36 @@ export function detectPositions(text: string): string[] {
   return hits.length ? [...new Set(hits)].slice(0, 6) : [];
 }
 
+// Global venue/organization-type vocabulary shared by every company-name heuristic below:
+// domain/URL slug splitting, the "venue line" detector, and the generic-name filters. Covers
+// hospitality AND every other industry the engine now supports (healthcare, education, trades,
+// agriculture, IT, construction, retail...) so a dental clinic or a farm gets the same quality
+// of name extraction a hotel always got.
+const VENUE_WORDS =
+  "restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|" +
+  "hotel|suites|motel|resort|hostel|" +
+  "clinic|dental|hospital|pharmacy|surgery|medical|health|healthcare|vet|veterinary|care" +
+  "|farm|orchard|vineyard|winery|dairy|" +
+  "university|college|academy|school|institute|" +
+  "engineering|construction|builders|electrical|plumbing|" +
+  "logistics|transport|freight|warehouse|" +
+  "garage|motors|automotive|" +
+  "salon|studio|spa|barber";
+const VENUE_TERM_RE = new RegExp(`(${VENUE_WORDS})`, "i");
+// Word-bounded variant for testing full lines/sentences (avoids mid-word hits like "inn" inside "dinner").
+const VENUE_TERM_WORD_RE = new RegExp(`\\b(?:${VENUE_WORDS})\\b`, "i");
+
+// Strips a trailing website-builder/agency credit clause, however it's phrased —
+// "Powered by Wix", "Powered and secured by Wix", "Site by WeWeb", "designed & hosted by Acme" —
+// by matching the VERB(+by/with) construction itself rather than an enumerated platform-name
+// list. This means it works for any web builder/agency in the world, not just the ones we know.
+const BUILDER_CREDIT_TAIL_RE =
+  /\s*[-–—|•·/.,:]*\s*(?:proudly\s+)?(?:(?:website|site)\s+by|(?:powered|hosted|secured|built|designed|developed|created|managed|maintained)(?:\s*(?:,|&|and)\s*(?:powered|hosted|secured|built|designed|developed|created|managed|maintained))*\s+(?:by|with))\s+.*$/i;
+
+function stripBuilderCredit(s: string): string {
+  return s.replace(BUILDER_CREDIT_TAIL_RE, "").trim();
+}
+
 // Collapse a brand string that was duplicated by scraped logo markup:
 // "Hotel Montreal Hotel Montreal" or "Hotel MontrealHotel Montreal" → "Hotel Montreal".
 function collapseDouble(s: string): string {
@@ -363,11 +393,15 @@ function collapseDouble(s: string): string {
 function cleanSegment(clean: string): string | null {
   // Clean up leading/trailing punctuation, dashes, or separators first
   let s = clean.replace(/^[^a-zA-Z0-9]+/, "").trim();
-  
-  // Split on separators if followed by typical footer noise words (website, design, powered, etc.)
-  const parts = s.split(/\s*(?:[-–—|•·/.]\s*)?(?:website\s+by|design\s+by|web\s+design|created\s+by|created\s+with|proudly\s+created|proudly\s+designed|proudly\s+built|built\s+by|developed\s+by|powered\s+by|site\s+by|hosted\s+by|website\s+developed|website\s+design|guesttraction|weweb|squarespace|wix|shopify|wordpress|mint\s+design|fresh\s+mix\s+digital)\b/i);
-  s = parts[0];
-  
+  // Common copyright phrasing is "© 2024 by Company Name" — after the year is stripped
+  // upstream, a leading "by" is left dangling. Drop it (a real company name never starts with it).
+  s = s.replace(/^by\s+/i, "").trim();
+
+  // Strip a trailing builder/agency credit clause however it's phrased (see BUILDER_CREDIT_TAIL_RE).
+  s = stripBuilderCredit(s);
+  // Known bare platform names with no verb at all (e.g. "Epilogue Lounge - Wix") — still cut them.
+  s = s.replace(/\s*[-–—|•·/.,:]*\s*(?:guesttraction|weweb|squarespace|wix|shopify|wordpress|godaddy|weebly|webflow|jimdo|carrd|framer|mint\s+design|fresh\s+mix\s+digital)\b.*$/i, "").trim();
+
   // Also split on pipe, bullet points, or dash/hyphen with surrounding spaces unconditionally
   s = s.split(/\s+[-–—|•·/]\s+/)[0];
   s = s.split(/\s*[|•·]\s*/)[0];
@@ -489,7 +523,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   // 1.5. Heuristic: If we have both emails and urls, and the email domain is generic (e.g. exploretekapo.com)
   //      but a URL domain contains a specific venue term (e.g. tekapomotel.co.nz has "motel"),
   //      prefer the URL domain as the company name!
-  const venueTerms = /(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort|clinic|dental|medical|health|pharmacy|farm|orchard|vineyard|winery|university|college|academy|school|institute|engineering|construction|builders|logistics|garage|salon|studio)/i;
+  const venueTerms = VENUE_TERM_RE;
   if (emails.length && urls.length) {
     const emailDomain = emails[0].split("@")[1] || "";
     const emailCore = emailDomain.split(".")[0];
@@ -511,7 +545,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
           const hostname = new URL(urlStr).hostname;
           const core = hostname.replace(/^www\./, "").split(".")[0];
           let name = core
-            .replace(/(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i, " $1")
+            .replace(VENUE_TERM_RE, " $1")
             .replace(/[-_]/g, " ")
             .replace(/\s+/g, " ")
             .trim();
@@ -533,7 +567,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     if (core) {
       if (!ISP_DOMAINS.test(core)) {
         let name = core
-          .replace(/(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i, " $1")
+          .replace(VENUE_TERM_RE, " $1")
           .replace(/[-_]/g, " ")
           .replace(/\s+/g, " ")
           .trim();
@@ -548,7 +582,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
         if (!genericUsernames.test(username)) {
           let cleaned = username
             .replace(/(?:nz|au|uk|usa?)$/i, "")
-            .replace(/(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i, " $1")
+            .replace(VENUE_TERM_RE, " $1")
             .replace(/[-_]/g, " ")
             .replace(/\s+/g, " ")
             .trim();
@@ -576,7 +610,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
       const prefix = line.slice(0, len);
       const rest = line.slice(len);
       if (rest.toLowerCase().startsWith(prefix.toLowerCase())) {
-        let candidate = prefix.trim().replace(/\s*[-–—,|:].*/g, "").trim();
+        let candidate = stripBuilderCredit(prefix.trim().replace(/\s*[-–—,|:].*/g, "").trim());
         if (candidate.length >= 3 && !/^(home|menu|book|cart|contact|about|welcome|the|and|for)$/i.test(candidate)) {
           return collapseDouble(candidate);
         }
@@ -628,15 +662,15 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     if (/^https?:\/\//i.test(l) || /^www\./i.test(l)) return false;
     if (/\b(book online|make a reservation|online bookings|restaurant bookings|skip to content|click to|find us)\b/i.test(l)) return false;
     if (DISCLAIMER_RE.test(l)) return false;
-    // Must contain a hospitality venue term
-    if (!/\b(hotel|suites|resort|restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub)\b/i.test(l)) return false;
+    // Must contain a venue/organization-type term (any industry, not just hospitality)
+    if (!VENUE_TERM_WORD_RE.test(l)) return false;
     // Avoid full narrative sentences
     if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from|cook|making|some)\b/i.test(l)) return false;
     return true;
   });
 
   if (venueLine) {
-    return collapseDouble(venueLine.replace(/\s+[-–—|].*$/, "").trim());
+    return collapseDouble(stripBuilderCredit(venueLine.replace(/\s+[-–—|].*$/, "").trim()));
   }
 
   // 7. Try to guess from URLs if available
@@ -649,7 +683,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
         const parts = hostname.replace(/^www\./, "").split(".");
         if (parts.length >= 2) {
           let name = parts[0]
-            .replace(/(restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|hotel|suites|motel|resort)/i, " $1")
+            .replace(VENUE_TERM_RE, " $1")
             .replace(/[-_]/g, " ")
             .replace(/\s+/g, " ")
             .trim();
@@ -678,7 +712,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   });
 
   if (fallbackLine) {
-    return collapseDouble(fallbackLine.replace(/\s+[-–—|].*$/, "").trim());
+    return collapseDouble(stripBuilderCredit(fallbackLine.replace(/\s+[-–—|].*$/, "").trim()));
   }
 
   return "your company";
