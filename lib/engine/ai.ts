@@ -617,14 +617,15 @@ Write the cover letter fully in ${langName} at native speaker quality.
 Return STRICT JSON only: {"body": "..."}.
 
 Rules for the cover letter:
+- TARGET LENGTH: ~280-350 words — a cover letter is a fuller, more developed document than the shorter email body; give it real depth and substance, not a condensed summary. This is not a hard cap — prioritize genuine substance, but never pad with filler or repetition just to reach it.
 - Write the full text of the cover letter body, starting with a greeting.
 - Do NOT include applicant details, date, or company address at the top. Those are added automatically.
-- Structure it professionally:
+- Structure it professionally, with each section more developed than in a short email:
   1. Greeting: ${greetingRule}
-  2. Introduction: State interest in the role at the specific organization, demonstrating genuine enthusiasm. Reference specific details of their work (specialty, projects, location, team culture, etc.).
-  3. Experience/Why Me: Map the applicant's background, bio, and languages to this organization's specific needs — use the vocabulary of THIS field (patient care for clinics, site safety for construction, harvest reliability for farms, stack and shipped work for IT, service quality for hospitality). ${profile.currentCountry ? `Mention that they are currently based in ${profile.currentCountry} and ready to step into this role.` : ""}
-  4. Conclusion: Reiterate interest, state that the resume/CV is enclosed, and express interest in discussing further. DO NOT include a signature, sign-off, or your name at the end.
-- Keep it concise, grounded, and highly customized. Avoid clichés and generic flattery.
+  2. Introduction (2-3 sentences): State interest in the role at the specific organization, demonstrating genuine enthusiasm. Reference 1-2 specific details of their work (specialty, projects, location, team culture, etc.).
+  3. Experience/Why Me (2 full paragraphs): Map the applicant's background, bio, and languages to this organization's specific needs — use the vocabulary of THIS field (patient care for clinics, site safety for construction, harvest reliability for farms, stack and shipped work for IT, service quality for hospitality). Give 2-3 distinct, concrete examples of relevant experience or skills, not just one. ${profile.currentCountry ? `Mention that they are currently based in ${profile.currentCountry} and ready to step into this role.` : ""}
+  4. Conclusion (2-3 sentences): Reiterate interest, state that the resume/CV is enclosed, and express interest in discussing further. DO NOT include a signature, sign-off, or your name at the end.
+- Grounded and highly customized — depth comes from specificity, not from adjectives. Avoid clichés and generic flattery.
 - Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
 - Invent no fake details, licenses, or qualifications.`;
 
@@ -762,10 +763,10 @@ Return STRICT JSON only:
 
 Right now you are writing a JOB APPLICATION EMAIL. Your emails feel genuinely human, mature, and professional — highly grounded and realistic. Applications may target ANY industry — hospitality, healthcare/dental, engineering, IT, construction, farm/seasonal work, education, retail, logistics, office roles. Adapt vocabulary and register to THIS organization's field. Write THREE distinct application emails for ${profile.fullName || "the applicant"}.
 
-Each draft must have a different style/angle, but ALL must avoid clichés and generic flattery. Focus on concrete evidence: ${evidenceHint}. Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
-1. "Balanced & Personal": Warm-professional tone. Opens with genuine interest in the specific organization, connects the applicant's background to it realistically, states language proficiency levels clearly, and addresses visa status confidently.
-2. "Short & Direct": Compact, high-impact. Every sentence earns its place. Perfect for busy hiring managers. Focuses purely on concrete value and readiness to start.
-3. "Skills & Bio Focused": Leads with the applicant's relevant skills and professional background. Highlights multilingual ability and adaptability.
+Each draft must have a genuinely different LENGTH and angle, but ALL must avoid clichés and generic flattery. Focus on concrete evidence: ${evidenceHint}. Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
+1. "Balanced & Personal" (TARGET ~180-220 WORDS, the fullest draft): Warm-professional tone. Opens with genuine interest in the specific organization, connects the applicant's background to it with 2-3 concrete, specific examples (not just one), states language proficiency levels clearly, and addresses visa status confidently. Give real texture — this is the applicant's best, most complete pitch, not a summary.
+2. "Short & Direct" (TARGET ~80-110 WORDS, deliberately the shortest): Compact, high-impact. Every sentence earns its place. Perfect for busy hiring managers. Focuses purely on concrete value and readiness to start.
+3. "Skills & Bio Focused" (TARGET ~150-190 WORDS): Leads with the applicant's relevant skills and professional background in real depth — specific responsibilities, tools, or achievements from their bio/CV, not just a label — then connects them to this role. Highlights multilingual ability and adaptability.
 
 === APPLICANT PROFILE ===
 - Full Name: ${profile.fullName || "(not specified)"}
@@ -787,13 +788,15 @@ ${text.slice(0, 4000)}
 ${thinkingInstruction}
 
 === EMAIL STRUCTURE GUIDE ===
-Each email body must flow through these sections naturally (do NOT use bullet points or numbered lists — write in flowing paragraphs):
-1. OPENING (1-2 sentences): Express genuine interest in the role at the specific organization. Reference ONE real, specific detail about it from the page (their philosophy, a specialty, their team culture, an award, a project, etc.).
+Each email body must flow through these sections naturally (do NOT use bullet points or numbered lists — write in flowing paragraphs). The sentence counts below are for the "Short & Direct" draft only — for "Balanced & Personal" and "Skills & Bio Focused", EXPAND each section with more concrete detail to reach their target word count (use 2-3x the sentence count per section, add specific examples from the bio/CV, elaborate on how the applicant's background maps to the organization's actual needs):
+1. OPENING (1-2 sentences, more for longer drafts): Express genuine interest in the role at the specific organization. Reference ONE real, specific detail about it from the page (their philosophy, a specialty, their team culture, an award, a project, etc.).
 ${greetingRule}
-2. EXPERIENCE & FIT (2-3 sentences): Map the applicant's professional background and bio to the specific needs of this organization. Be concrete about what they bring — ${evidenceHint}.
+2. EXPERIENCE & FIT (2-3 sentences, more for longer drafts): Map the applicant's professional background and bio to the specific needs of this organization. Be concrete about what they bring — ${evidenceHint}. For the longer drafts, give 2-3 distinct, specific examples instead of one.
 3. LANGUAGES & LOCATION (1-2 sentences): Mention the applicant's languages as a practical asset.${profile.currentCountry ? ` Mention that they are currently based in ${profile.currentCountry}.` : ""}
 4. VISA & AVAILABILITY (1 sentence): Address work authorization status directly and confidently — never apologetically. ${authorization?.authorized ? "Emphasize that they already hold valid work authorization as a major advantage." : profile.needsVisaSponsorship ? "State the need for sponsorship transparently." : "Do not mention visas."}
 5. CLOSING (1-2 sentences): Note that the CV/resume is attached. Express genuine interest in contributing to the team. Do NOT include any sign-off, salutation, name, or signature block.
+
+Word counts above are targets, not hard caps — always prioritize quality and genuine substance over hitting an exact number. Never pad with filler or repetition just to reach a target length.
 
 === OUTPUT FORMAT ===
 Write the emails fully IN ${langName} (subject AND body), at native-speaker quality.
