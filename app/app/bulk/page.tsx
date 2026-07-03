@@ -33,9 +33,24 @@ type Item = {
   fullName?: string;
   signatureChecked?: boolean;
   thinking?: boolean;
+  // Per-item "Ask about this application" chat — each queue item gets its own AI
+  // conversation grounded in ITS OWN business text/draft, never shared across items.
+  chatOpen?: boolean;
+  chatLoading?: boolean;
+  chatAnswer?: string | null;
+  chatError?: string | null;
+  chatShowCustomInput?: boolean;
+  chatCustomQuestion?: string;
+  chatRevisedBody?: string | null;
+  chatRevisedSubject?: string | null;
+  chatRevisedCoverLetter?: string | null;
 };
 
 const MAX_ITEMS = 20;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
   en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
@@ -128,7 +143,7 @@ export default function BulkApply() {
     }
   }
 
-  async function sendItem(it: Item): Promise<Item> {
+  async function sendItem(it: Item, attempt = 0): Promise<Item> {
     if (!it.to.trim()) return { ...it, status: "skipped", error: t("bulk.noEmail") };
     try {
       const r = await fetch("/api/send", {
@@ -142,6 +157,15 @@ export default function BulkApply() {
           coverLetterBody: it.includeCoverLetter ? it.coverLetterBody : undefined,
         }),
       });
+      // Sending 15-20 items back-to-back can outrun the per-minute send rate limit —
+      // wait out the server's Retry-After and retry rather than failing the tail of the queue.
+      if (r.status === 429 && attempt < 4) {
+        const retryAfterHeader = Number(r.headers.get("Retry-After"));
+        const waitSec = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0 ? retryAfterHeader : 15;
+        update(it.id, { status: "sending", error: t("bulk.rateLimited").replace("{s}", String(waitSec)) });
+        await sleep(waitSec * 1000);
+        return sendItem(it, attempt + 1);
+      }
       const d = await r.json();
       if (r.status === 402) return { ...it, status: "failed", error: t("new.limitReached") };
       if (!r.ok) throw new Error(d.error || "error");
@@ -189,6 +213,8 @@ export default function BulkApply() {
         update(it.id, { status: "sending" });
         it = await sendItem(it);
         setItems((prev) => prev.map((x) => (x.id === it.id ? it : x)));
+        // Stay comfortably under the 12-sends-per-minute server limit instead of racing it.
+        await sleep(4500);
       }
     }
     setRunning(false);
@@ -276,6 +302,7 @@ export default function BulkApply() {
       update(base.id, { status: "sending" });
       const res = await sendItem(base);
       setItems((prev) => prev.map((x) => (x.id === base.id ? res : x)));
+      await sleep(4500);
     }
     setRunning(false);
     stopRef.current = false;
@@ -405,6 +432,66 @@ export default function BulkApply() {
     }
   }
 
+  async function askAboutItem(id: number, question: string) {
+    const it = items.find((x) => x.id === id);
+    if (!it || !it.body?.trim() || it.chatLoading || !question.trim()) return;
+    update(id, { chatLoading: true, chatAnswer: null, chatRevisedBody: null, chatRevisedSubject: null, chatRevisedCoverLetter: null, chatError: null });
+    try {
+      const r = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          body: it.body,
+          subject: it.subject,
+          coverLetter: it.includeCoverLetter ? it.coverLetterBody : undefined,
+          jobText: it.input,
+          question,
+          company: it.company,
+          countryName: it.country,
+          applyFor: it.applyFor && it.applyFor.length ? it.applyFor : it.positions,
+          language: it.language,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Ask AI failed");
+      update(id, {
+        chatLoading: false,
+        chatAnswer: d.answer,
+        chatRevisedBody: d.revisedBody || null,
+        chatRevisedSubject: d.revisedSubject || null,
+        chatRevisedCoverLetter: d.revisedCoverLetter || null,
+      });
+    } catch (e: any) {
+      update(id, { chatLoading: false, chatError: e.message || "An error occurred" });
+    }
+  }
+
+  function applyChatRevision(id: number) {
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== id) return it;
+        if (!it.chatRevisedBody && !it.chatRevisedSubject && !it.chatRevisedCoverLetter) return it;
+        const loc = COVER_LETTER_L10N[it.language || "en"] || COVER_LETTER_L10N.en;
+        let newBody = it.body;
+        if (it.chatRevisedBody) {
+          newBody = it.chatRevisedBody;
+          if (it.signatureChecked && it.fullName && !newBody.includes(loc.sincerely)) {
+            newBody = newBody.trim() + `\n\n${loc.sincerely}\n${it.fullName}`;
+          }
+        }
+        return {
+          ...it,
+          body: newBody,
+          subject: it.chatRevisedSubject || it.subject,
+          coverLetterBody: it.chatRevisedCoverLetter || it.coverLetterBody,
+          chatRevisedBody: null,
+          chatRevisedSubject: null,
+          chatRevisedCoverLetter: null,
+          chatAnswer: "Revision applied!",
+        };
+      })
+    );
+  }
 
   const statusClass: Record<Status, string> = {
     queued: "", analyzing: "", drafted: "chip-accent", sending: "",
@@ -620,6 +707,79 @@ export default function BulkApply() {
                       )}
                       {t("new.deepThink")}
                     </button>
+                  </div>
+
+                  <div className="glass card stack gap-2" style={{ padding: "var(--space-3)", background: "rgba(255,255,255,0.02)" }}>
+                    <div className="row gap-2" style={{ alignItems: "center" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                      </svg>
+                      <span style={{ fontSize: "var(--text-13)", fontWeight: 600 }}>{t("new.askTitle")}</span>
+                      {(it.chatAnswer || it.chatError || it.chatLoading || it.chatShowCustomInput) && (
+                        <button type="button" className="btn btn-ghost btn-sm" style={{ marginLeft: "auto", fontSize: "var(--text-11)" }}
+                          onClick={() => update(it.id, { chatAnswer: null, chatError: null, chatShowCustomInput: false, chatCustomQuestion: "", chatRevisedBody: null, chatRevisedSubject: null, chatRevisedCoverLetter: null })}>
+                          {t("new.clear")}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="row gap-2 wrap">
+                      {[t("new.askQ1"), t("new.askQ2"), t("new.askQ3")].map((q) => (
+                        <button
+                          key={q}
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{ fontSize: "var(--text-11)" }}
+                          disabled={it.chatLoading}
+                          onClick={() => askAboutItem(it.id, q)}
+                        >
+                          {q}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ fontSize: "var(--text-11)", color: "var(--accent)" }}
+                        disabled={it.chatLoading}
+                        onClick={() => update(it.id, { chatShowCustomInput: true })}
+                      >
+                        + {t("new.askOther")}
+                      </button>
+                    </div>
+
+                    {it.chatShowCustomInput && (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          askAboutItem(it.id, it.chatCustomQuestion || "");
+                        }}
+                        className="row gap-2"
+                      >
+                        <input
+                          className="input"
+                          value={it.chatCustomQuestion || ""}
+                          onChange={(e) => update(it.id, { chatCustomQuestion: e.target.value })}
+                          placeholder={t("new.askPlaceholder")}
+                          disabled={it.chatLoading}
+                        />
+                        <button type="submit" className="btn btn-sm" disabled={it.chatLoading || !it.chatCustomQuestion?.trim()}>
+                          {t("new.askSend")}
+                        </button>
+                      </form>
+                    )}
+
+                    {it.chatLoading && <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{t("new.askThinking")}</span>}
+                    {it.chatError && <span className="chip-warn" style={{ fontSize: "var(--text-12)" }}>{it.chatError}</span>}
+                    {it.chatAnswer && !it.chatLoading && (
+                      <p className="text-secondary" style={{ fontSize: "var(--text-13)", whiteSpace: "pre-wrap" }}>{it.chatAnswer}</p>
+                    )}
+                    {(it.chatRevisedBody || it.chatRevisedSubject || it.chatRevisedCoverLetter) && (
+                      <button type="button" className="btn btn-sm" onClick={() => applyChatRevision(it.id)}>
+                        {t("new.applyRevision")}
+                      </button>
+                    )}
                   </div>
 
                   {it.includeCoverLetter && (
