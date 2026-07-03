@@ -9,6 +9,8 @@ type Eligibility = { status: "ok" | "warning" | "blocked"; note: string };
 type GenResult = {
   company: string;
   country: string;
+  orgType?: string;
+  intent?: "job" | "study";
   positions: string[];
   applyFor?: string[];
   droppedRoles?: string[];
@@ -631,6 +633,9 @@ export default function NewApplication() {
           jobText: text,
           question: q,
           company: res.company,
+          countryName: res.country,
+          orgType: res.orgType,
+          applyFor: res.applyFor && res.applyFor.length ? res.applyFor : res.positions,
           language: res.language,
         }),
       });

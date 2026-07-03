@@ -7,6 +7,21 @@ import type { Draft, DraftOption, GenerateInput, EngineProfile } from "./types";
 import { APP_LANGS, type AppLang } from "./template";
 import { VALID_ORG_TYPES, isFormalOrg, regulatedRoles, type OrgType, type Intent } from "./professions";
 
+// The single shared identity every AI call wears, regardless of which provider in the fallback
+// chain actually answers. This is what keeps paply's AI feeling like ONE consistent career
+// coach — never a generic chatbot, never drifting off-task — no matter whether Groq, Gemini,
+// Cerebras, or Anthropic ends up generating the response. Every prompt in this file opens with
+// this line before its specific task instructions.
+export const PAPLY_PERSONA =
+  "You are the paply AI Career & Application Coach — the intelligence embedded throughout paply " +
+  "(paply.me), a platform that helps people in EVERY profession and EVERY country apply for jobs " +
+  "or university/school admission. You are warm, precise, and genuinely useful: an experienced " +
+  "human career coach, never a generic chatbot. You ALWAYS ground your answers and drafts strictly " +
+  "in the SPECIFIC user profile (their target roles, target countries, current country, visa/" +
+  "eligibility situation, languages, background) and the SPECIFIC organization/page context given " +
+  "below. You never invent facts, qualifications, or email addresses, and you never drift out of " +
+  "this role or this context into a different topic or persona, no matter what is asked.";
+
 export type AiTier = "free" | "pro";
 
 type Resolved =
@@ -195,7 +210,9 @@ export type AiAnalysis = {
 
 export async function aiAnalyze(text: string, tier: AiTier = "free"): Promise<AiAnalysis | null> {
   if (!aiEnabled()) return null;
-  const prompt = `You are the analysis engine of a global application assistant. Users apply to ANY kind of organization worldwide — hotels, restaurants, dental clinics, hospitals, engineering firms, IT companies, farms, construction companies, schools, universities, retail stores, salons, logistics companies, offices — for jobs OR for university/school admission. A user pasted RAW text scraped/copied from an organization's website. This text may contain noisy elements like header/footer menus, cookie banners, booking systems, social media links, copyright notices, and platform/builder templates (e.g., Wix, Shopify, Squarespace, GoDaddy, WordPress). Read it like a careful human and return clean, structured facts.
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are performing the ANALYSIS step: a user pasted RAW text scraped/copied from an organization's website (hotel, restaurant, dental clinic, hospital, engineering firm, IT company, farm, construction company, school, university, retail store, salon, logistics company, office — any industry). This text may contain noisy elements like header/footer menus, cookie banners, booking systems, social media links, copyright notices, and platform/builder templates (e.g., Wix, Shopify, Squarespace, GoDaddy, WordPress). Read it like a careful human and return clean, structured facts.
 
 Return STRICT JSON ONLY, no prose, exactly these keys:
 {
@@ -280,7 +297,9 @@ export async function aiAssessFit(opts: {
     : "";
 
   // Build a deterministic prompt with strict rubric-based scoring so the same inputs always produce the same result.
-  const prompt = `You are the deterministic matching engine of a job-application assistant. Your output must be EXACTLY
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are performing the FIT-ASSESSMENT step, acting as the deterministic matching engine. Your output must be EXACTLY
 reproducible: given the same inputs, you MUST return the same JSON every time. Do NOT introduce any randomness.
 
 Determine which of the applicant's target roles fit THIS specific business, calculate the fit score using the
@@ -385,7 +404,9 @@ export type AiVisaAnalysis = {
 
 export async function aiAnalyzeVisa(text: string, tier: AiTier = "free"): Promise<AiVisaAnalysis | null> {
   if (!aiEnabled()) return null;
-  const prompt = `You read a residence/work visa or permit document (OCR/extracted text, possibly messy) and return which countries it authorizes the holder to WORK in.
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are performing the VISA-DOCUMENT-READING step: read a residence/work visa or permit document (OCR/extracted text, possibly messy) and return which countries it authorizes the holder to WORK in.
 
 Return STRICT JSON ONLY, exactly these keys:
 {
@@ -427,7 +448,9 @@ export async function aiFollowup(opts: {
 }): Promise<Draft | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === opts.lang)?.label || "English";
-  const prompt = `Write a SHORT, polite follow-up email for a job application that hasn't received a reply yet.
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are writing a SHORT, polite follow-up email for a job application that hasn't received a reply yet.
 
 Context:
 - Company: ${opts.company}
@@ -454,7 +477,9 @@ export async function aiSubjectVariant(
 ): Promise<string | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
-  const prompt = `A job applicant is sending an application email to "${company}" for roles: ${positions.join(", ") || "hospitality"}.
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are writing an ALTERNATIVE SUBJECT LINE. A job applicant is sending an application email to "${company}" for roles: ${positions.join(", ") || "the role(s) this organization offers"}.
 The original subject line is: "${subject}"
 
 Write ONE alternative subject line that takes a different angle (e.g., if the original is specific/formal, make this one warmer/shorter, or vice-versa). Write fully IN ${langName}. Return STRICT JSON only: {"subject": "..."}.
@@ -488,7 +513,9 @@ export async function aiRefine(opts: {
 }): Promise<string | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === opts.lang)?.label || "English";
-  const prompt = `You are refining the BODY of a job-application email. Apply this change: ${REFINE_INSTRUCTION[opts.action]}
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are REFINING the BODY of a job-application email. Apply this change: ${REFINE_INSTRUCTION[opts.action]}
 
 Write fully IN ${langName}. Return STRICT JSON only: {"body": "..."}.
 
@@ -529,7 +556,9 @@ export async function aiCoverLetter(
 
   // ===== STUDY MODE: motivation/statement letter for admissions =====
   if (intent === "study") {
-    const prompt = `You are an elite academic Motivation Letter writer. Write a formal, compelling motivation letter body for ${profile.fullName || "the applicant"}, an international applicant to "${analysis.company}" in ${analysis.country.name}, program(s): ${rolesLine}.
+    const prompt = `${PAPLY_PERSONA}
+
+Right now you are writing a MOTIVATION LETTER for a university/school admissions application. Write a formal, compelling motivation letter body for ${profile.fullName || "the applicant"}, an international applicant to "${analysis.company}" in ${analysis.country.name}, program(s): ${rolesLine}.
 
 APPLICANT INFO:
 - Name: ${profile.fullName || "the applicant"}
@@ -555,7 +584,9 @@ Rules:
     ? `A FORMAL professional greeting ("Dear Hiring Team," or the formal local equivalent — e.g. "Sehr geehrte Damen und Herren," in German). This is a ${orgType.replace(/_/g, " ")} — do NOT use casual greetings like "Kia Ora" or "Hola".`
     : `A warm local greeting based on the target country/cues (e.g., "Kia Ora," for NZ/AU, "Hola," for Spain/Spanish countries, "Bonjour," for France, "Hallo," for Germany, "Ciao," for Italy, "Olá," for Portugal/Brazil, or "Dear Hiring Team,"/localized equivalent for others).`;
 
-  const prompt = `You are an elite Cover Letter writer for ANY industry — hospitality, healthcare/dental, engineering, IT, construction, farm/seasonal work, education, retail, logistics, office. Write a formal, outstanding Cover Letter body for ${profile.fullName || "the applicant"} applying to "${analysis.company}" (a ${orgType.replace(/_/g, " ")}) in ${analysis.country.name} for the roles: ${rolesLine}.
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are writing a COVER LETTER for a job application, for ANY industry — hospitality, healthcare/dental, engineering, IT, construction, farm/seasonal work, education, retail, logistics, office. Write a formal, outstanding Cover Letter body for ${profile.fullName || "the applicant"} applying to "${analysis.company}" (a ${orgType.replace(/_/g, " ")}) in ${analysis.country.name} for the roles: ${rolesLine}.
 
 APPLICANT INFO:
 - Name: ${profile.fullName || "the applicant"}
@@ -625,7 +656,9 @@ export async function aiDrafts(
     const studyVisa = profile.needsVisaSponsorship || !authorization?.authorized
       ? `As an international applicant, they will need ${analysis.country.visa}; mention awareness of this process briefly and confidently — never apologetically.`
       : `They already hold authorization to be in ${analysis.country.name}; no visa discussion needed.`;
-    const studyPrompt = `You are an elite academic-application writer. Write THREE distinct admission/enrolment inquiry emails for ${profile.fullName || "the applicant"}, an international applicant writing to a university/school's admissions office.
+    const studyPrompt = `${PAPLY_PERSONA}
+
+Right now you are writing an ADMISSIONS INQUIRY (not a job application). Write THREE distinct admission/enrolment inquiry emails for ${profile.fullName || "the applicant"}, an international applicant writing to a university/school's admissions office.
 
 1. "Balanced & Personal": Warm-professional. Genuine motivation for THIS institution and program, academic/professional background mapped to entry requirements.
 2. "Short & Direct": Compact and precise — states the program of interest, key qualifications, and the specific questions. Perfect for a busy admissions officer.
@@ -717,7 +750,9 @@ Return STRICT JSON only:
   };
   const evidenceHint = industryHints[orgType] || "operational readiness, consistency under pressure, and specific task experience relevant to this organization's field";
 
-  const prompt = `You are an elite job-application email writer. Your emails feel genuinely human, mature, and professional — highly grounded and realistic. Applications may target ANY industry — hospitality, healthcare/dental, engineering, IT, construction, farm/seasonal work, education, retail, logistics, office roles. Adapt vocabulary and register to THIS organization's field. Write THREE distinct application emails for ${profile.fullName || "the applicant"}.
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are writing a JOB APPLICATION EMAIL. Your emails feel genuinely human, mature, and professional — highly grounded and realistic. Applications may target ANY industry — hospitality, healthcare/dental, engineering, IT, construction, farm/seasonal work, education, retail, logistics, office roles. Adapt vocabulary and register to THIS organization's field. Write THREE distinct application emails for ${profile.fullName || "the applicant"}.
 
 Each draft must have a different style/angle, but ALL must avoid clichés and generic flattery. Focus on concrete evidence: ${evidenceHint}. Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
 1. "Balanced & Personal": Warm-professional tone. Opens with genuine interest in the specific organization, connects the applicant's background to it realistically, states language proficiency levels clearly, and addresses visa status confidently.
@@ -811,7 +846,9 @@ export async function aiRewriteCoverLetter(opts: {
     .filter(Boolean)
     .join("\n");
 
-  const prompt = `You are an elite Cover Letter writer. Your task is to DEEPLY REWRITE and dramatically IMPROVE the cover letter below.
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are DEEPLY REWRITING a cover letter. Your task is to dramatically IMPROVE the cover letter below.
 
 APPLICANT PROFILE:
 ${applicantLines || "(profile not available)"}
@@ -853,6 +890,12 @@ INSTRUCTIONS:
 }
 
 // ---------- Chat Assistant / Q&A Refinement ----------
+// This is the "AI chat" the user talks to on the results page — it must feel like ONE coach who
+// already knows them, not a generic assistant that forgot who they are between messages. Every
+// call gets the applicant's full profile (target roles, target countries, current country, visa
+// situation, languages, bio) plus the organization context (name, type, country, which role(s)
+// this specific application targets) so it NEVER drifts from context, and it can both answer a
+// question AND make a real edit (body/subject/cover letter) in the same turn when asked to.
 export async function aiAsk(opts: {
   body: string;
   subject?: string;
@@ -860,6 +903,10 @@ export async function aiAsk(opts: {
   jobText: string;
   question: string;
   company?: string;
+  orgType?: OrgType;
+  countryName?: string;
+  applyFor?: string[];
+  profile?: EngineProfile;
   lang: AppLang;
   tier?: AiTier;
 }): Promise<{ answer: string; revisedBody?: string | null; revisedSubject?: string | null; revisedCoverLetter?: string | null } | null> {
@@ -867,16 +914,43 @@ export async function aiAsk(opts: {
   const langName = APP_LANGS.find((l) => l.code === opts.lang)?.label || "English";
   const subjectSection = opts.subject ? `\nCURRENT SUBJECT: "${opts.subject}"` : "";
   const coverLetterSection = opts.coverLetter ? `\nCURRENT COVER LETTER:\n"""\n${opts.coverLetter.slice(0, 2000)}\n"""` : "";
-  const prompt = `You are an elite AI career coach and application specialist assisting a job applicant.
-You have the current draft of an application email, the business name, the raw text of the job listing, and a user's question or edit instruction about this application.
 
-APPLICANT'S DRAFT:
+  const p = opts.profile;
+  const visaLine = p
+    ? p.hasVisa
+      ? `Already holds work authorization for: ${(p.visaCountries || []).join(", ") || "(unspecified)"}${p.visaLabel ? ` (${p.visaLabel})` : ""}.`
+      : p.needsVisaSponsorship
+      ? `Needs visa sponsorship${opts.countryName ? ` to work in ${opts.countryName}` : ""}.`
+      : "Does not need visa sponsorship."
+    : "(profile not available)";
+  const profileSection = p
+    ? `
+APPLICANT PROFILE (their real, saved profile — ground everything in this, never contradict it):
+- Name: ${p.fullName || "(not specified)"}
+- Target roles (their wish list across all applications): ${p.targetRoles?.join(", ") || "(none set)"}
+- Target countries: ${p.targetCountries?.join(", ") || "(none set)"}
+- Currently based in: ${p.currentCountry || "(unspecified)"}
+- Languages: ${p.languages?.join(", ") || "(unspecified)"}
+- Open to relocating: ${p.relocation ? "yes" : "no"}
+${p.shortBio ? `- Bio: ${p.shortBio}\n` : ""}- Work eligibility: ${visaLine}`
+    : "";
+  const orgSection = opts.orgType || opts.countryName || opts.applyFor?.length
+    ? `
+THIS APPLICATION:
+${opts.orgType ? `- Organization type: ${opts.orgType.replace(/_/g, " ")}\n` : ""}${opts.countryName ? `- Country: ${opts.countryName}\n` : ""}${opts.applyFor?.length ? `- Role(s) this application currently targets: ${opts.applyFor.join(", ")}\n` : ""}`
+    : "";
+
+  const prompt = `${PAPLY_PERSONA}
+
+Right now you are chatting live with the applicant about ONE specific application they're about to send. You have their real profile, the organization context, the current draft, and their question or edit instruction.
+${profileSection}${orgSection}
+APPLICANT'S CURRENT DRAFT:
 """
 ${opts.body}
 """
 ${subjectSection}${coverLetterSection}
-BUSINESS: ${opts.company || "the company"}
-JOB LISTING / CONTEXT:
+ORGANIZATION: ${opts.company || "the organization"}
+RAW PAGE / LISTING TEXT:
 """
 ${opts.jobText.slice(0, 4000)}
 """
@@ -885,15 +959,16 @@ USER'S QUESTION / INSTRUCTION:
 "${opts.question}"
 
 INSTRUCTIONS:
-1. Answer the user's question directly, honestly, and helpfully. Keep the answer concise (2-4 sentences max), encouraging, and highly professional.
+1. Answer the user's question directly, honestly, and helpfully — as their coach who already knows their profile above, not a stranger. Keep the answer concise (2-4 sentences max), encouraging, and highly professional. Never contradict facts in their profile or invent new ones.
 2. If the user's prompt is an instruction to modify, improve, shorten, or rewrite the email draft (e.g. "make it more energetic", "mention my barista experience", "make it shorter", "also apply for X role"), you MUST also provide the fully rewritten/revised email body in the "revisedBody" field. If the user's prompt is a general question (e.g. "Is this tone appropriate?", "Is the length good?"), leave all revised fields null.
 3. If the instruction changes which roles/positions are targeted (e.g. "also apply for waiter", "add kitchen hand", "only apply for front desk"), you MUST also update:
    - "revisedSubject": rewrite the email subject to reflect the new set of roles (format: "Role1 / Role2 Application — Company Name")
    - "revisedCoverLetter": rewrite the cover letter body to mention the updated roles (keep same structure/length, just update role references). If no cover letter was provided, leave null.
 4. If providing a revised body:
    - Do NOT include closing salutations (like "Sincerely"), signatures, or applicant name/details at the bottom.
-   - Address the email to "Dear Hiring Team" or country-appropriate greetings (e.g., "Kia Ora" for NZ).
+   - Address the email to a greeting appropriate for the organization type and country (formal for clinics/hospitals/offices/universities; a warm local greeting like "Kia Ora" for NZ only for casual hospitality venues).
    - Write fully in ${langName}.
+5. Stay strictly on task: you are paply's application coach for THIS application. If the question is unrelated to this application or profile, gently redirect to how you can help with the application instead of answering off-topic requests.
 
 Return STRICT JSON only:
 {

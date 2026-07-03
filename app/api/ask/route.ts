@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
+import { getProfile } from "@/lib/db";
+import { toEngineProfile } from "@/lib/profile-adapter";
 import { aiAsk } from "@/lib/engine/ai";
 import { APP_LANGS, type AppLang } from "@/lib/engine/template";
+import { VALID_ORG_TYPES, type OrgType } from "@/lib/engine/professions";
 import { aiTier } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
@@ -28,12 +31,21 @@ export async function POST(req: Request) {
     const jobText = String(data?.jobText || "").trim();
     const question = String(data?.question || "").trim();
     const company = typeof data?.company === "string" ? data.company : undefined;
+    const countryName = typeof data?.countryName === "string" ? data.countryName : undefined;
+    const orgType = typeof data?.orgType === "string" && (VALID_ORG_TYPES as string[]).includes(data.orgType) ? (data.orgType as OrgType) : undefined;
+    const applyFor = Array.isArray(data?.applyFor) ? data.applyFor.filter((x: unknown): x is string => typeof x === "string") : undefined;
 
     if (!body) return NextResponse.json({ error: "Email body is empty." }, { status: 400 });
     if (!question) return NextResponse.json({ error: "Question is empty." }, { status: 400 });
 
     const validLangs = APP_LANGS.map((l) => l.code) as string[];
     const lang: AppLang = (validLangs.includes(data?.language) ? data.language : "en") as AppLang;
+
+    // Fetch the user's REAL saved profile server-side (never trust client-sent profile facts) so
+    // the coach chat is always grounded in their actual target roles, countries, visa status, bio —
+    // it never drifts from who this specific user is, turn after turn.
+    const profile = await getProfile(user.id);
+    const engineProfile = toEngineProfile(profile, user);
 
     const result = await aiAsk({
       body,
@@ -42,6 +54,10 @@ export async function POST(req: Request) {
       jobText,
       question,
       company,
+      orgType,
+      countryName,
+      applyFor,
+      profile: engineProfile,
       lang,
       tier: aiTier(user.plan),
     });
