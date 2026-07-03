@@ -5,6 +5,8 @@ import { useT } from "@/components/i18n";
 
 type Status = "queued" | "analyzing" | "drafted" | "sending" | "sent" | "failed" | "skipped";
 
+type Eligibility = { status: "ok" | "warning" | "blocked"; note: string };
+
 type Item = {
   id: number;
   input: string;
@@ -19,6 +21,11 @@ type Item = {
   includeCoverLetter?: boolean;
   language?: string;
   positions?: string[];
+  applyFor?: string[];
+  droppedRoles?: string[];
+  fitScore?: number;
+  fitSummary?: string;
+  eligibility?: Eligibility;
   overLimit?: boolean;
   error?: string;
   expanded?: boolean;
@@ -110,6 +117,8 @@ export default function BulkApply() {
         coverLetterBody: d.coverLetterBody || initialBody,
         includeCoverLetter: includeCoverLetter,
         language: d.language, positions: d.positions, overLimit: d.overLimit,
+        applyFor: d.applyFor, droppedRoles: d.droppedRoles,
+        fitScore: d.fitScore, fitSummary: d.fitSummary, eligibility: d.eligibility,
         error: d.emailSource === "none" ? t("bulk.noEmail") : undefined,
         fullName: fullName,
         signatureChecked: isSigChecked,
@@ -176,7 +185,7 @@ export default function BulkApply() {
         it = await analyzeItem(it);
         setItems((prev) => prev.map((x) => (x.id === it.id ? it : x)));
       }
-      if (!stopRef.current && auto && it.status === "drafted" && !it.overLimit && it.to.trim()) {
+      if (!stopRef.current && auto && it.status === "drafted" && !it.overLimit && it.to.trim() && it.eligibility?.status !== "blocked") {
         update(it.id, { status: "sending" });
         it = await sendItem(it);
         setItems((prev) => prev.map((x) => (x.id === it.id ? it : x)));
@@ -255,7 +264,7 @@ export default function BulkApply() {
   }
 
   async function sendAllDrafts() {
-    const toSend = items.filter((it) => it.status === "drafted" && it.to.trim());
+    const toSend = items.filter((it) => it.status === "drafted" && it.to.trim() && it.eligibility?.status !== "blocked");
     if (!toSend.length) return;
     setRunning(true);
     stopRef.current = false;
@@ -347,6 +356,11 @@ export default function BulkApply() {
                 language: d.language,
                 positions: d.positions,
                 overLimit: d.overLimit,
+                applyFor: d.applyFor,
+                droppedRoles: d.droppedRoles,
+                fitScore: d.fitScore,
+                fitSummary: d.fitSummary,
+                eligibility: d.eligibility,
                 error: d.emailSource === "none" ? t("bulk.noEmail") : undefined,
                 fullName: d.fullName || "",
                 thinking: false,
@@ -501,7 +515,15 @@ export default function BulkApply() {
               <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
                 <b>{it.company || `#${it.id + 1}`}</b>
                 {it.country && <span className="chip">{it.country}</span>}
+                {(it.applyFor && it.applyFor.length ? it.applyFor : it.positions || []).map((p) => (
+                  <span key={p} className="chip">{p}</span>
+                ))}
                 <span className={`chip ${statusClass[it.status]}`}>{t(`bulk.status.${it.status}`)}</span>
+                {typeof it.fitScore === "number" && it.fitScore > 0 && (
+                  <span className={`chip ${it.eligibility?.status === "blocked" ? "chip-warn" : it.eligibility?.status === "warning" ? "chip-warn" : "chip-accent"}`}>
+                    {it.fitScore}/100
+                  </span>
+                )}
                 {(it.status === "drafted" || it.status === "skipped") && (
                   <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => update(it.id, { expanded: !it.expanded })}>
                     {it.expanded ? t("bulk.collapse") : t("bulk.review")}
@@ -509,10 +531,39 @@ export default function BulkApply() {
                 )}
               </div>
               {!it.expanded && it.subject && <span className="text-secondary" style={{ fontSize: "var(--text-13)" }}>{it.subject}</span>}
+              {!it.expanded && it.fitSummary && <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{it.fitSummary}</span>}
+              {!it.expanded && it.droppedRoles && it.droppedRoles.length > 0 && (
+                <span className="fit-dropped" style={{ fontSize: "var(--text-12)" }}>{t("new.fit.dropped").replace("{roles}", it.droppedRoles.join(", "))}</span>
+              )}
+              {!it.expanded && it.eligibility && it.eligibility.status !== "ok" && it.eligibility.note && (
+                <span className={`fit-eligibility fit-eligibility-${it.eligibility.status}`} style={{ fontSize: "var(--text-12)" }}>{it.eligibility.note}</span>
+              )}
               {it.error && <span className="chip-warn" style={{ fontSize: "var(--text-12)" }}>{it.error}</span>}
 
               {it.expanded && (
                 <div className="stack gap-3">
+                  {(it.fitSummary || (it.eligibility && it.eligibility.status !== "ok") || (it.droppedRoles && it.droppedRoles.length > 0)) && (
+                    <div className={`fit-panel reveal fit-${it.eligibility?.status === "blocked" ? "blocked" : it.eligibility?.status === "warning" ? "warning" : "ok"}`}>
+                      {typeof it.fitScore === "number" && it.fitScore > 0 && (
+                        <div className="fit-head">
+                          <span className="fit-score" aria-label={t("new.fit.score")}>{it.fitScore}<span className="fit-score-max">/100</span></span>
+                          <span className="fit-score-label">{t("new.fit.score")}</span>
+                        </div>
+                      )}
+                      {it.fitSummary && <p className="fit-summary">{it.fitSummary}</p>}
+                      {it.droppedRoles && it.droppedRoles.length > 0 && (
+                        <p className="fit-dropped">{t("new.fit.dropped").replace("{roles}", it.droppedRoles.join(", "))}</p>
+                      )}
+                      {it.eligibility && it.eligibility.status !== "ok" && it.eligibility.note && (
+                        <p className={`fit-eligibility fit-eligibility-${it.eligibility.status}`}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                          <span>{it.eligibility.note}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <label className="field">
                     <span className="field-label">{t("new.to")}</span>
                     <input className="input" value={it.to} onChange={(e) => update(it.id, { to: e.target.value })} placeholder="name@business.com" />
