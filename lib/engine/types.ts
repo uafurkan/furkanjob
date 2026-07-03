@@ -23,6 +23,9 @@ export type EngineProfile = {
   visaCountries?: string[];
   // Raw text extracted from the applicant's CV PDF — injected into AI prompts for richer, more specific drafts.
   cvText?: string | null;
+  // Labeled text extracts from the applicant's OTHER uploaded documents (visa proof,
+  // certificates, diplomas, reference letters) — so every AI feature knows the full person.
+  documentsText?: string | null;
 };
 
 export type Draft = { subject: string; body: string };

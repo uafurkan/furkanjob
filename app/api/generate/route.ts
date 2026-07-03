@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { getProfile, getUsage, getDefaultCv, getCvData, listApplications } from "@/lib/db";
+import { getProfile, getUsage, getDefaultCv, listApplications } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
+import { enrichProfileWithDocuments } from "@/lib/profile-context";
 import { runPipeline } from "@/lib/engine/pipeline";
 import { fetchPageText } from "@/lib/engine/websearch";
 import { aiSubjectVariant } from "@/lib/engine/ai";
 import { aiTier, isOverLimit, planInfo } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
-import { extractPdfText } from "@/lib/cv-extract";
 
 export const runtime = "nodejs";
 
@@ -54,20 +54,12 @@ async function handleGenerate(req: Request) {
   const overLimit = isOverLimit(user.plan, used);
 
   const profile = await getProfile(user.id);
-  const engineProfile = toEngineProfile(profile, user);
+  let engineProfile = toEngineProfile(profile, user);
 
-  // Parse CV text once and inject into the engine profile so all AI prompts benefit from it.
-  try {
-    const defaultCv = await getDefaultCv(user.id);
-    if (defaultCv?.id) {
-      const cvBuffer = await getCvData(defaultCv.id);
-      if (cvBuffer) {
-        engineProfile.cvText = await extractPdfText(cvBuffer);
-      }
-    }
-  } catch {
-    // Non-fatal — draft still works without CV text
-  }
+  // Read the CV plus every other uploaded document (visa proof, certificates, diplomas,
+  // reference letters) so every AI prompt in the pipeline knows the full person, not just
+  // what's in the short profile form.
+  engineProfile = await enrichProfileWithDocuments(user.id, engineProfile);
 
   const result = await runPipeline({
     text,

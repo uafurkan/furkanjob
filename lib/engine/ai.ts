@@ -24,6 +24,14 @@ export const PAPLY_PERSONA =
 
 export type AiTier = "free" | "pro";
 
+// Labeled extracts from the user's uploaded files (visa proof, certificates, diplomas,
+// reference letters) — appended to prompts so every feature reads the same full person.
+function documentsSection(profile?: Pick<EngineProfile, "documentsText"> | null): string {
+  return profile?.documentsText
+    ? `\nUPLOADED SUPPORTING DOCUMENTS (real text extracted from the applicant's own files — treat as ground truth about them):\n"""\n${profile.documentsText.slice(0, 4500)}\n"""\n`
+    : "";
+}
+
 type Resolved =
   | { kind: "anthropic"; model: string; name: string }
   | { kind: "openai"; baseUrl: string; apiKey: string; model: string; name: string };
@@ -311,7 +319,7 @@ APPLICANT
 - Currently based in: ${profile.currentCountry || "(unspecified)"}
 - Languages: ${profile.languages.join(", ") || "(unspecified)"}
 - Open to relocating: ${profile.relocation ? "yes" : "no"}
-${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${visaLine}${regulatedLine}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${visaLine}${regulatedLine}${documentsSection(profile)}
 
 THE ORGANIZATION
 - Name: ${opts.company}
@@ -563,7 +571,7 @@ Right now you are writing a MOTIVATION LETTER for a university/school admissions
 APPLICANT INFO:
 - Name: ${profile.fullName || "the applicant"}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
-${currentCountryLine ? currentCountryLine + "\n" : ""}${profile.shortBio ? `- Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT:\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}
+${currentCountryLine ? currentCountryLine + "\n" : ""}${profile.shortBio ? `- Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT:\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}${documentsSection(profile)}
 RAW TEXT FROM THE INSTITUTION'S PAGE (extract curriculum focus, values, research strengths, intake info):
 """
 ${text.slice(0, 4000)}
@@ -593,7 +601,7 @@ APPLICANT INFO:
 - Target Roles: ${rolesLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
 ${currentCountryLine ? currentCountryLine + "\n" : ""}- Relocation: ${profile.relocation ? "Yes" : "No"}
-${profile.shortBio ? `- Bio / Professional Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT (use real experience from here):\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}- Work eligibility: ${profile.needsVisaSponsorship ? "Requires visa sponsorship" : "Work authorized"}
+${profile.shortBio ? `- Bio / Professional Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT (use real experience from here):\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}${documentsSection(profile)}- Work eligibility: ${profile.needsVisaSponsorship ? "Requires visa sponsorship" : "Work authorized"}
 
 THE ORGANIZATION:
 - Name: ${analysis.company}
@@ -668,7 +676,7 @@ Right now you are writing an ADMISSIONS INQUIRY (not a job application). Write T
 - Full Name: ${profile.fullName || "(not specified)"}
 - Program(s) of interest: ${programsLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
-${currentCountryLine ? currentCountryLine + "\n" : ""}${profile.shortBio ? `- Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT:\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}- ${studyVisa}
+${currentCountryLine ? currentCountryLine + "\n" : ""}${profile.shortBio ? `- Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT:\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}${documentsSection(profile)}- ${studyVisa}
 
 === THE INSTITUTION ===
 - Name: ${analysis.company}
@@ -764,7 +772,7 @@ Each draft must have a different style/angle, but ALL must avoid clichés and ge
 - Applying specifically for: ${rolesLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
 ${currentCountryLine ? currentCountryLine + "\n" : ""}- Open to relocating: ${profile.relocation ? "yes" : "no"}
-${profile.shortBio ? `- Professional Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT (use real experience from here):\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}- ${sponsorship}
+${profile.shortBio ? `- Professional Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT (use real experience from here):\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}${documentsSection(profile)}- ${sponsorship}
 
 === THE ORGANIZATION ===
 - Name: ${analysis.company}
@@ -827,6 +835,7 @@ export async function aiRewriteCoverLetter(opts: {
   needsVisaSponsorship?: boolean;
   openToRelocation?: boolean;
   cvText?: string | null;
+  documentsText?: string | null;
   lang: AppLang;
   tier?: AiTier;
 }): Promise<string | null> {
@@ -852,7 +861,7 @@ Right now you are DEEPLY REWRITING a cover letter. Your task is to dramatically 
 
 APPLICANT PROFILE:
 ${applicantLines || "(profile not available)"}
-${opts.cvText ? `\nAPPLICANT RESUME / CV TEXT:\n"""\n${opts.cvText.slice(0, 3000)}\n"""\n` : ""}
+${opts.cvText ? `\nAPPLICANT RESUME / CV TEXT:\n"""\n${opts.cvText.slice(0, 3000)}\n"""\n` : ""}${documentsSection({ documentsText: opts.documentsText })}
 
 COMPANY: ${opts.company || "(not specified)"}
 TARGET ROLES: ${rolesLine}
@@ -932,7 +941,7 @@ APPLICANT PROFILE (their real, saved profile — ground everything in this, neve
 - Currently based in: ${p.currentCountry || "(unspecified)"}
 - Languages: ${p.languages?.join(", ") || "(unspecified)"}
 - Open to relocating: ${p.relocation ? "yes" : "no"}
-${p.shortBio ? `- Bio: ${p.shortBio}\n` : ""}- Work eligibility: ${visaLine}`
+${p.shortBio ? `- Bio: ${p.shortBio}\n` : ""}- Work eligibility: ${visaLine}${p.cvText ? `\n- CV EXTRACT:\n"""\n${p.cvText.slice(0, 1500)}\n"""` : ""}${documentsSection(p)}`
     : "";
   const orgSection = opts.orgType || opts.countryName || opts.applyFor?.length
     ? `

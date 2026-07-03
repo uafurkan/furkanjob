@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { getProfile } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
+import { enrichProfileWithDocuments } from "@/lib/profile-context";
 import { aiAsk } from "@/lib/engine/ai";
 import { APP_LANGS, type AppLang } from "@/lib/engine/template";
 import { VALID_ORG_TYPES, type OrgType } from "@/lib/engine/professions";
@@ -45,7 +46,8 @@ export async function POST(req: Request) {
     // the coach chat is always grounded in their actual target roles, countries, visa status, bio —
     // it never drifts from who this specific user is, turn after turn.
     const profile = await getProfile(user.id);
-    const engineProfile = toEngineProfile(profile, user);
+    let engineProfile = toEngineProfile(profile, user);
+    engineProfile = await enrichProfileWithDocuments(user.id, engineProfile);
 
     const result = await aiAsk({
       body,
