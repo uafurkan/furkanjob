@@ -175,6 +175,30 @@ async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoni
   return null;
 }
 
+// Same provider fallback chain as `complete`, but for callers that need STRICT JSON back: a
+// provider that returns text is not good enough on its own — the text also has to parse into
+// usable JSON. A single provider truncating its output (hit its own max-tokens limit mid-JSON,
+// dropped the closing brace under load, etc.) used to kill the whole request even though the
+// NEXT provider in the chain would have answered cleanly. This walks the whole chain and only
+// gives up after every provider has produced either no text or unusable JSON.
+async function completeJsonWithFallback<T>(
+  prompt: string,
+  maxTokens: number,
+  tier: AiTier,
+  isUsable: (parsed: T | null) => boolean,
+  reasoningEffort: "low" | "high" = "low",
+  temperature: number = 0.4
+): Promise<T | null> {
+  const chain = resolveChain(tier);
+  for (const r of chain) {
+    const out = await callProvider(r, prompt, maxTokens, reasoningEffort, temperature);
+    if (!out) continue;
+    const parsed = extractJson<T>(out);
+    if (isUsable(parsed)) return parsed;
+  }
+  return null;
+}
+
 function extractJson<T>(out: string | null): T | null {
   if (!out) return null;
   const a = out.indexOf("{");
@@ -996,8 +1020,12 @@ Return STRICT JSON only:
   "revisedCoverLetter": "..." or null
 }`;
 
-  const parsed = extractJson<{ answer?: string; revisedBody?: string | null; revisedSubject?: string | null; revisedCoverLetter?: string | null }>(
-    await complete(prompt, 1800, opts.tier || "free")
+  type AskResult = { answer?: string; revisedBody?: string | null; revisedSubject?: string | null; revisedCoverLetter?: string | null };
+  const parsed = await completeJsonWithFallback<AskResult>(
+    prompt,
+    3000,
+    opts.tier || "free",
+    (p) => Boolean(p?.answer)
   );
   if (parsed?.answer) {
     return {
