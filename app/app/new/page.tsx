@@ -74,6 +74,17 @@ function clearDraft() {
   try { localStorage.removeItem(DRAFT_KEY); } catch {}
 }
 
+// Deterministic safety net for when the AI returns a revised body but skips the subject: swap
+// the old "Role1 / Role2" role list for the new one inside the existing subject string, so a
+// role toggle never leaves a stale subject even if that particular provider only did half the job.
+function fallbackSubject(currentSubject: string, oldRoles: string[], newRoles: string[]): string {
+  const oldJoined = oldRoles.join(" / ");
+  if (oldJoined && currentSubject.includes(oldJoined)) {
+    return currentSubject.replace(oldJoined, newRoles.join(" / "));
+  }
+  return currentSubject;
+}
+
 export default function NewApplication() {
   const { t } = useT();
   const [text, setText] = useState("");
@@ -694,26 +705,34 @@ export default function NewApplication() {
           orgType: res.orgType,
           applyFor: current,
           language: res.language,
+          forceRevision: true,
         }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Failed to update roles");
+      // forceRevision guarantees the backend only accepts a provider response that actually
+      // rewrote the body — but the whole fallback chain can still exhaust itself (all providers
+      // down/rate-limited). Treat "no revisedBody" as a hard failure rather than half-applying
+      // the chip toggle, which is what made the toggle feel flaky (chip flips, content doesn't).
+      if (!d.revisedBody) throw new Error(t("new.roles.failed"));
 
       setRes((prev) => (prev ? { ...prev, applyFor: next } : prev));
 
-      if (d.revisedBody) {
-        setBodyBeforeRefine(body);
-        let finalBody = d.revisedBody;
-        if (signatureChecked && fullName && !finalBody.includes("Sincerely,")) {
-          finalBody = finalBody.trim() + `\n\nSincerely,\n${fullName}`;
-        }
-        setBody(finalBody);
-        setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, body: finalBody } : dr)));
+      setBodyBeforeRefine(body);
+      let finalBody = d.revisedBody;
+      if (signatureChecked && fullName && !finalBody.includes("Sincerely,")) {
+        finalBody = finalBody.trim() + `\n\nSincerely,\n${fullName}`;
       }
-      if (d.revisedSubject) {
-        setSubject(d.revisedSubject);
-        setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, subject: d.revisedSubject } : dr)));
-      }
+      setBody(finalBody);
+      setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, body: finalBody } : dr)));
+
+      // The subject nearly always comes back too, but if this one provider answered the body
+      // requirement and skipped the subject, fall back to a deterministic swap of the role list
+      // inside the existing subject rather than leaving it silently stale.
+      const newSubject = d.revisedSubject || fallbackSubject(subject, current, next);
+      setSubject(newSubject);
+      setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, subject: newSubject } : dr)));
+
       if (d.revisedCoverLetter && includeCoverLetter) setCoverLetterBody(d.revisedCoverLetter);
 
       setMsg({ kind: "ok", text: t("new.roles.updated") });
@@ -887,9 +906,10 @@ export default function NewApplication() {
                     className={`chip chip-toggle ${isActive ? "chip-accent" : ""}`}
                     disabled={rolesSyncing !== null}
                     data-loading={rolesSyncing === role}
-                    title={t("new.roles.hint")}
+                    title={isActive ? t("new.roles.removeHint") : t("new.roles.addHint")}
                     onClick={() => toggleRole(role)}
                   >
+                    <span className="chip-toggle-icon" aria-hidden="true">{isActive ? "×" : "+"}</span>
                     {role}{rolesSyncing === role ? "…" : ""}
                   </button>
                 );

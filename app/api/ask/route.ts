@@ -35,6 +35,7 @@ export async function POST(req: Request) {
     const countryName = typeof data?.countryName === "string" ? data.countryName : undefined;
     const orgType = typeof data?.orgType === "string" && (VALID_ORG_TYPES as string[]).includes(data.orgType) ? (data.orgType as OrgType) : undefined;
     const applyFor = Array.isArray(data?.applyFor) ? data.applyFor.filter((x: unknown): x is string => typeof x === "string") : undefined;
+    const forceRevision = Boolean(data?.forceRevision);
 
     if (!body) return NextResponse.json({ error: "Email body is empty." }, { status: 400 });
     if (!question) return NextResponse.json({ error: "Question is empty." }, { status: 400 });
@@ -62,6 +63,7 @@ export async function POST(req: Request) {
       profile: engineProfile,
       lang,
       tier: aiTier(user.plan),
+      forceRevision,
     });
 
     if (!result) return NextResponse.json({ error: "AI failed to respond." }, { status: 503 });

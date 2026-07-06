@@ -54,6 +54,16 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Deterministic safety net for when the AI returns a revised body but skips the subject: swap
+// the old "Role1 / Role2" role list for the new one inside the existing subject string.
+function fallbackSubject(currentSubject: string, oldRoles: string[], newRoles: string[]): string {
+  const oldJoined = oldRoles.join(" / ");
+  if (oldJoined && currentSubject.includes(oldJoined)) {
+    return currentSubject.replace(oldJoined, newRoles.join(" / "));
+  }
+  return currentSubject;
+}
+
 const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
   en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
   tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
@@ -532,27 +542,32 @@ export default function BulkApply() {
           countryName: it.country,
           applyFor: current,
           language: it.language,
+          forceRevision: true,
         }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Failed to update roles");
+      // forceRevision guarantees the backend only accepts a provider response that actually
+      // rewrote the body — but the whole fallback chain can still exhaust itself. Treat a missing
+      // revisedBody as a hard failure rather than half-applying the toggle (chip flips, content
+      // doesn't), which is what made this feel unreliable.
+      if (!d.revisedBody) throw new Error("Failed to update roles");
 
-      let newBody = it.body;
-      if (d.revisedBody) {
-        newBody = d.revisedBody;
-        if (it.signatureChecked && it.fullName && !newBody.includes(loc.sincerely)) {
-          newBody = newBody.trim() + `\n\n${loc.sincerely}\n${it.fullName}`;
-        }
+      let newBody = d.revisedBody;
+      if (it.signatureChecked && it.fullName && !newBody.includes(loc.sincerely)) {
+        newBody = newBody.trim() + `\n\n${loc.sincerely}\n${it.fullName}`;
       }
+      const newSubject = d.revisedSubject || fallbackSubject(it.subject, current, next);
       update(id, {
         applyFor: next,
         body: newBody,
-        subject: d.revisedSubject || it.subject,
+        subject: newSubject,
         coverLetterBody: d.revisedCoverLetter && it.includeCoverLetter ? d.revisedCoverLetter : it.coverLetterBody,
         rolesSyncing: null,
       });
-    } catch {
-      update(id, { rolesSyncing: null });
+    } catch (e: any) {
+      update(id, { rolesSyncing: null, error: e?.message || "Failed to update roles" });
+      setTimeout(() => update(id, { error: undefined }), 3500);
     }
   }
 
@@ -684,9 +699,10 @@ export default function BulkApply() {
                         className={`chip chip-toggle ${isActive ? "chip-accent" : ""}`}
                         disabled={!!it.rolesSyncing}
                         data-loading={it.rolesSyncing === role}
-                        title={t("new.roles.hint")}
+                        title={isActive ? t("new.roles.removeHint") : t("new.roles.addHint")}
                         onClick={() => toggleRoleForItem(it.id, role)}
                       >
+                        <span className="chip-toggle-icon" aria-hidden="true">{isActive ? "×" : "+"}</span>
                         {role}{it.rolesSyncing === role ? "…" : ""}
                       </button>
                     );

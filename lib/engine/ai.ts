@@ -951,6 +951,12 @@ export async function aiAsk(opts: {
   profile?: EngineProfile;
   lang: AppLang;
   tier?: AiTier;
+  // Set when the caller (e.g. a role toggle chip) already knows this MUST rewrite the draft —
+  // not a chat question that might just get answered in prose. Some free-tier models will
+  // happily answer without touching revisedBody unless explicitly forced, so this both hardens
+  // the prompt wording and makes the fallback chain reject (and retry the next provider on) any
+  // response that skips the edit instead of silently accepting a no-op as success.
+  forceRevision?: boolean;
 }): Promise<{ answer: string; revisedBody?: string | null; revisedSubject?: string | null; revisedCoverLetter?: string | null } | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === opts.lang)?.label || "English";
@@ -999,7 +1005,7 @@ ${opts.jobText.slice(0, 4000)}
 
 USER'S QUESTION / INSTRUCTION:
 "${opts.question}"
-
+${opts.forceRevision ? `\nTHIS IS A REQUIRED EDIT, NOT A QUESTION. The instruction above is a direct command to change which role(s) this application targets. You MUST NOT leave "revisedBody" null and you MUST NOT merely answer in prose — you are REQUIRED to return the fully rewritten email body (and subject, and cover letter if one was provided) reflecting the new role(s). Skipping revisedBody is treated as a failed response.\n` : ""}
 INSTRUCTIONS:
 1. Answer the user's question directly, honestly, and helpfully — as their coach who already knows their profile above, not a stranger. Keep the answer concise (2-4 sentences max), encouraging, and highly professional. Never contradict facts in their profile or invent new ones.
 2. If the user's prompt is an instruction to modify, improve, shorten, or rewrite the email draft (e.g. "make it more energetic", "mention my barista experience", "make it shorter", "also apply for X role"), you MUST also provide the fully rewritten/revised email body in the "revisedBody" field. If the user's prompt is a general question (e.g. "Is this tone appropriate?", "Is the length good?"), leave all revised fields null.
@@ -1025,7 +1031,7 @@ Return STRICT JSON only:
     prompt,
     3000,
     opts.tier || "free",
-    (p) => Boolean(p?.answer)
+    (p) => Boolean(p?.answer) && (!opts.forceRevision || Boolean(p?.revisedBody))
   );
   if (parsed?.answer) {
     return {
