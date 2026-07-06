@@ -8,6 +8,23 @@ import { isVisaCovered } from "./visa";
 import { workKindForRoles, visaFor, registrationNote, type OrgType, type Intent } from "./professions";
 import type { Draft, DraftOption, EngineProfile } from "./types";
 
+// A real organization name is a short proper noun/brand, never a full sentence or a bullet-point
+// benefit ("Continued on the job learning with the Imperium Group" is a PERK, not the employer).
+// Catches AI misreads that a plain blacklist of exact phrases can't (any provider, any wording).
+function looksLikeBrandName(name: string): boolean {
+  const trimmed = name.trim();
+  if (trimmed.length < 2 || trimmed.length > 80) return false;
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length > 8) return false;
+  if (/^(continued|providing|including|offering|working|located|situated|serving|based|founded|established|committed|dedicated|helping|proud|building|creating|delivering|supporting|ensuring|striving|competitive|professional|flexible|reliable)\b/i.test(trimmed)) return false;
+  if (/\b(on the job|we offer|in return|join our team|apply now|click here|read more|find out|learn more|working environment|remuneration package)\b/i.test(trimmed)) return false;
+  const stopWords = new Set(["the", "a", "an", "of", "in", "on", "at", "for", "with", "and", "by", "to", "from", "&"]);
+  const significant = words.filter((w) => !stopWords.has(w.toLowerCase()));
+  if (significant.length === 0) return false;
+  const capitalized = significant.filter((w) => /^[A-Z0-9]/.test(w));
+  return capitalized.length / significant.length >= 0.6;
+}
+
 export type PipelineResult = {
   analysis: Analysis;
   emails: string[];
@@ -54,7 +71,7 @@ export async function runPipeline(opts: {
     const ai = await aiAnalyze(text, tier);
     if (ai) {
       const BLACKLISTED_COMPANIES = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|mynet|superonline|ttmail|turknet|kablonet|google|skip to content|skip to main content|skip navigation|skip|home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|privacy policy|terms of service|terms & conditions|website use|disclaimer|wix|shopify|squarespace|godaddy|wordpress|weebly|weweb|facebook|instagram|twitter|linkedin|youtube|tiktok|apple|android|admin login|admin|login|faq|faqs)$/i;
-      if (ai.company && !BLACKLISTED_COMPANIES.test(ai.company.toLowerCase().trim())) {
+      if (ai.company && !BLACKLISTED_COMPANIES.test(ai.company.toLowerCase().trim()) && looksLikeBrandName(ai.company)) {
         analysis.company = ai.company;
       }
       if (ai.countryCode && ai.countryCode !== "XX") analysis.country = countryByCode(ai.countryCode);
