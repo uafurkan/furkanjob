@@ -673,9 +673,13 @@ export default function NewApplication() {
     }
   }
 
-  // Add/remove a role from this application by tapping its chip. Reuses the same AI edit path
-  // as the ask-chat ("also apply for X" / "drop X"), but applies the revision immediately —
-  // no confirm step — since the chip click itself is the explicit user intent.
+  // Add/remove a role from this application by tapping its chip. This is a mechanical edit
+  // (swap the role list), not a free-text request, so it goes to the deterministic template
+  // engine (/api/roles-draft) instead of the AI chat path — instant, free, never depends on an
+  // AI provider's uptime/quota. Trade-off: this rebuilds subject+body from scratch, so any manual
+  // edits the user made to the body are lost (same as regenerating). The cover letter isn't
+  // regenerated (no deterministic cover-letter engine exists) — we just swap the role names
+  // inside it, same trick as the subject fallback.
   async function toggleRole(role: string) {
     if (!res || rolesSyncing) return;
     const current = res.applyFor && res.applyFor.length ? res.applyFor : res.positions;
@@ -688,52 +692,34 @@ export default function NewApplication() {
     }
     setRolesSyncing(role);
     try {
-      const instruction = isActive
-        ? `Remove the "${role}" role — no longer apply for it in this application.`
-        : `Also apply for the "${role}" role in this application, in addition to the current role(s).`;
-      const r = await fetch("/api/ask", {
+      const r = await fetch("/api/roles-draft", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          body,
-          subject,
-          coverLetter: includeCoverLetter ? coverLetterBody : undefined,
-          jobText: text,
-          question: instruction,
           company: res.company,
-          countryName: res.country,
+          countryCode: res.countryCode,
           orgType: res.orgType,
-          applyFor: current,
+          applyFor: next,
           language: res.language,
-          forceRevision: true,
         }),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed to update roles");
-      // forceRevision guarantees the backend only accepts a provider response that actually
-      // rewrote the body — but the whole fallback chain can still exhaust itself (all providers
-      // down/rate-limited). Treat "no revisedBody" as a hard failure rather than half-applying
-      // the chip toggle, which is what made the toggle feel flaky (chip flips, content doesn't).
-      if (!d.revisedBody) throw new Error(t("new.roles.failed"));
+      if (!r.ok || !d.body) throw new Error(d.error || t("new.roles.failed"));
 
       setRes((prev) => (prev ? { ...prev, applyFor: next } : prev));
 
       setBodyBeforeRefine(body);
-      let finalBody = d.revisedBody;
+      let finalBody = d.body;
       if (signatureChecked && fullName && !finalBody.includes("Sincerely,")) {
         finalBody = finalBody.trim() + `\n\nSincerely,\n${fullName}`;
       }
       setBody(finalBody);
       setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, body: finalBody } : dr)));
 
-      // The subject nearly always comes back too, but if this one provider answered the body
-      // requirement and skipped the subject, fall back to a deterministic swap of the role list
-      // inside the existing subject rather than leaving it silently stale.
-      const newSubject = d.revisedSubject || fallbackSubject(subject, current, next);
-      setSubject(newSubject);
-      setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, subject: newSubject } : dr)));
+      setSubject(d.subject);
+      setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, subject: d.subject } : dr)));
 
-      if (d.revisedCoverLetter && includeCoverLetter) setCoverLetterBody(d.revisedCoverLetter);
+      if (includeCoverLetter) setCoverLetterBody((prev) => fallbackSubject(prev, current, next));
 
       setMsg({ kind: "ok", text: t("new.roles.updated") });
       setTimeout(() => setMsg(null), 2500);

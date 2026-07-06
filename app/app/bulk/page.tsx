@@ -13,6 +13,8 @@ type Item = {
   status: Status;
   company?: string;
   country?: string;
+  countryCode?: string;
+  orgType?: string;
   emailSource?: string;
   to: string;
   subject: string;
@@ -148,7 +150,7 @@ export default function BulkApply() {
       return {
         ...it,
         status: d.emailSource === "none" ? "skipped" : "drafted",
-        company: d.company, country: d.country, emailSource: d.emailSource,
+        company: d.company, country: d.country, countryCode: d.countryCode, orgType: d.orgType, emailSource: d.emailSource,
         to: (d.emails || []).join(", "), subject: d.subject, body: initialBody,
         coverLetterBody: d.coverLetterBody || initialBody,
         includeCoverLetter: includeCoverLetter,
@@ -396,6 +398,8 @@ export default function BulkApply() {
                 status: d.emailSource === "none" ? "skipped" : "drafted",
                 company: d.company,
                 country: d.country,
+                countryCode: d.countryCode,
+                orgType: d.orgType,
                 emailSource: d.emailSource,
                 to: (d.emails || []).join(", "),
                 subject: d.subject,
@@ -514,8 +518,11 @@ export default function BulkApply() {
     );
   }
 
-  // Add/remove a role from ONE queue item by tapping its chip. Reuses the ask-chat AI edit path
-  // (same as askAboutItem) but applies the revision immediately — the tap is the explicit intent.
+  // Add/remove a role from ONE queue item by tapping its chip. Mechanical edit (swap the role
+  // list) → deterministic template engine (/api/roles-draft), not the AI chat path — instant,
+  // free, never depends on AI provider uptime/quota. Rebuilds subject+body from scratch, so any
+  // manual edits to that item's body are lost; the cover letter isn't regenerated (no
+  // deterministic cover-letter engine), just has its role names swapped in place.
   async function toggleRoleForItem(id: number, role: string) {
     const it = items.find((x) => x.id === id);
     if (!it || it.rolesSyncing) return;
@@ -525,44 +532,30 @@ export default function BulkApply() {
     if (!next.length) return;
     update(id, { rolesSyncing: role });
     try {
-      const instruction = isActive
-        ? `Remove the "${role}" role — no longer apply for it in this application.`
-        : `Also apply for the "${role}" role in this application, in addition to the current role(s).`;
       const loc = COVER_LETTER_L10N[it.language || "en"] || COVER_LETTER_L10N.en;
-      const r = await fetch("/api/ask", {
+      const r = await fetch("/api/roles-draft", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          body: it.body,
-          subject: it.subject,
-          coverLetter: it.includeCoverLetter ? it.coverLetterBody : undefined,
-          jobText: it.input,
-          question: instruction,
           company: it.company,
-          countryName: it.country,
-          applyFor: current,
+          countryCode: it.countryCode,
+          orgType: it.orgType,
+          applyFor: next,
           language: it.language,
-          forceRevision: true,
         }),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed to update roles");
-      // forceRevision guarantees the backend only accepts a provider response that actually
-      // rewrote the body — but the whole fallback chain can still exhaust itself. Treat a missing
-      // revisedBody as a hard failure rather than half-applying the toggle (chip flips, content
-      // doesn't), which is what made this feel unreliable.
-      if (!d.revisedBody) throw new Error("Failed to update roles");
+      if (!r.ok || !d.body) throw new Error(d.error || "Failed to update roles");
 
-      let newBody = d.revisedBody;
+      let newBody = d.body;
       if (it.signatureChecked && it.fullName && !newBody.includes(loc.sincerely)) {
         newBody = newBody.trim() + `\n\n${loc.sincerely}\n${it.fullName}`;
       }
-      const newSubject = d.revisedSubject || fallbackSubject(it.subject, current, next);
       update(id, {
         applyFor: next,
         body: newBody,
-        subject: newSubject,
-        coverLetterBody: d.revisedCoverLetter && it.includeCoverLetter ? d.revisedCoverLetter : it.coverLetterBody,
+        subject: d.subject,
+        coverLetterBody: it.includeCoverLetter ? fallbackSubject(it.coverLetterBody || "", current, next) : it.coverLetterBody,
         rolesSyncing: null,
       });
     } catch (e: any) {
