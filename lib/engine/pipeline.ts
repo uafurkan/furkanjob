@@ -2,7 +2,7 @@
 import { analyze, detectTextLang, countryByCode, pickBestEmail, decodeHtmlEntities, type Analysis } from "./detect";
 import { findEmails } from "./websearch";
 import { buildDraft, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
-import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, type AiTier, type Eligibility } from "./ai";
+import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, withAiDeadline, type AiTier, type Eligibility } from "./ai";
 import { pickRelevantRoles } from "./match";
 import { isVisaCovered } from "./visa";
 import { workKindForRoles, visaFor, registrationNote, type OrgType, type Intent } from "./professions";
@@ -135,6 +135,23 @@ export async function runPipeline(opts: {
   tier?: AiTier; // which model tier (free provider vs premium); AI is used whenever configured
   searchWeb?: boolean;
   language?: string; // per-request override; falls back to profile.applicationLanguage
+  hints?: { company?: string; country?: string; positions?: string[] };
+  reasoningEffort?: "low" | "high";
+}): Promise<PipelineResult> {
+  // This request makes several SEQUENTIAL AI calls (analyze, fit assessment, drafts, cover
+  // letter), each of which can walk a chain of several fallback providers. Sharing one deadline
+  // across all of them keeps the whole pipeline within the route's maxDuration even in the
+  // worst case (every provider slow/rate-limited) — once the budget is spent, remaining
+  // providers are skipped and the caller falls back to the deterministic template.
+  return withAiDeadline(45000, () => runPipelineInner(opts));
+}
+
+async function runPipelineInner(opts: {
+  text: string;
+  profile: EngineProfile;
+  tier?: AiTier;
+  searchWeb?: boolean;
+  language?: string;
   hints?: { company?: string; country?: string; positions?: string[] };
   reasoningEffort?: "low" | "high";
 }): Promise<PipelineResult> {

@@ -3,6 +3,7 @@
 // null and the caller falls back to the smart template. Email addresses are NEVER produced here:
 // extraction stays deterministic (lib/engine/detect + websearch) so the "never guess emails" rule holds.
 import Anthropic from "@anthropic-ai/sdk";
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { Draft, DraftOption, GenerateInput, EngineProfile } from "./types";
 import { APP_LANGS, type AppLang } from "./template";
 import { VALID_ORG_TYPES, isFormalOrg, regulatedRoles, type OrgType, type Intent } from "./professions";
@@ -104,6 +105,26 @@ export function aiEnabled(): boolean {
 // instead of the whole request hanging on the first (possibly unresponsive) provider.
 const PROVIDER_TIMEOUT_MS = 14000;
 
+// A single API request (e.g. /api/generate) makes several SEQUENTIAL AI calls (analyze, fit
+// assessment, drafts, cover letter, subject variant), and each one independently walks a chain
+// of up to 6 fallback providers. Without a shared budget, a bad run (every provider slow/rate-
+// limited) could multiply PROVIDER_TIMEOUT_MS × chain-length × number-of-AI-calls and blow well
+// past the route's own maxDuration — which is exactly what caused production 504s once several
+// free-tier fallback providers were added. This AsyncLocalStorage carries one deadline for the
+// whole request (set once by runPipeline/aiAsk/etc.) so every provider-chain walk shares it:
+// once the budget is spent, remaining providers are skipped immediately and callers fall back to
+// the deterministic template instead of continuing to burn wall-clock time.
+const requestDeadline = new AsyncLocalStorage<number>();
+
+export function withAiDeadline<T>(budgetMs: number, fn: () => Promise<T>): Promise<T> {
+  return requestDeadline.run(Date.now() + budgetMs, fn);
+}
+
+function remainingBudgetMs(): number {
+  const deadline = requestDeadline.getStore();
+  return deadline ? deadline - Date.now() : Infinity;
+}
+
 async function callProvider(
   r: Resolved,
   prompt: string,
@@ -111,8 +132,9 @@ async function callProvider(
   reasoningEffort: "low" | "high",
   temperature: number
 ): Promise<string | null> {
+  const perAttemptMs = Math.max(1000, Math.min(PROVIDER_TIMEOUT_MS, remainingBudgetMs()));
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), PROVIDER_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), perAttemptMs);
   try {
     if (r.kind === "anthropic") {
       const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
@@ -154,7 +176,7 @@ async function callProvider(
     const out = data?.choices?.[0]?.message?.content;
     return typeof out === "string" ? out.trim() : null;
   } catch (err) {
-    const reason = ctrl.signal.aborted ? `timed out after ${PROVIDER_TIMEOUT_MS}ms` : String(err);
+    const reason = ctrl.signal.aborted ? `timed out after ${perAttemptMs}ms` : String(err);
     console.error(`AI provider "${r.name}" (${r.model}) failed: ${reason}`);
     return null;
   } finally {
@@ -169,6 +191,7 @@ async function callProvider(
 async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoningEffort: "low" | "high" = "low", temperature: number = 0.4): Promise<string | null> {
   const chain = resolveChain(tier);
   for (const r of chain) {
+    if (remainingBudgetMs() <= 0) break;
     const out = await callProvider(r, prompt, maxTokens, reasoningEffort, temperature);
     if (out) return out;
   }
@@ -191,6 +214,7 @@ async function completeJsonWithFallback<T>(
 ): Promise<T | null> {
   const chain = resolveChain(tier);
   for (const r of chain) {
+    if (remainingBudgetMs() <= 0) break;
     const out = await callProvider(r, prompt, maxTokens, reasoningEffort, temperature);
     if (!out) continue;
     const parsed = extractJson<T>(out);
