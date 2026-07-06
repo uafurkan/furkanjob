@@ -14,11 +14,18 @@ import type { Draft, DraftOption, EngineProfile } from "./types";
 function cleanCompanyName(raw: string): string {
   let s = raw.trim();
 
-  // Remove trailing legal/policy/navigation fragments (greedy: strip multiple if stacked).
+  // Remove trailing legal/policy/navigation/job-platform fragments (greedy: strip multiple if stacked).
   const TAIL_PATTERNS = [
+    // Legal / policy
     /[,|·•–—\-]\s*(privacy policy|terms of service|terms & conditions|terms and conditions|cookie policy|cookie notice|disclaimer|legal notice|copyright notice|accessibility statement|sitemap|all rights reserved)\s*$/i,
     /\s+(privacy policy|terms of service|terms & conditions|terms and conditions|cookie policy|cookie notice|disclaimer|legal notice|copyright notice|accessibility statement|sitemap|all rights reserved)$/i,
     /\s+(contact us|about us|home|menu|book now|apply now|careers|jobs|vacancies|login|sign in|sign up|faq|faqs)$/i,
+    // Job platform suffixes — "Company | Seek", "Company - Indeed", "Company on LinkedIn", etc.
+    /\s*[|\-–—]\s*(seek(\.co\.nz|\.com\.au)?|indeed(\.com)?|linkedin(\.com)?|trademe\s*jobs?|glassdoor(\.com)?|monster(\.com)?|reed(\.co\.uk)?|workable|bamboohr|smartrecruiters|jobadder|seek)\s*$/i,
+    /\s+on\s+(seek|indeed|linkedin|trademe|glassdoor|monster|reed|workable)\s*$/i,
+    // "Company Careers" / "Company Jobs" suffix
+    /\s+(careers|jobs|vacancies|employment|hiring)\s*page\s*$/i,
+    /\s+(careers?|jobs?)\s*$/i,
   ];
   let prev = "";
   while (s !== prev) {
@@ -118,6 +125,8 @@ export type PipelineResult = {
   // Global intelligence: what kind of organization + whether this is a job or study application.
   orgType: OrgType;
   intent: Intent;
+  // True when the listing is from a recruitment/staffing agency posting on behalf of a client.
+  isRecruitmentAgency: boolean;
 };
 
 export async function runPipeline(opts: {
@@ -153,6 +162,7 @@ export async function runPipeline(opts: {
       // The AI's read of the organization type and application intent wins over heuristics.
       if (ai.orgType) analysis.orgType = ai.orgType;
       if (ai.intent) analysis.intent = ai.intent;
+      if (ai.isRecruitmentAgency) analysis.isRecruitmentAgency = true;
     }
   }
 
@@ -298,5 +308,6 @@ export async function runPipeline(opts: {
     applyFor, droppedRoles, fitScore, fitSummary, eligibility,
     coverLetterBody,
     orgType, intent,
+    isRecruitmentAgency: Boolean(analysis.isRecruitmentAgency),
   };
 }

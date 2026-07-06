@@ -212,15 +212,16 @@ export type AiAnalysis = {
   countryCode?: string; // NZ | AU | US | CA | UK | XX
   language?: AppLang;
   positions?: string[];
-  orgType?: OrgType;    // hotel | restaurant | clinic | dental_clinic | hospital | university | farm | …
+  orgType?: OrgType;
   intent?: Intent;      // "job" (employment application) or "study" (university/school admissions)
+  isRecruitmentAgency?: boolean;
 };
 
 export async function aiAnalyze(text: string, tier: AiTier = "free"): Promise<AiAnalysis | null> {
   if (!aiEnabled()) return null;
   const prompt = `${PAPLY_PERSONA}
 
-Right now you are performing the ANALYSIS step: a user pasted RAW text scraped/copied from an organization's website (hotel, restaurant, dental clinic, hospital, engineering firm, IT company, farm, construction company, school, university, retail store, salon, logistics company, office — any industry). This text may contain noisy elements like header/footer menus, cookie banners, booking systems, social media links, copyright notices, and platform/builder templates (e.g., Wix, Shopify, Squarespace, GoDaddy, WordPress). Read it like a careful human and return clean, structured facts.
+Right now you are performing the ANALYSIS step: a user pasted RAW text scraped/copied from an organization's web page or a job listing. This could be ANY type of organization — hotel, restaurant, dental clinic, hospital, law firm, NGO, government agency, media company, mining company, recruitment agency, fitness studio, real estate agency, university, farm, construction company, school, IT company, retail store, salon, shipping company, etc. The text may also come from a JOB BOARD page (Seek, Indeed, LinkedIn, TradeMe Jobs, Reed, Glassdoor) — in that case, the organization name typically appears prominently near the job title, not embedded in navigation or platform chrome. The text may contain noisy elements like header/footer menus, cookie banners, booking systems, social media links, copyright notices, and platform/builder templates (e.g., Wix, Shopify, Squarespace, GoDaddy, WordPress). Read it like a careful human and return clean, structured facts.
 
 Return STRICT JSON ONLY, no prose, exactly these keys:
 {
@@ -239,9 +240,10 @@ Return STRICT JSON ONLY, no prose, exactly these keys:
    - CRITICAL — a company name is a short PROPER NOUN / BRAND, never a sentence or a benefit/perks bullet point. If the page lists perks like 'Competitive remuneration package', 'A professional, fun and rewarding working environment', 'Continued on the job learning with the X Group' — these are BENEFITS THE EMPLOYER OFFERS, not the employer's name. NEVER return one of these bullet points as the company. The real name is almost always the prominent heading/logo/title near the top of the page (e.g. 'Eichardt's Hotel, Bar and Grille'), not a line from a bulleted list of perks.",
   "countryCode": "ISO 3166-1 alpha-2 code for the destination country: one of NZ, AU, US, CA, UK, DE, ES, FR, IT, NL, PT, IE, AT, CH, GR, SE, DK, NO, BE, FI, CZ, PL — or XX if genuinely unknown. Infer from postal address, phone country/area code, email TLD (.co.nz, .com.au, .co.uk, .ca, .de, .es, .fr, .it, .nl, .pt, .be, .fi, .cz, .pl), and city names.",
   "language": "the language the application email should be written in to best match this organization: one of en, tr, es, fr, de, it, pt",
-  "orgType": "what kind of organization this is — one of: hotel, restaurant, cafe, bar, farm, clinic, dental_clinic, hospital, pharmacy, care_home, university, school, construction, factory, warehouse, logistics, garage, retail, salon, it_company, office, generic",
+  "orgType": "what kind of organization this is — one of: hotel, restaurant, cafe, bar, farm, clinic, dental_clinic, hospital, pharmacy, care_home, university, school, childcare_centre, construction, factory, warehouse, logistics, garage, retail, salon, it_company, office, ngo, government, media, professional_services, recruitment_agency, fitness, event_venue, shipping, mining, generic. Use 'recruitment_agency' ONLY when the page is clearly a staffing / recruitment / labour-hire firm listing a vacancy on behalf of a client employer.",
   "intent": "job OR study. Use 'study' ONLY when the page is a university/school ADMISSIONS or program page (degree programs, tuition, enrolment, entry requirements, international students) rather than a careers/jobs page. A university's staff-vacancies page is 'job'.",
-  "positions": ["1-3 realistic roles to apply for at THIS organization, in ANY industry — e.g. 'Dentist' or 'Dental Assistant' at a dental clinic, 'Registered Nurse' at a hospital, 'Software Engineer' at a tech company, 'Farm Worker' at an orchard, 'Waiter' at a restaurant, 'Electrician' at a construction firm. Prefer explicitly advertised vacancies; otherwise infer what this organization plausibly hires. If intent is 'study', return the study PROGRAM(S) of interest instead (e.g. 'MSc Computer Science', 'Bachelor of Dentistry')."]
+  "positions": ["1-3 realistic roles to apply for at THIS organization, in ANY industry — e.g. 'Lawyer' at a law firm, 'Social Worker' at an NGO, 'Financial Analyst' at an advisory firm, 'Project Manager' at a consulting firm, 'Personal Trainer' at a gym, 'Real Estate Agent' at a property company, 'Dentist' or 'Dental Assistant' at a dental clinic, 'Registered Nurse' at a hospital, 'Software Engineer' at a tech company, 'Farm Worker' at an orchard, 'Waiter' at a restaurant, 'Electrician' at a construction firm. Prefer explicitly advertised vacancies; otherwise infer what this organization plausibly hires. If intent is 'study', return the study PROGRAM(S) of interest instead (e.g. 'MSc Computer Science', 'Bachelor of Dentistry')."],
+  "isRecruitmentAgency": "true if this appears to be a RECRUITMENT / STAFFING AGENCY (e.g. Hays, Adecco, Robert Half, Randstad, Manpower, Hudson, or a local staffing firm) posting on behalf of a client company — false or omit otherwise. When true, the 'company' field should be the CLIENT employer name if identifiable, not the agency name."
 }
 
 Critical rules:
@@ -267,6 +269,7 @@ ${text.slice(0, 6000)}
     positions: Array.isArray(parsed.positions)
       ? parsed.positions.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4)
       : undefined,
+    isRecruitmentAgency: parsed.isRecruitmentAgency === true ? true : undefined,
   };
 }
 
@@ -327,7 +330,7 @@ ${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${v
 THE ORGANIZATION
 - Name: ${opts.company}
 - Country: ${opts.countryName}
-- Type: ${opts.orgType || "unknown"} (could be any industry: hospitality, healthcare/dental, engineering, IT, construction, farm/agriculture, education, retail, logistics, office…)
+- Type: ${opts.orgType || "unknown"} (could be any industry: hospitality, healthcare/dental, engineering, IT, construction, farm/agriculture, education, retail, logistics, office, law firm, NGO, government, media/creative, mining, shipping, fitness, recruitment agency, real estate, aviation, professional services…)
 - Roles it appears to offer: ${opts.businessPositions.join(", ") || "(not explicitly stated — infer from the organization type)"}
 
 RAW PAGE TEXT:

@@ -108,6 +108,7 @@ async function handleGenerate(req: Request) {
     // Global intelligence: organization type + job vs study application.
     orgType: result.orgType,
     intent: result.intent,
+    isRecruitmentAgency: result.isRecruitmentAgency,
     // Smart role fit + suitability/eligibility.
     applyFor: result.applyFor,
     droppedRoles: result.droppedRoles,

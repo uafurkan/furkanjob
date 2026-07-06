@@ -254,6 +254,57 @@ const COUNTRY_RULES: (CountryRule & { test: RegExp; testCaseSensitive?: RegExp }
     visa: "Polish work permit (employer sponsorship)",
     test: /\b(poland|polska|polish|warsaw|warszawa|kraków|wrocław|gdansk|\.pl\b)\b/i,
   },
+  // ---- Middle East / Asia-Pacific ----
+  {
+    code: "AE",
+    name: "UAE",
+    visa: "UAE employment visa / work permit sponsorship",
+    test: /\b(united arab emirates|uae\b|dubai|abu dhabi|sharjah|ajman|fujairah|ras al khaimah|dirham|dhs\b|\.ae\b)\b/i,
+  },
+  {
+    code: "SG",
+    name: "Singapore",
+    visa: "Employment Pass (EP) / S Pass sponsorship",
+    test: /\b(singapore|singaporean|\.sg\b|sgd\b|sing dollar)\b/i,
+  },
+  {
+    code: "JP",
+    name: "Japan",
+    visa: "Japanese employer-sponsored work visa",
+    test: /\b(japan|japanese|tokyo|osaka|kyoto|yokohama|nagoya|fukuoka|sapporo|kobe|\.jp\b|yen\b|jpy\b)\b/i,
+  },
+  {
+    code: "KR",
+    name: "South Korea",
+    visa: "Korean employer-sponsored work visa",
+    test: /\b(south korea|korea|korean|seoul|busan|incheon|daegu|\.kr\b|won\b|krw\b)\b/i,
+  },
+  {
+    code: "TR",
+    name: "Turkey",
+    visa: "Turkish work permit (çalışma izni) sponsorship",
+    test: /\b(turkey|türkiye|turkish|istanbul|ankara|izmir|bursa|antalya|adana|konya|kayseri|\.com\.tr|\.tr\b)\b/i,
+  },
+  // ---- Mediterranean ----
+  {
+    code: "MT",
+    name: "Malta",
+    visa: "Maltese Single Permit (work + residence) sponsorship",
+    test: /\b(malta|maltese|valletta|sliema|st julian|gzira|\.mt\b)\b/i,
+  },
+  {
+    code: "CY",
+    name: "Cyprus",
+    visa: "Cypriot work permit sponsorship",
+    test: /\b(cyprus|cypriot|nicosia|limassol|larnaca|paphos|\.cy\b)\b/i,
+  },
+  // ---- Africa / Other ----
+  {
+    code: "ZA",
+    name: "South Africa",
+    visa: "South African critical skills / general work visa sponsorship",
+    test: /\b(south africa|south african|johannesburg|cape town|durban|pretoria|bloemfontein|port elizabeth|rand\b|zar\b|\.co\.za|\.za\b)\b/i,
+  },
 ];
 
 export function detectCountry(text: string): CountryRule {
@@ -329,6 +380,19 @@ const POSITION_RULES: { test: RegExp; label: string }[] = [
   { test: /\bnanny|au pair|childcare|child care|daycare|creche|early learning/i, label: "Childcare" },
   { test: /\bsecurity (guard|officer|staff)|crowd control/i, label: "Security" },
   { test: /\bcleaner|cleaning (staff|position|role)|janitor|custodian/i, label: "Cleaner" },
+  // Professional services
+  { test: /\blawyer|solicitor|barrister|attorney|legal counsel|paralegal|legal assistant|conveyancer/i, label: "Legal" },
+  { test: /\barchitect\b|architectural designer|urban planner|town planner|interior designer|drafter\b|draftsman/i, label: "Architecture / Design" },
+  { test: /\bsocial worker|community worker|youth worker|family support worker|case manager|community development|welfare officer|community outreach/i, label: "Social Work" },
+  { test: /\bjournalist|reporter|news (writer|editor)|photojournalist|videographer|video editor|broadcast(er)?\b|film (maker|producer)|digital producer/i, label: "Journalism / Media" },
+  { test: /\bfinancial advisor|financial planner|financial analyst|investment analyst|mortgage broker|insurance (broker|advisor)|financial controller|treasurer|actuar|risk analyst|compliance officer/i, label: "Finance / Advisory" },
+  { test: /\bhuman resources|hr (manager|coordinator|advisor|business partner)|talent acquisition|people (and|&) culture|employment relations|learning and development|training coordinator/i, label: "HR / People & Culture" },
+  { test: /\bpersonal trainer\b|fitness instructor|gym instructor|group fitness|yoga (instructor|teacher)|pilates instructor|swim(ming)? (teacher|instructor)|sports coach/i, label: "Fitness / Wellness" },
+  { test: /\bproject manager|programme manager|project coordinator|scrum master|agile coach|\bpmo\b|delivery manager|change manager/i, label: "Project Management" },
+  { test: /\breal estate agent|property manager|estate agent|letting agent|property consultant|leasing consultant/i, label: "Real Estate" },
+  { test: /\bpilot\b|co-pilot|first officer|flight attendant|cabin crew|air (hostess|traffic control)|ramp agent/i, label: "Aviation" },
+  { test: /\b(miner\b|mining engineer|drill operator|underground miner|\bfifo\b|fly-in fly-out|oil and gas|petroleum engineer|quarry worker|geologist\b|mine site)/i, label: "Mining / Resources" },
+  { test: /\btour guide|tour operator|travel agent|travel consultant|tourism officer|adventure guide/i, label: "Tour / Tourism" },
   // Generic (kept last so specific roles win the dedupe ordering)
   { test: /\breservations|booking(s)? (agent|officer|coordinator)/i, label: "Reservations" },
   { test: /\bmanager|management|supervisor|head of|general manager|team lead/i, label: "Management" },
@@ -348,13 +412,22 @@ export function detectPositions(text: string): string[] {
 const VENUE_WORDS =
   "restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|" +
   "hotel|suites|motel|resort|hostel|" +
-  "clinic|dental|hospital|pharmacy|surgery|medical|health|healthcare|vet|veterinary|care" +
-  "|farm|orchard|vineyard|winery|dairy|" +
+  "clinic|dental|hospital|pharmacy|surgery|medical|health|healthcare|vet|veterinary|care|" +
+  "farm|orchard|vineyard|winery|dairy|" +
   "university|college|academy|school|institute|" +
   "engineering|construction|builders|electrical|plumbing|" +
   "logistics|transport|freight|warehouse|" +
   "garage|motors|automotive|" +
-  "salon|studio|spa|barber";
+  "salon|studio|spa|barber|" +
+  "law|legal|solicitors|architects|architects|accounting|consulting|advisory|" +
+  "recruitment|staffing|talent|" +
+  "media|publishing|productions|creative|advertising|" +
+  "fitness|gym|yoga|pilates|" +
+  "theatre|arena|events|venue|" +
+  "mining|resources|petroleum|" +
+  "shipping|maritime|ferry|" +
+  "charity|foundation|trust|" +
+  "council|government|ministry";
 const VENUE_TERM_RE = new RegExp(`(${VENUE_WORDS})`, "i");
 // Word-bounded variant for testing full lines/sentences (avoids mid-word hits like "inn" inside "dinner").
 const VENUE_TERM_WORD_RE = new RegExp(`\\b(?:${VENUE_WORDS})\\b`, "i");
@@ -759,7 +832,7 @@ const STREET_RE =
 
 // Well-known cities/towns from the country rules — a strong locality signal for search.
 const CITY_RE =
-  /\b(auckland|wellington|christchurch|queenstown|hamilton|tauranga|dunedin|rotorua|napier|nelson|sydney|melbourne|brisbane|perth|adelaide|gold coast|cairns|byron bay|new york|los angeles|miami|chicago|san francisco|boston|seattle|toronto|vancouver|montreal|calgary|ottawa|london|manchester|edinburgh|glasgow|liverpool|bristol|birmingham|leeds|berlin|munich|münchen|hamburg|frankfurt|cologne|köln|madrid|barcelona|valencia|seville|sevilla|malaga|málaga|paris|lyon|marseille|bordeaux|nice|toulouse|rome|roma|milan|milano|venice|venezia|florence|firenze|naples|napoli|amsterdam|rotterdam|the hague|den haag|utrecht|eindhoven|lisbon|lisboa|porto|algarve|madeira|dublin|cork|galway|vienna|wien|salzburg|innsbruck|graz|zurich|zürich|geneva|genève|basel|bern|lausanne|athens|thessaloniki|crete|santorini|mykonos|stockholm|gothenburg|göteborg|malmö|copenhagen|københavn|aarhus|oslo|bergen|trondheim|brussels|bruxelles|antwerp|antwerpen|ghent|bruges|brugge|helsinki|tampere|turku|oulu|prague|praha|brno|ostrava|warsaw|warszawa|kraków|wrocław|gdansk)\b/i;
+  /\b(auckland|wellington|christchurch|queenstown|hamilton|tauranga|dunedin|rotorua|napier|nelson|sydney|melbourne|brisbane|perth|adelaide|gold coast|cairns|byron bay|new york|los angeles|miami|chicago|san francisco|boston|seattle|toronto|vancouver|montreal|calgary|ottawa|london|manchester|edinburgh|glasgow|liverpool|bristol|birmingham|leeds|berlin|munich|münchen|hamburg|frankfurt|cologne|köln|madrid|barcelona|valencia|seville|sevilla|malaga|málaga|paris|lyon|marseille|bordeaux|nice|toulouse|rome|roma|milan|milano|venice|venezia|florence|firenze|naples|napoli|amsterdam|rotterdam|the hague|den haag|utrecht|eindhoven|lisbon|lisboa|porto|algarve|madeira|dublin|cork|galway|vienna|wien|salzburg|innsbruck|graz|zurich|zürich|geneva|genève|basel|bern|lausanne|athens|thessaloniki|crete|santorini|mykonos|stockholm|gothenburg|göteborg|malmö|copenhagen|københavn|aarhus|oslo|bergen|trondheim|brussels|bruxelles|antwerp|antwerpen|ghent|bruges|brugge|helsinki|tampere|turku|oulu|prague|praha|brno|ostrava|warsaw|warszawa|kraków|wrocław|gdansk|istanbul|ankara|izmir|bursa|antalya|adana|dubai|abu dhabi|sharjah|singapore|tokyo|osaka|kyoto|yokohama|nagoya|fukuoka|seoul|busan|incheon|johannesburg|cape town|durban|pretoria|valletta|nicosia|limassol)\b/i;
 
 function titleCase(s: string): string {
   return s.replace(/\s+/g, " ").trim().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -802,7 +875,15 @@ export type Analysis = {
   // whether the user is applying for a JOB or for STUDY (university/school admissions).
   orgType: OrgType;
   intent: Intent;
+  // True when the pasted text appears to be a RECRUITMENT AGENCY posting on behalf of a client.
+  // The draft should address the actual employer, not the agency.
+  isRecruitmentAgency?: boolean;
 };
+
+// Detect whether the pasted text is a RECRUITMENT AGENCY posting on behalf of a client.
+// This affects company-name extraction (the client is the real employer, not the agency).
+const RECRUITMENT_AGENCY_RE =
+  /\b(on behalf of (our|a|the) client|our client (is|are) (looking|seeking|hiring)|recruiting on behalf|listed by (hays|adecco|robert half|randstad|manpower|hudson|peoplebank|herd|absolute|frog|origon|exponential|tradestaff|first choice|immediate employment)|staffing agency|recruitment (agency|firm|company)|labour hire|labor hire|temp(orary)? (agency|staffing)|talent (solutions|agency)|we('re| are) acting on behalf|placed by|our specialist (consultant|team)|this (role|position) is (being )?managed by)\b/i;
 
 export function analyze(text: string): Analysis {
   const decoded = decodeHtmlEntities(text);
@@ -811,6 +892,7 @@ export function analyze(text: string): Analysis {
   const urls = extractUrls(decoded);
   const positions = detectPositions(decoded);
   const orgType = detectOrgType(decoded, positions);
+  const isRecruitmentAgency = RECRUITMENT_AGENCY_RE.test(decoded) || undefined;
   return {
     emails,
     urls,
@@ -822,5 +904,6 @@ export function analyze(text: string): Analysis {
     phone: extractPhone(decoded) || undefined,
     orgType,
     intent: detectIntent(decoded, orgType),
+    isRecruitmentAgency,
   };
 }

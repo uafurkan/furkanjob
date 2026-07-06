@@ -21,9 +21,11 @@ export type OrgType =
   | "hotel" | "restaurant" | "cafe" | "bar"
   | "farm"
   | "clinic" | "dental_clinic" | "hospital" | "pharmacy" | "care_home"
-  | "university" | "school"
+  | "university" | "school" | "childcare_centre"
   | "construction" | "factory" | "warehouse" | "logistics" | "garage"
   | "retail" | "salon" | "it_company" | "office"
+  | "ngo" | "government" | "media" | "professional_services" | "recruitment_agency"
+  | "fitness" | "event_venue" | "shipping" | "mining"
   | "generic";
 
 export type WorkKind = "seasonal" | "skilled" | "healthcare" | "general";
@@ -106,6 +108,35 @@ export const PROFESSIONS: Profession[] = [
 
   // ---- Management (fits anywhere) ----
   { id: "management", kind: "skilled", keywords: ["manager", "management", "supervisor", "head of", "general manager", "duty manager", "team lead", "team leader", "director", "coordinator"] },
+
+  // ---- Professional Services ----
+  { id: "legal", kind: "skilled", regulated: true, orgs: ["professional_services", "government", "office"], keywords: ["lawyer", "solicitor", "barrister", "attorney", "legal counsel", "in-house counsel", "paralegal", "legal assistant", "legal secretary", "conveyancer", "notary", "litigation"] },
+  { id: "architecture", kind: "skilled", regulated: true, orgs: ["professional_services", "construction", "office"], keywords: ["architect", "architectural designer", "urban planner", "town planner", "interior designer", "interior architect", "landscape architect", "drafter", "draftsman", "drafting technician"] },
+  { id: "social_work", kind: "skilled", regulated: true, orgs: ["ngo", "government", "care_home", "school", "hospital"], keywords: ["social worker", "community worker", "community support", "youth worker", "family support worker", "community development", "welfare officer", "case manager", "family violence", "community outreach", "support coordinator"] },
+  { id: "journalism", kind: "skilled", orgs: ["media", "office", "ngo", "government"], keywords: ["journalist", "reporter", "editor", "sub-editor", "news writer", "photojournalist", "photographer", "videographer", "video editor", "film maker", "broadcast", "producer", "presenter", "content producer", "digital producer"] },
+  { id: "finance_pro", kind: "skilled", regulated: true, orgs: ["professional_services", "office", "it_company", "government"], keywords: ["financial advisor", "financial planner", "financial analyst", "investment analyst", "portfolio manager", "fund manager", "banker", "mortgage broker", "insurance broker", "financial controller", "treasury", "actuar", "risk analyst", "compliance officer", "aml analyst"] },
+  { id: "hr_recruiter", kind: "skilled", orgs: ["office", "it_company", "recruitment_agency", "government", "hospital", "university"], keywords: ["human resources", "hr manager", "hr coordinator", "hr advisor", "hr business partner", "recruiter", "talent acquisition", "talent manager", "people & culture", "people and culture", "workforce planning", "learning and development", "training coordinator", "employment relations", "industrial relations"] },
+
+  // ---- Fitness & Wellness ----
+  { id: "fitness_trainer", kind: "general", orgs: ["fitness", "hotel", "school", "care_home"], keywords: ["personal trainer", "fitness instructor", "gym instructor", "group fitness", "yoga instructor", "yoga teacher", "pilates instructor", "swim teacher", "swimming instructor", "sports coach", "athletic trainer", "recreation officer"] },
+
+  // ---- Project & Programme Management ----
+  { id: "project_management", kind: "skilled", orgs: ["office", "construction", "it_company", "government", "logistics", "professional_services", "ngo"], keywords: ["project manager", "programme manager", "program manager", "project coordinator", "project officer", "scrum master", "agile coach", "pmo", "project lead", "change manager", "delivery manager", "implementation manager"] },
+
+  // ---- Real Estate & Property ----
+  { id: "real_estate", kind: "skilled", regulated: true, orgs: ["professional_services", "office"], keywords: ["real estate agent", "property manager", "property consultant", "estate agent", "letting agent", "property sales", "property management", "leasing consultant", "body corporate"] },
+
+  // ---- Aviation ----
+  { id: "aviation", kind: "skilled", orgs: ["shipping", "generic"], keywords: ["pilot", "co-pilot", "first officer", "flight attendant", "cabin crew", "air hostess", "aviation", "air traffic control", "ground crew", "ramp agent", "baggage handler", "airport operations"] },
+
+  // ---- Maritime & Shipping ----
+  { id: "maritime", kind: "skilled", orgs: ["shipping", "farm"], keywords: ["seafarer", "sailor", "captain", "ship officer", "chief officer", "maritime", "deckhand", "maritime engineer", "seaman", "first mate", "bosun", "marine engineer", "vessel operations"] },
+
+  // ---- Mining & Resources ----
+  { id: "mining_worker", kind: "skilled", orgs: ["mining", "factory"], keywords: ["miner", "mining engineer", "drill operator", "blasting technician", "underground miner", "fifo", "fly-in fly-out", "resources sector", "oil and gas", "petroleum", "rig", "quarry worker", "geologist", "mine supervisor", "processing operator"] },
+
+  // ---- Tourism & Guiding ----
+  { id: "tour_guide", kind: "general", orgs: ["hotel", "generic", "ngo"], keywords: ["tour guide", "tour operator", "travel agent", "travel coordinator", "travel consultant", "tourism officer", "eco-tourism", "adventure guide", "cultural guide", "visitor services"] },
 ];
 
 export function categoriesOfRole(role: string): Profession[] {
@@ -156,6 +187,17 @@ const ORG_RULES: { org: OrgType; test: RegExp }[] = [
   { org: "restaurant", test: /\b(restaurant|bistro|eatery|brasserie|trattoria|steakhouse|pizzeria|sushi|fine dining|our menu|dinner menu|lunch menu)\b/i },
   { org: "cafe", test: /\b(cafe|café|coffee (house|shop|roaster)|espresso|brunch)\b/i },
   { org: "bar", test: /\b(cocktail bar|wine bar|pub\b|taproom|brewery|nightclub)\b/i },
+  // ---- Extended org types ----
+  { org: "mining", test: /\b(mine\b|mining (company|operations?|industry)|quarry|open.?cut|underground mine|mineral processing|coal mining|gold mine|\bfifo\b|fly-in fly-out|oil (and|&) gas|petroleum|drilling rig)\b/i },
+  { org: "shipping", test: /\b(cruise (ship|line)|ferry (company|operator|service)|shipping compan|cargo ship|maritime (company|services?)|vessel operator|seafaring)\b/i },
+  { org: "event_venue", test: /\b(event venue|event space|wedding (venue|hall|reception)|concert hall|theatre\b|theater\b|arena\b|stadium\b|convention cent(re|er)|performing arts|entertainment venue)\b/i },
+  { org: "childcare_centre", test: /\b(childcare cent(re|er)|daycare cent(re|er)|day care centre|early learning cent(re|er)|creche\b|early childhood (education|centre)|kohanga reo)\b/i },
+  { org: "recruitment_agency", test: /\b(recruitment agency|staffing agency|staffing firm|labour hire|labor hire|temp (agency|firm)|talent (agency|solutions)|headhunter|executive search|listed by (hays|adecco|robert half|randstad|manpower|hudson|seek|recruit)|recruiting on behalf|on behalf of (our client|a client)|our client (is |are )?(a |an |seeking|looking))\b/i },
+  { org: "ngo", test: /\b(non.?profit|nonprofit|not.for.profit|charitable (trust|organisation|organization|foundation)|charity\b|ngo\b|ngos\b|aid organisation|volunteer organisation|iwi\b|community organisation|community trust|social enterprise|community foundation)\b/i },
+  { org: "government", test: /\b(government department|ministry of|district council|city council|regional council|county council|public service|crown (agency|entity)|local authority|government (agency|organisation)|police (department|force)|defence force|emergency services|municipality|state (government|agency)|federal (agency|department))\b/i },
+  { org: "media", test: /\b(newspaper|media (company|group|agency|house)|television station|radio station|magazine (publisher|group)|news (agency|company|media)|production (company|house)|advertising (agency|firm)|pr (agency|firm)|creative (agency|studio)|film (studio|company|production)|digital (agency|studio)|publishing house|broadcast)\b/i },
+  { org: "professional_services", test: /\b(law firm|legal (firm|practice|office)|solicitors\b|barristers\b|accounting firm|chartered accountants?|management (consulting|consultants?)|consulting (firm|company)|architecture (firm|studio)|architectural (practice|firm)|audit firm|advisory (firm|company)|financial (services firm|advisory)|wealth management)\b/i },
+  { org: "fitness", test: /\b(gym\b|fitness (cent(re|er)|studio|club|facility)|health club|yoga (studio|centre)|pilates (studio|centre)|crossfit\b|leisure cent(re|er)|recreation cent(re|er)|sports (centre|center|club)|aquatic cent(re|er)|swimming (pool|club))\b/i },
 ];
 
 export function detectOrgType(text: string, positions: string[] = []): OrgType {
@@ -185,7 +227,7 @@ export function orgAcceptsProfession(org: OrgType, prof: Profession): boolean {
 
 // Formal-register organizations: never open with a casual local greeting ("Kia Ora"/"Hola") —
 // a dental clinic, hospital, law office, or university admissions office expects formal address.
-const FORMAL_ORGS: OrgType[] = ["clinic", "dental_clinic", "hospital", "pharmacy", "care_home", "university", "school", "office", "it_company", "construction", "factory", "logistics"];
+const FORMAL_ORGS: OrgType[] = ["clinic", "dental_clinic", "hospital", "pharmacy", "care_home", "university", "school", "office", "it_company", "construction", "factory", "logistics", "government", "ngo", "professional_services", "media", "shipping", "mining", "recruitment_agency"];
 export function isFormalOrg(org: OrgType): boolean {
   return FORMAL_ORGS.includes(org);
 }
@@ -255,6 +297,45 @@ const VISA_PATHS: Record<string, VisaPathSet> = {
   FI: { seasonal: "a Finnish seasonal work certificate", study: "a Finnish student residence permit" },
   CZ: { study: "a Czech student long-term visa" },
   PL: { seasonal: "a Polish seasonal work permit", study: "a Polish national student visa" },
+  // ---- Middle East / Asia-Pacific ----
+  AE: {
+    skilled: "UAE employment visa / work permit sponsorship",
+    healthcare: "UAE employment visa sponsorship, alongside DHA / HAAD / MOH professional registration",
+    study: "a UAE student visa",
+  },
+  SG: {
+    skilled: "Employment Pass (EP) or S Pass sponsorship",
+    healthcare: "Employment Pass sponsorship, alongside Singapore professional registration (SMC / SNB / SDC)",
+    study: "a Singapore Student's Pass",
+  },
+  JP: {
+    skilled: "Japanese employer-sponsored work visa (specified skilled worker / 特定技能)",
+    healthcare: "Japanese employer-sponsored work visa, alongside relevant professional registration",
+    study: "a Japanese student visa (留学)",
+  },
+  KR: {
+    skilled: "Korean employer-sponsored work visa (E-series)",
+    study: "a Korean student visa (D-2)",
+  },
+  TR: {
+    skilled: "Turkish work permit (çalışma izni) sponsorship",
+    study: "a Turkish student residence permit",
+  },
+  // ---- Mediterranean ----
+  MT: {
+    skilled: "Maltese Single Permit (work + residence) sponsorship",
+    study: "a Maltese student visa",
+  },
+  CY: {
+    skilled: "Cypriot work permit (Category E) sponsorship",
+    study: "a Cypriot student visa",
+  },
+  // ---- Africa ----
+  ZA: {
+    skilled: "South African critical skills / general work visa sponsorship",
+    healthcare: "South African work visa, alongside HPCSA / SANC professional registration",
+    study: "a South African study visa",
+  },
 };
 
 // Resolve the visa wording the draft should use. `fallbackSkilled` is the country's default
@@ -279,8 +360,13 @@ const REGISTRATION_BODIES: Record<string, Record<string, string>> = {
   teacher: { AU: "state teacher registration", NZ: "Teaching Council of Aotearoa New Zealand", UK: "QTS (Qualified Teacher Status)", "": "local teacher registration/certification" },
   electrician: { AU: "state electrical licence", NZ: "EWRB registration", UK: "competent person scheme registration", "": "a local electrical licence" },
   plumber: { AU: "state plumbing licence", NZ: "PGDB registration", "": "a local plumbing licence" },
-  engineer: { "": "local chartered/professional engineer registration for sign-off roles" },
-  vet: { AU: "state veterinary registration", NZ: "Veterinary Council of New Zealand", UK: "RCVS", "": "the national veterinary council" },
+  engineer: { AU: "Engineers Australia (CPEng)", NZ: "Engineering New Zealand (PEng)", UK: "Engineering Council (CEng)", "": "local chartered/professional engineer registration for sign-off roles" },
+  vet: { AU: "state veterinary registration (Veterinary Practitioners Board)", NZ: "Veterinary Council of New Zealand", UK: "RCVS", "": "the national veterinary council" },
+  legal: { AU: "state/territory legal practitioner admission board", NZ: "New Zealand Law Society (NZLS)", UK: "Solicitors Regulation Authority (SRA) / Bar Council", US: "state bar association (bar exam)", CA: "provincial law society", IE: "Law Society of Ireland / Bar of Ireland", "": "the national legal regulatory body" },
+  architecture: { AU: "Architects Accreditation Council of Australia (AACA)", NZ: "New Zealand Registered Architects Board (NZRAB)", UK: "Architects Registration Board (ARB)", US: "state architectural licensing board (NCARB)", "": "the national architects registration board" },
+  social_work: { AU: "Australian Association of Social Workers (AASW)", NZ: "Social Workers Registration Board (SWRB)", UK: "Social Work England / Social Care Wales / NISCC", "": "the national social work registration body" },
+  real_estate: { AU: "state real estate licence", NZ: "Real Estate Authority (REA) – full licence", UK: "Property Ombudsman membership / NAEA", "": "local real estate / property management licence" },
+  finance_pro: { AU: "ASIC Australian Financial Services Licence (AFS)", NZ: "Financial Markets Authority (FMA) registration", UK: "FCA authorisation", "": "the national financial services regulatory registration" },
 };
 
 // One-line registration heads-up for the strongest regulated category among the given roles,
