@@ -349,7 +349,7 @@ APPLICANT
 - Currently based in: ${profile.currentCountry || "(unspecified)"}
 - Languages: ${profile.languages.join(", ") || "(unspecified)"}
 - Open to relocating: ${profile.relocation ? "yes" : "no"}
-${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}- Work eligibility: ${visaLine}${regulatedLine}${documentsSection(profile)}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT (use this as the primary evidence for the EXPERIENCE & SKILLS score below):\n"""\n${profile.cvText.slice(0, 2500)}\n"""\n` : ""}- Work eligibility: ${visaLine}${regulatedLine}${documentsSection(profile)}
 
 THE ORGANIZATION
 - Name: ${opts.company}
