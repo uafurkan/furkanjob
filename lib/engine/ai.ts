@@ -229,6 +229,8 @@ Return STRICT JSON ONLY, no prose, exactly these keys:
    - IGNORE website builders, hosting platforms, or web design credits (e.g., NEVER return 'Wix', 'Shopify', 'Squarespace', 'GoDaddy', 'WordPress', 'Theme', or 'Website Design by X').
    - IGNORE generic website navigation labels, headings, accessibility links, and UI elements (e.g., NEVER return 'Skip to Content', 'Skip to Main Content', 'Skip Navigation', 'Home', 'Menu', 'Book Now', 'Contact Us', 'Cart', 'Welcome', 'About Us', 'Opening Hours', 'Follow Us').
    - IGNORE legal entities or cookie notice texts (e.g., drop 'Ltd', 'Pty Ltd', 'Inc', 'Cookie Policy', 'Privacy Policy', 'Terms of Service').
+   - NEVER include geographic descriptors or city/country names after the brand (e.g., '© 2026 Capri on Fenton, Rotorua, New Zealand. Privacy Policy' → return ONLY 'Capri on Fenton', not 'Capri On Fenton Rotorua New Zealand Privacy Policy').
+   - If a copyright line contains the brand + city + country + legal text, extract ONLY the brand name.
    - Deduplicate repeated logo/header text (e.g. 'Hotel MontrealHotel Montreal' -> 'Hotel Montreal').
    - If unsure, infer the name from copyright lines (e.g., '© 2026 The Green View Hotel') or the domain of emails/links in the text.
    - NEVER return generic email provider names (like 'Gmail', 'Yahoo', 'Hotmail', 'Outlook', 'Proton', 'ProtonMail') or ISP names (like 'Xtra', 'Spark', 'Slingshot', 'Orcon', 'Clear') as the organization name.

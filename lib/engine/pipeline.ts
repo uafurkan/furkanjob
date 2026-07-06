@@ -8,6 +8,76 @@ import { isVisaCovered } from "./visa";
 import { workKindForRoles, visaFor, registrationNote, type OrgType, type Intent } from "./professions";
 import type { Draft, DraftOption, EngineProfile } from "./types";
 
+// Strip page-title pollution from the end of an AI-extracted company name:
+// copyright lines, legal notice text, geographic descriptors, navigation labels.
+// E.g. "Capri On Fenton Rotorua New Zealand Privacy Policy" → "Capri On Fenton"
+function cleanCompanyName(raw: string): string {
+  let s = raw.trim();
+
+  // Remove trailing legal/policy/navigation fragments (greedy: strip multiple if stacked).
+  const TAIL_PATTERNS = [
+    /[,|·•–—\-]\s*(privacy policy|terms of service|terms & conditions|terms and conditions|cookie policy|cookie notice|disclaimer|legal notice|copyright notice|accessibility statement|sitemap|all rights reserved)\s*$/i,
+    /\s+(privacy policy|terms of service|terms & conditions|terms and conditions|cookie policy|cookie notice|disclaimer|legal notice|copyright notice|accessibility statement|sitemap|all rights reserved)$/i,
+    /\s+(contact us|about us|home|menu|book now|apply now|careers|jobs|vacancies|login|sign in|sign up|faq|faqs)$/i,
+  ];
+  let prev = "";
+  while (s !== prev) {
+    prev = s;
+    for (const re of TAIL_PATTERNS) s = s.replace(re, "").trim();
+  }
+
+  // Strip trailing geographic descriptors that copyright lines append after the brand name.
+  // Pattern: "BrandName, City, Country" or "BrandName City Country" → "BrandName"
+  // Only strip city names if a country name was also stripped (to avoid "Hotel Montreal" → "Hotel").
+  const COUNTRIES = new Set([
+    "new zealand","australia","united states","united kingdom","canada","ireland","germany","france",
+    "italy","spain","portugal","netherlands","switzerland","austria","greece","sweden","denmark",
+    "norway","belgium","finland","poland","czechia",
+  ]);
+  const CITIES = new Set([
+    "auckland","wellington","christchurch","hamilton","dunedin","tauranga","napier","palmerston north",
+    "rotorua","queenstown","whangarei","invercargill","nelson","blenheim",
+    "sydney","melbourne","brisbane","perth","adelaide","canberra","hobart","darwin","cairns","gold coast",
+    "london","edinburgh","glasgow","manchester","birmingham","toronto","vancouver","calgary",
+    "new york","los angeles","chicago","houston","miami","las vegas","san francisco",
+  ]);
+
+  // Repeatedly strip trailing country/city names until stable.
+  let stripped = false;
+  let prev2 = "";
+  while (s !== prev2) {
+    prev2 = s;
+    const words = s.split(/\s+/);
+    // Check 1- and 2-word trailing phrases against countries.
+    for (let len = 2; len >= 1; len--) {
+      if (words.length <= len) continue;
+      const tail = words.slice(-len).join(" ").toLowerCase();
+      if (COUNTRIES.has(tail)) {
+        const candidate = words.slice(0, -len).join(" ").replace(/[,·•–—\-]+$/, "").trim();
+        if (candidate.length >= 2) { s = candidate; stripped = true; break; }
+      }
+    }
+  }
+  // Only remove trailing city names when a country was also stripped (avoids "Hotel Montreal" → "Hotel").
+  if (stripped) {
+    let prev3 = "";
+    while (s !== prev3) {
+      prev3 = s;
+      const words = s.split(/\s+/);
+      for (let len = 2; len >= 1; len--) {
+        if (words.length <= len) continue;
+        const tail = words.slice(-len).join(" ").toLowerCase();
+        if (CITIES.has(tail)) {
+          const candidate = words.slice(0, -len).join(" ").replace(/[,·•–—\-]+$/, "").trim();
+          if (candidate.length >= 2) { s = candidate; break; }
+        }
+      }
+    }
+  }
+
+  return s.trim();
+}
+
 // A real organization name is a short proper noun/brand, never a full sentence or a bullet-point
 // benefit ("Continued on the job learning with the Imperium Group" is a PERK, not the employer).
 // Catches AI misreads that a plain blacklist of exact phrases can't (any provider, any wording).
@@ -71,8 +141,11 @@ export async function runPipeline(opts: {
     const ai = await aiAnalyze(text, tier);
     if (ai) {
       const BLACKLISTED_COMPANIES = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|mynet|superonline|ttmail|turknet|kablonet|google|skip to content|skip to main content|skip navigation|skip|home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|privacy policy|terms of service|terms & conditions|website use|disclaimer|wix|shopify|squarespace|godaddy|wordpress|weebly|weweb|facebook|instagram|twitter|linkedin|youtube|tiktok|apple|android|admin login|admin|login|faq|faqs)$/i;
-      if (ai.company && !BLACKLISTED_COMPANIES.test(ai.company.toLowerCase().trim()) && looksLikeBrandName(ai.company)) {
-        analysis.company = ai.company;
+      if (ai.company) {
+        const cleaned = cleanCompanyName(ai.company);
+        if (cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)) {
+          analysis.company = cleaned;
+        }
       }
       if (ai.countryCode && ai.countryCode !== "XX") analysis.country = countryByCode(ai.countryCode);
       if (ai.positions?.length) analysis.positions = ai.positions;
