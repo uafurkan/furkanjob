@@ -5,7 +5,7 @@ import { toEngineProfile } from "@/lib/profile-adapter";
 import { enrichProfileWithDocuments } from "@/lib/profile-context";
 import { runPipeline } from "@/lib/engine/pipeline";
 import { fetchPageText } from "@/lib/engine/websearch";
-import { aiSubjectVariant } from "@/lib/engine/ai";
+import { aiSubjectVariant, withAiDeadline } from "@/lib/engine/ai";
 import { aiTier, isOverLimit, planInfo } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
@@ -82,12 +82,17 @@ async function handleGenerate(req: Request) {
 
   const [cv, subjectB] = await Promise.all([
     getDefaultCv(user.id),
-    aiSubjectVariant(
-      result.draft.subject,
-      result.analysis.company,
-      result.applyFor.length ? result.applyFor : result.analysis.positions,
-      result.language as any,
-      aiTier(user.plan)
+    // The subject variant is a nice-to-have, and it runs AFTER the pipeline has already spent
+    // its own time budget — give it a short hard cap so it can never push the whole request
+    // past the route's maxDuration when providers are slow.
+    withAiDeadline(8000, () =>
+      aiSubjectVariant(
+        result.draft.subject,
+        result.analysis.company,
+        result.applyFor.length ? result.applyFor : result.analysis.positions,
+        result.language as any,
+        aiTier(user.plan)
+      )
     ).catch(() => null),
   ]);
 

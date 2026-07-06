@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { aiRefine, type RefineAction } from "@/lib/engine/ai";
+import { aiRefine, withAiDeadline, type RefineAction } from "@/lib/engine/ai";
 import { APP_LANGS, type AppLang } from "@/lib/engine/template";
 import { aiTier } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const ACTIONS: RefineAction[] = ["shorter", "warmer", "formal", "regenerate"];
 
@@ -26,13 +27,15 @@ export async function POST(req: Request) {
     const valid = APP_LANGS.map((l) => l.code) as string[];
     const lang: AppLang = (valid.includes(data?.language) ? data.language : "en") as AppLang;
 
-    const refined = await aiRefine({
-      body,
-      action,
-      company: typeof data?.company === "string" ? data.company : undefined,
-      lang,
-      tier: aiTier(user.plan),
-    });
+    const refined = await withAiDeadline(45000, () =>
+      aiRefine({
+        body,
+        action,
+        company: typeof data?.company === "string" ? data.company : undefined,
+        lang,
+        tier: aiTier(user.plan),
+      })
+    );
 
     if (!refined) return NextResponse.json({ error: "unavailable" }, { status: 503 });
     return NextResponse.json({ body: refined });

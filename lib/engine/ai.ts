@@ -125,6 +125,26 @@ function remainingBudgetMs(): number {
   return deadline ? deadline - Date.now() : Infinity;
 }
 
+// Circuit breaker: a provider that just failed hard (rate-limited or timing out) is skipped for
+// a cooldown period instead of being re-probed by every subsequent AI call. This matters twice:
+// within one request, the pipeline makes 4-5 sequential AI calls, and without this each of them
+// re-tries the same exhausted provider (a Groq account that answered "daily quota reached, retry
+// in 14 minutes" gets asked again 10 seconds later) and re-waits the full timeout on the same
+// slow provider — burning most of the request's time budget on providers already known to be
+// dead. And across requests, a warm serverless instance serves many users, so the map lets the
+// very next request start directly at the first healthy provider.
+const providerCooldownUntil = new Map<string, number>();
+const COOLDOWN_RATE_LIMIT_MS = 5 * 60 * 1000;
+const COOLDOWN_FAILURE_MS = 60 * 1000;
+
+function providerKey(r: Resolved): string {
+  return r.kind === "anthropic" ? `anthropic:${r.model}` : `${r.baseUrl}:${r.model}`;
+}
+
+function coolingDown(r: Resolved): boolean {
+  return (providerCooldownUntil.get(providerKey(r)) ?? 0) > Date.now();
+}
+
 async function callProvider(
   r: Resolved,
   prompt: string,
@@ -170,14 +190,28 @@ async function callProvider(
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       console.error(`AI provider "${r.name}" (${r.model}) error: HTTP ${res.status} - ${errText}`);
+      if (res.status === 429) {
+        providerCooldownUntil.set(providerKey(r), Date.now() + COOLDOWN_RATE_LIMIT_MS);
+      } else if (res.status >= 500) {
+        providerCooldownUntil.set(providerKey(r), Date.now() + COOLDOWN_FAILURE_MS);
+      }
       return null;
     }
     const data = await res.json();
     const out = data?.choices?.[0]?.message?.content;
-    return typeof out === "string" ? out.trim() : null;
+    if (typeof out === "string" && out.trim()) {
+      providerCooldownUntil.delete(providerKey(r));
+      return out.trim();
+    }
+    return null;
   } catch (err) {
     const reason = ctrl.signal.aborted ? `timed out after ${perAttemptMs}ms` : String(err);
     console.error(`AI provider "${r.name}" (${r.model}) failed: ${reason}`);
+    // Only blame the provider for a timeout when it was given a fair window — a tiny
+    // remaining-budget window aborting early is our deadline's fault, not the provider's.
+    if (!ctrl.signal.aborted || perAttemptMs >= 10000) {
+      providerCooldownUntil.set(providerKey(r), Date.now() + COOLDOWN_FAILURE_MS);
+    }
     return null;
   } finally {
     clearTimeout(timer);
@@ -192,6 +226,7 @@ async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoni
   const chain = resolveChain(tier);
   for (const r of chain) {
     if (remainingBudgetMs() <= 0) break;
+    if (coolingDown(r)) continue;
     const out = await callProvider(r, prompt, maxTokens, reasoningEffort, temperature);
     if (out) return out;
   }
@@ -215,6 +250,7 @@ async function completeJsonWithFallback<T>(
   const chain = resolveChain(tier);
   for (const r of chain) {
     if (remainingBudgetMs() <= 0) break;
+    if (coolingDown(r)) continue;
     const out = await callProvider(r, prompt, maxTokens, reasoningEffort, temperature);
     if (!out) continue;
     const parsed = extractJson<T>(out);

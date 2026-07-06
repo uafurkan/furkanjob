@@ -7,7 +7,7 @@ import { aiTier } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
 import { APP_LANGS, type AppLang } from "@/lib/engine/template";
-import { aiRewriteCoverLetter } from "@/lib/engine/ai";
+import { aiRewriteCoverLetter, withAiDeadline } from "@/lib/engine/ai";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -46,7 +46,9 @@ export async function POST(req: Request) {
     const validLangs = APP_LANGS.map((l) => l.code) as string[];
     const lang: AppLang = (validLangs.includes(langCode) ? langCode : "en") as AppLang;
 
-    const result = await aiRewriteCoverLetter({
+    // One rewrite call can walk the entire multi-provider fallback chain; cap the total time so
+    // a run of slow providers can never push the request past the route's maxDuration.
+    const result = await withAiDeadline(45000, () => aiRewriteCoverLetter({
       currentCoverLetter,
       jobText,
       company,
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
       documentsText: engineProfile.documentsText,
       lang,
       tier,
-    });
+    }));
 
     if (!result) {
       return NextResponse.json({ error: "AI failed to generate a rewrite." }, { status: 503 });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { addDocument } from "@/lib/db";
-import { aiAnalyzeVisa, aiEnabled } from "@/lib/engine/ai";
+import { aiAnalyzeVisa, aiEnabled, withAiDeadline } from "@/lib/engine/ai";
 import { aiTier } from "@/lib/plans";
 import { resolveVisaCountries, sanitizeCountryCodes, visaTypeById } from "@/lib/engine/visa";
 import { rateLimit } from "@/lib/ratelimit";
@@ -63,7 +63,8 @@ export async function POST(req: Request) {
     if (isPdf && aiEnabled()) {
       const text = await extractPdfText(buf);
       if (text.trim().length > 20) {
-        const ai = await aiAnalyzeVisa(text, aiTier(user.plan));
+        // Keep the chain walk well inside this route's 30s maxDuration.
+        const ai = await withAiDeadline(20000, () => aiAnalyzeVisa(text, aiTier(user.plan)));
         if (ai) {
           const preset = visaTypeById(ai.visaTypeId);
           // Prefer AI's explicit codes; else fall back to the preset's coverage.

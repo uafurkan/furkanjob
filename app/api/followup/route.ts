@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { getApplication } from "@/lib/db";
-import { aiFollowup } from "@/lib/engine/ai";
+import { aiFollowup, withAiDeadline } from "@/lib/engine/ai";
 import { buildFollowup, APP_LANGS, type AppLang } from "@/lib/engine/template";
 import { detectTextLang } from "@/lib/engine/detect";
 import { aiTier } from "@/lib/plans";
@@ -9,6 +9,7 @@ import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
@@ -27,14 +28,16 @@ export async function POST(req: Request) {
     const company = app.company || "your team";
 
     const draft =
-      (await aiFollowup({
-        company,
-        country: app.country || undefined,
-        roles: app.positions,
-        originalSubject: app.subject,
-        lang,
-        tier: aiTier(user.plan),
-      })) || buildFollowup(company, lang);
+      (await withAiDeadline(45000, () =>
+        aiFollowup({
+          company,
+          country: app.country || undefined,
+          roles: app.positions,
+          originalSubject: app.subject,
+          lang,
+          tier: aiTier(user.plan),
+        })
+      )) || buildFollowup(company, lang);
 
     // Thread the follow-up under the original email: reuse "Re: <original subject>" and pass the ids.
     const reSubject = /^re:/i.test(app.subject.trim()) ? app.subject : `Re: ${app.subject}`;

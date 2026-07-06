@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfile } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
 import { enrichProfileWithDocuments } from "@/lib/profile-context";
-import { aiAsk } from "@/lib/engine/ai";
+import { aiAsk, withAiDeadline } from "@/lib/engine/ai";
 import { APP_LANGS, type AppLang } from "@/lib/engine/template";
 import { VALID_ORG_TYPES, type OrgType } from "@/lib/engine/professions";
 import { aiTier } from "@/lib/plans";
@@ -51,7 +51,9 @@ export async function POST(req: Request) {
     let engineProfile = toEngineProfile(profile, user);
     engineProfile = await enrichProfileWithDocuments(user.id, engineProfile);
 
-    const result = await aiAsk({
+    // One aiAsk call can walk the entire multi-provider fallback chain; cap the total time so
+    // a run of slow providers can never push the request past the route's maxDuration.
+    const result = await withAiDeadline(45000, () => aiAsk({
       body,
       subject: subject || undefined,
       coverLetter: coverLetter || undefined,
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
       lang,
       tier: aiTier(user.plan),
       forceRevision,
-    });
+    }));
 
     if (!result) return NextResponse.json({ error: "AI failed to respond." }, { status: 503 });
 
