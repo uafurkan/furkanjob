@@ -44,6 +44,8 @@ type Item = {
   chatRevisedBody?: string | null;
   chatRevisedSubject?: string | null;
   chatRevisedCoverLetter?: string | null;
+  // Role currently being added/removed via the toggleable role chips (set while the AI rewrite is in flight).
+  rolesSyncing?: string | null;
 };
 
 const MAX_ITEMS = 20;
@@ -84,6 +86,7 @@ export default function BulkApply() {
   const [items, setItems] = useState<Item[]>([]);
   const [running, setRunning] = useState(false);
   const [includeCoverLetter, setIncludeCoverLetter] = useState(false);
+  const [profileTargetRoles, setProfileTargetRoles] = useState<string[]>([]);
   const stopRef = useRef(false);
 
   useEffect(() => {
@@ -93,6 +96,14 @@ export default function BulkApply() {
         setIncludeCoverLetter(coverPref === "true");
       }
     } catch {}
+  }, []);
+
+  // Load the user's saved target roles (for the toggleable role chips on each queue item).
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.profile?.targetRoles) setProfileTargetRoles(d.profile.targetRoles); })
+      .catch(() => {});
   }, []);
 
   function update(id: number, patch: Partial<Item>) {
@@ -493,6 +504,58 @@ export default function BulkApply() {
     );
   }
 
+  // Add/remove a role from ONE queue item by tapping its chip. Reuses the ask-chat AI edit path
+  // (same as askAboutItem) but applies the revision immediately — the tap is the explicit intent.
+  async function toggleRoleForItem(id: number, role: string) {
+    const it = items.find((x) => x.id === id);
+    if (!it || it.rolesSyncing) return;
+    const current = it.applyFor && it.applyFor.length ? it.applyFor : (it.positions || []);
+    const isActive = current.some((r) => r.toLowerCase() === role.toLowerCase());
+    const next = isActive ? current.filter((r) => r.toLowerCase() !== role.toLowerCase()) : [...current, role];
+    if (!next.length) return;
+    update(id, { rolesSyncing: role });
+    try {
+      const instruction = isActive
+        ? `Remove the "${role}" role — no longer apply for it in this application.`
+        : `Also apply for the "${role}" role in this application, in addition to the current role(s).`;
+      const loc = COVER_LETTER_L10N[it.language || "en"] || COVER_LETTER_L10N.en;
+      const r = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          body: it.body,
+          subject: it.subject,
+          coverLetter: it.includeCoverLetter ? it.coverLetterBody : undefined,
+          jobText: it.input,
+          question: instruction,
+          company: it.company,
+          countryName: it.country,
+          applyFor: current,
+          language: it.language,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed to update roles");
+
+      let newBody = it.body;
+      if (d.revisedBody) {
+        newBody = d.revisedBody;
+        if (it.signatureChecked && it.fullName && !newBody.includes(loc.sincerely)) {
+          newBody = newBody.trim() + `\n\n${loc.sincerely}\n${it.fullName}`;
+        }
+      }
+      update(id, {
+        applyFor: next,
+        body: newBody,
+        subject: d.revisedSubject || it.subject,
+        coverLetterBody: d.revisedCoverLetter && it.includeCoverLetter ? d.revisedCoverLetter : it.coverLetterBody,
+        rolesSyncing: null,
+      });
+    } catch {
+      update(id, { rolesSyncing: null });
+    }
+  }
+
   const statusClass: Record<Status, string> = {
     queued: "", analyzing: "", drafted: "chip-accent", sending: "",
     sent: "chip-ok", failed: "chip-warn", skipped: "chip-warn",
@@ -602,9 +665,33 @@ export default function BulkApply() {
               <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
                 <b>{it.company || `#${it.id + 1}`}</b>
                 {it.country && <span className="chip">{it.country}</span>}
-                {(it.applyFor && it.applyFor.length ? it.applyFor : it.positions || []).map((p) => (
-                  <span key={p} className="chip">{p}</span>
-                ))}
+                {(() => {
+                  const active = it.applyFor && it.applyFor.length ? it.applyFor : (it.positions || []);
+                  const seen = new Set<string>();
+                  const options: string[] = [];
+                  for (const r of [...active, ...profileTargetRoles, ...(it.droppedRoles || [])]) {
+                    const key = r.trim().toLowerCase();
+                    if (!key || seen.has(key)) continue;
+                    seen.add(key);
+                    options.push(r.trim());
+                  }
+                  return options.map((role) => {
+                    const isActive = active.some((r) => r.toLowerCase() === role.toLowerCase());
+                    return (
+                      <button
+                        key={role}
+                        type="button"
+                        className={`chip chip-toggle ${isActive ? "chip-accent" : ""}`}
+                        disabled={!!it.rolesSyncing}
+                        data-loading={it.rolesSyncing === role}
+                        title={t("new.roles.hint")}
+                        onClick={() => toggleRoleForItem(it.id, role)}
+                      >
+                        {role}{it.rolesSyncing === role ? "…" : ""}
+                      </button>
+                    );
+                  });
+                })()}
                 <span className={`chip ${statusClass[it.status]}`}>{t(`bulk.status.${it.status}`)}</span>
                 {typeof it.fitScore === "number" && it.fitScore > 0 && (
                   <span className={`chip ${it.eligibility?.status === "blocked" ? "chip-warn" : it.eligibility?.status === "warning" ? "chip-warn" : "chip-accent"}`}>
