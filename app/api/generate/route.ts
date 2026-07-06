@@ -11,6 +11,11 @@ import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
 
 export const runtime = "nodejs";
+// This route runs several sequential AI calls (analyze, fit assessment, drafts, cover letter,
+// subject variant) plus an optional web search for the recipient email — without an explicit
+// maxDuration it inherited the platform's short default, so on a slow provider it hit the
+// timeout and returned an HTML error page instead of JSON ("Unexpected token '<'" on the client).
+export const maxDuration = 60;
 
 // A single bare URL (no surrounding prose) → we fetch the page so the engine has content.
 function asSingleUrl(s: string): string | null {

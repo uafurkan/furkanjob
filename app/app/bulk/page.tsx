@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useT } from "@/components/i18n";
+import { safeJson } from "@/lib/safe-fetch";
 
 type Status = "queued" | "analyzing" | "drafted" | "sending" | "sent" | "failed" | "skipped";
 
@@ -129,7 +130,7 @@ export default function BulkApply() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text: it.input, language }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (!r.ok) throw new Error(d.error || "error");
 
       let isSigChecked = d.includeSignature || false;
@@ -189,7 +190,7 @@ export default function BulkApply() {
         await sleep(waitSec * 1000);
         return sendItem(it, attempt + 1);
       }
-      const d = await r.json();
+      const d = await safeJson(r);
       if (r.status === 402) return { ...it, status: "failed", error: t("new.limitReached") };
       if (!r.ok) throw new Error(d.error || "error");
       return { ...it, status: "sent", error: undefined };
@@ -381,7 +382,7 @@ export default function BulkApply() {
           reasoningEffort: "high",
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (!r.ok) throw new Error(d.error || "error");
 
       let isSigChecked = it.signatureChecked || false;
@@ -447,7 +448,7 @@ export default function BulkApply() {
           language: it.language || "en",
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (!r.ok || !d.body) throw new Error(d.error || "rewrite failed");
       update(id, { coverLetterBody: d.body });
     } catch {
@@ -477,7 +478,7 @@ export default function BulkApply() {
           language: it.language,
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (!r.ok) throw new Error(d.error || "Ask AI failed");
       update(id, {
         chatLoading: false,
@@ -544,7 +545,7 @@ export default function BulkApply() {
           language: it.language,
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (!r.ok || !d.body) throw new Error(d.error || "Failed to update roles");
 
       let newBody = d.body;

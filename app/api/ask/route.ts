@@ -11,6 +11,7 @@ import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {

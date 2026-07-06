@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useT } from "@/components/i18n";
 import { APP_LANGS } from "@/lib/engine/template";
 import { checkRecipients, applyFix } from "@/lib/email-check";
+import { safeJson } from "@/lib/safe-fetch";
 
 type Eligibility = { status: "ok" | "warning" | "blocked"; note: string };
 type GenResult = {
@@ -379,7 +380,7 @@ export default function NewApplication() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ url: text.trim() }),
         });
-        const d = await r.json();
+        const d = await safeJson(r);
         if (r.ok && d.text) {
           fetchedUrlRef.current = trimmed;
           setText(d.text);
@@ -419,7 +420,7 @@ export default function NewApplication() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text, language }),
       });
-      const d: GenResult = await r.json();
+      const d: GenResult = await safeJson(r);
       if (!r.ok) throw new Error((d as any).error || "Error");
       setRes(d);
       const toVal = (d.emails || []).join(", ");
@@ -489,7 +490,7 @@ export default function NewApplication() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text, language, reasoningEffort: "high" }),
       });
-      const d: GenResult = await r.json();
+      const d: GenResult = await safeJson(r);
       if (!r.ok) throw new Error((d as any).error || "Error");
       setRes(d);
       
@@ -553,7 +554,7 @@ export default function NewApplication() {
           cvId: selectedCv || undefined,
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (r.status === 402) { setMsg({ kind: "warn", text: t("new.limitReached") }); return; }
       if (!r.ok) throw new Error(d.error || "Error");
       const attachLabel = d.coverLetterAttached ? t("new.coverLetterAttached") : d.cvAttached ? t("new.cvAttached") : t("new.cvNone");
@@ -616,7 +617,7 @@ export default function NewApplication() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ body, action, company: res.company, language: res.language }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (!r.ok || !d.body) throw new Error(d.error || "refine failed");
       setBodyBeforeRefine(prev);
       
@@ -660,7 +661,7 @@ export default function NewApplication() {
           language: res.language,
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (!r.ok) throw new Error(d.error || "Ask AI failed");
       setAskResponse(d.answer);
       if (d.revisedBody) setAskRevisedBody(d.revisedBody);
@@ -703,7 +704,7 @@ export default function NewApplication() {
           language: res.language,
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (!r.ok || !d.body) throw new Error(d.error || t("new.roles.failed"));
 
       setRes((prev) => (prev ? { ...prev, applyFor: next } : prev));
@@ -775,7 +776,7 @@ export default function NewApplication() {
           language: res.language || "en",
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (!r.ok || !d.body) throw new Error(d.error || "rewrite failed");
       setCoverLetterBody(d.body);
       setMsg({ kind: "ok", text: t("new.rewriteCoverLetterDone") });
