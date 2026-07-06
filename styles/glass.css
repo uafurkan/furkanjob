@@ -116,6 +116,12 @@ select option { color: #12151c; background: #ffffff; }
 .chip-accent { color: var(--accent-bright); border-color: rgba(111, 168, 255, 0.4); background: var(--glow-halo); }
 .chip-ok { color: var(--signal-success); border-color: rgba(95, 208, 166, 0.4); }
 .chip-warn { color: var(--signal-warning); border-color: rgba(242, 194, 107, 0.4); }
+.chip-toggle { font: inherit; cursor: pointer; opacity: .55; transition: opacity .15s ease, transform .1s ease; }
+.chip-toggle.chip-accent { opacity: 1; }
+.chip-toggle:hover:not(:disabled) { opacity: .85; }
+.chip-toggle.chip-accent:hover:not(:disabled) { opacity: 1; }
+.chip-toggle:active:not(:disabled) { transform: scale(.96); }
+.chip-toggle:disabled { cursor: default; }
 
 /* ---------- Layout helpers ---------- */
 .container { width: 100%; max-width: var(--container); margin: 0 auto; padding-left: var(--space-6); padding-right: var(--space-6); }

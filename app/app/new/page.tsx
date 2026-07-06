@@ -120,6 +120,8 @@ export default function NewApplication() {
   const [customQuestion, setCustomQuestion] = useState("");
   const [fetchingUrl, setFetchingUrl] = useState(false);
   const fetchedUrlRef = useRef<string | null>(null);
+  const [profileTargetRoles, setProfileTargetRoles] = useState<string[]>([]);
+  const [rolesSyncing, setRolesSyncing] = useState<string | null>(null);
 
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {
@@ -166,6 +168,14 @@ export default function NewApplication() {
           if (def) setSelectedCv(def.id);
         }
       })
+      .catch(() => {});
+  }, []);
+
+  // Load the user's saved target roles (for the toggleable role chips on a result).
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.profile?.targetRoles) setProfileTargetRoles(d.profile.targetRoles); })
       .catch(() => {});
   }, []);
 
@@ -652,6 +662,70 @@ export default function NewApplication() {
     }
   }
 
+  // Add/remove a role from this application by tapping its chip. Reuses the same AI edit path
+  // as the ask-chat ("also apply for X" / "drop X"), but applies the revision immediately —
+  // no confirm step — since the chip click itself is the explicit user intent.
+  async function toggleRole(role: string) {
+    if (!res || rolesSyncing) return;
+    const current = res.applyFor && res.applyFor.length ? res.applyFor : res.positions;
+    const isActive = current.some((r) => r.toLowerCase() === role.toLowerCase());
+    const next = isActive ? current.filter((r) => r.toLowerCase() !== role.toLowerCase()) : [...current, role];
+    if (!next.length) {
+      setMsg({ kind: "warn", text: t("new.roles.needOne") });
+      setTimeout(() => setMsg(null), 3000);
+      return;
+    }
+    setRolesSyncing(role);
+    try {
+      const instruction = isActive
+        ? `Remove the "${role}" role — no longer apply for it in this application.`
+        : `Also apply for the "${role}" role in this application, in addition to the current role(s).`;
+      const r = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          body,
+          subject,
+          coverLetter: includeCoverLetter ? coverLetterBody : undefined,
+          jobText: text,
+          question: instruction,
+          company: res.company,
+          countryName: res.country,
+          orgType: res.orgType,
+          applyFor: current,
+          language: res.language,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed to update roles");
+
+      setRes((prev) => (prev ? { ...prev, applyFor: next } : prev));
+
+      if (d.revisedBody) {
+        setBodyBeforeRefine(body);
+        let finalBody = d.revisedBody;
+        if (signatureChecked && fullName && !finalBody.includes("Sincerely,")) {
+          finalBody = finalBody.trim() + `\n\nSincerely,\n${fullName}`;
+        }
+        setBody(finalBody);
+        setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, body: finalBody } : dr)));
+      }
+      if (d.revisedSubject) {
+        setSubject(d.revisedSubject);
+        setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, subject: d.revisedSubject } : dr)));
+      }
+      if (d.revisedCoverLetter && includeCoverLetter) setCoverLetterBody(d.revisedCoverLetter);
+
+      setMsg({ kind: "ok", text: t("new.roles.updated") });
+      setTimeout(() => setMsg(null), 2500);
+    } catch (e: any) {
+      setMsg({ kind: "warn", text: e.message || t("new.roles.failed") });
+      setTimeout(() => setMsg(null), 3500);
+    } finally {
+      setRolesSyncing(null);
+    }
+  }
+
   function applyAskRevision() {
     if (!askRevisedBody && !askRevisedSubject && !askRevisedCoverLetter) return;
     if (askRevisedBody) {
@@ -794,9 +868,33 @@ export default function NewApplication() {
           <div className="row gap-2 wrap">
             <span className="chip chip-accent">{res.company}</span>
             {res.country && <span className="chip">{res.country}</span>}
-            {(res.applyFor && res.applyFor.length ? res.applyFor : res.positions).map((p) => (
-              <span key={p} className="chip">{p}</span>
-            ))}
+            {(() => {
+              const active = res.applyFor && res.applyFor.length ? res.applyFor : res.positions;
+              const seen = new Set<string>();
+              const options: string[] = [];
+              for (const r of [...active, ...profileTargetRoles, ...(res.droppedRoles || [])]) {
+                const key = r.trim().toLowerCase();
+                if (!key || seen.has(key)) continue;
+                seen.add(key);
+                options.push(r.trim());
+              }
+              return options.map((role) => {
+                const isActive = active.some((r) => r.toLowerCase() === role.toLowerCase());
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    className={`chip chip-toggle ${isActive ? "chip-accent" : ""}`}
+                    disabled={rolesSyncing !== null}
+                    data-loading={rolesSyncing === role}
+                    title={t("new.roles.hint")}
+                    onClick={() => toggleRole(role)}
+                  >
+                    {role}{rolesSyncing === role ? "…" : ""}
+                  </button>
+                );
+              });
+            })()}
             <span className={`chip ${res.emailSource === "none" ? "chip-warn" : "chip-ok"}`}>{t("new.mail")}: {srcLabel(res.emailSource)}</span>
           </div>
 
