@@ -144,12 +144,21 @@ export async function runPipeline(opts: {
   // Deterministic baseline (also the no-key fallback). Emails are ALWAYS extracted here, never by the AI.
   const analysis = analyze(text);
 
+  // Clean the heuristic company name too — the raw scraped text can carry page-title pollution
+  // even before the AI layer runs (e.g. "Capri On Fenton Rotorua New Zealand Privacy Policy").
+  const BLACKLISTED_COMPANIES = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|mynet|superonline|ttmail|turknet|kablonet|google|skip to content|skip to main content|skip navigation|skip|home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|privacy policy|terms of service|terms & conditions|website use|disclaimer|wix|shopify|squarespace|godaddy|wordpress|weebly|weweb|facebook|instagram|twitter|linkedin|youtube|tiktok|apple|android|admin login|admin|login|faq|faqs)$/i;
+  if (analysis.company) {
+    const cleaned = cleanCompanyName(analysis.company);
+    if (cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)) {
+      analysis.company = cleaned;
+    }
+  }
+
   // Smart layer: let the model clean up company/country/positions/language from the messy page.
   let aiLang: AppLang | undefined;
   if (aiEnabled()) {
     const ai = await aiAnalyze(text, tier);
     if (ai) {
-      const BLACKLISTED_COMPANIES = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|mynet|superonline|ttmail|turknet|kablonet|google|skip to content|skip to main content|skip navigation|skip|home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|privacy policy|terms of service|terms & conditions|website use|disclaimer|wix|shopify|squarespace|godaddy|wordpress|weebly|weweb|facebook|instagram|twitter|linkedin|youtube|tiktok|apple|android|admin login|admin|login|faq|faqs)$/i;
       if (ai.company) {
         const cleaned = cleanCompanyName(ai.company);
         if (cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)) {
