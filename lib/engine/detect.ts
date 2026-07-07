@@ -496,6 +496,71 @@ function cleanSegment(clean: string): string | null {
   return null;
 }
 
+// Small set of lowercase connector words allowed inside a brand phrase ("Lake of Tranquility",
+// "House of Cards") without breaking the capitalized-word heuristic.
+const BRAND_CONNECTOR_WORDS = "of|the|and|for|de|la|le|du|von|van|el|los|las|di|da";
+
+// Generic nav/section labels that are NOT a business name even if they repeat 3+ times
+// (every page has "Contact Us", "Home", "About Us" etc. in its nav and headings).
+const NAV_PHRASE_RE = /^(home|about|about us|contact|contact us|log in|sign in|sign up|book now|read more|learn more|get started|menu|menus|gallery|our story|follow us|terms of use|terms and conditions|privacy policy|skip to content|find us|book a table|opening hours|more info|click here|day tickets|overnight|lake rules)$/i;
+
+// Title-case a SHOUTY (ALL-CAPS) line so it matches the casing of the same phrase appearing
+// elsewhere in mixed case (e.g. a hero heading "LAKE OF TRANQUILITY" vs. body text
+// "Lake of Tranquility") — otherwise they're counted as different strings and neither reaches
+// the repetition threshold.
+function titleCaseShout(line: string): string {
+  let first = true;
+  const connectors = new Set(BRAND_CONNECTOR_WORDS.split("|"));
+  return line.replace(/\b[a-zA-Z]+\b/g, (w) => {
+    const lower = w.toLowerCase();
+    const isConnector = connectors.has(lower) && !first;
+    first = false;
+    return isConnector ? lower : w[0].toUpperCase() + w.slice(1).toLowerCase();
+  });
+}
+
+// Frequency-based: find a short capitalized phrase that repeats 3+ times across the page
+// (heading, address block, intro line, etc.) — a strong signal it's the real brand name,
+// independent of any single line like a copyright footer.
+function findFrequentBrand(lines: string[]): string | null {
+  const normalizedLines = lines.map((l) => {
+    const letters = l.replace(/[^a-zA-Z]/g, "");
+    const isShouty = letters.length >= 4 && letters === letters.toUpperCase() && letters !== letters.toLowerCase();
+    return isShouty ? titleCaseShout(l) : l;
+  });
+  const brandCounts = new Map<string, number>();
+  // Capitalized word(s), optionally joined by a short lowercase connector ("Lake of Tranquility").
+  const brandRe = new RegExp(
+    `\\b([A-Z][a-zA-Z']*(?:\\s+(?:${BRAND_CONNECTOR_WORDS})\\s+[A-Z][a-zA-Z']*|\\s+[A-Z][a-zA-Z']*){0,3})\\b`,
+    "g"
+  );
+  // Match line-by-line (not on one big joined string) so distinct fragments that only sit next
+  // to each other because they were separate lines (e.g. a "Contact Us" nav label immediately
+  // above an address block) never get greedily fused into a single bogus candidate.
+  for (const l of normalizedLines) {
+    let bm: RegExpExecArray | null;
+    brandRe.lastIndex = 0;
+    while ((bm = brandRe.exec(l)) !== null) {
+      const brand = bm[1].trim().replace(/\s+/g, " ");
+      if (brand.length >= 4 && brand.length <= 35
+        && !NAV_PHRASE_RE.test(brand)
+        && !/^(The|And|For|With|Add|Our|All|New|Day|Hot|Big|Free|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Saturday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Greek|Asian|Italian|French|GFO|ONLINE|RESTAURANT|BOOKINGS|RISE|SHINE|CROWDS|LOVE|THESE|HAPPY|HENS|LAY|EGGS|SIDE|KICKS|BAKERS|CORNER|STARTERS|MAIN|COURSES|SIDES|DESSERTS|AUTUMN|MATCH|FOR THE TABLE)$/i.test(brand)
+      ) {
+        brandCounts.set(brand, (brandCounts.get(brand) || 0) + 1);
+      }
+    }
+  }
+  let bestBrand = "";
+  let bestCount = 2; // need at least 3 occurrences
+  for (const [brand, count] of brandCounts) {
+    if (count > bestCount) {
+      bestBrand = brand;
+      bestCount = count;
+    }
+  }
+  return bestBrand ? collapseDouble(bestBrand) : null;
+}
+
 export function guessCompany(text: string, emails: string[], urls: string[] = []): string {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -552,11 +617,12 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   }
 
   // 1. Try to find a copyright line (very specific to the business owner)
-  for (const line of lines) {
+  for (let ci = 0; ci < lines.length; ci++) {
+    const line = lines[ci];
     if (/(?:©|copyright|\(c\))/i.test(line)) {
       // First, split the line by standard footer dividers: | or • or ·
       const segments = line.split(/\s*[|•·]\s*/);
-      
+
       // Find the segment that contains the copyright symbol/word
       let copyrightSegment = "";
       for (const seg of segments) {
@@ -565,18 +631,30 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
           break;
         }
       }
-      
+
       if (!copyrightSegment) {
         copyrightSegment = line;
       }
-      
+
       // Remove copyright symbol, (c), and "copyright" case-insensitively from the isolated segment
       let clean = copyrightSegment.replace(/(copyright|©|\(c\))/ig, "").trim();
-      
+
       // Remove year ranges or lists (e.g., "2016-2026", "2016 - 2026", "2016, 2018", "2016")
       clean = clean.replace(/\b\d{4}\s*[-–—,]\s*\d{4}\b/g, ""); // e.g. 2016-2026
       clean = clean.replace(/\b\d{4}\b/g, ""); // e.g. 2016
-      
+
+      // Site builders (Wix, Squarespace, GoDaddy, …) stamp a default "© YEAR by <Template Name>"
+      // footer that many owners never customize — a dead giveaway is a "Proudly created with /
+      // Powered by <builder>" credit line right next to it. When that's present, the copyright
+      // name is unreliable; prefer a name that actually repeats elsewhere on the page (heading,
+      // address block, intro) over this single, possibly-templated line.
+      const nearby = lines.slice(Math.max(0, ci - 1), ci + 3).join(" ");
+      const builderCreditNearby = /\b(proudly created with|powered by|made with|built with)\b.{0,25}\b(wix|squarespace|shopify|godaddy|wordpress|weebly|webflow)\b/i.test(nearby);
+      if (builderCreditNearby) {
+        const strongBrand = findFrequentBrand(lines);
+        if (strongBrand) return strongBrand;
+      }
+
       // If the remaining text in this segment is empty or just punctuation/noise,
       // it means the name is likely in one of the adjacent segments (e.g. "Copyright 2026 | Punga Grove")
       let testClean = clean.replace(/[^a-zA-Z0-9]/g, "").trim();
@@ -587,7 +665,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
           if (candidate) return candidate;
         }
       }
-      
+
       const candidate = cleanSegment(clean);
       if (candidate) return candidate;
     }
@@ -705,28 +783,8 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   }
 
   // 5. Frequency-based: find a short capitalized phrase that appears 3+ times (strong brand signal)
-  const brandCounts = new Map<string, number>();
-  const spaceJoinedText = lines.join(" ");
-  // Match capitalized word(s) like "Mister D" or "Black Barn" (2–4 words, first word capitalized)
-  const brandRe = /\b([A-Z][a-zA-Z']*(?:\s+[A-Z][a-zA-Z']*){0,2}(?:\s+[A-Z])?)\b/g;
-  let bm: RegExpExecArray | null;
-  while ((bm = brandRe.exec(spaceJoinedText)) !== null) {
-    const brand = bm[1].trim();
-    if (brand.length >= 4 && brand.length <= 35
-      && !/^(The|And|For|With|Add|Our|All|New|Day|Hot|Big|Free|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Saturday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Greek|Asian|Italian|French|GFO|ONLINE|RESTAURANT|BOOKINGS|RISE|SHINE|CROWDS|LOVE|THESE|HAPPY|HENS|LAY|EGGS|SIDE|KICKS|BAKERS|CORNER|STARTERS|MAIN|COURSES|SIDES|DESSERTS|AUTUMN|MATCH|FOR THE TABLE)$/i.test(brand)
-    ) {
-      brandCounts.set(brand, (brandCounts.get(brand) || 0) + 1);
-    }
-  }
-  let bestBrand = "";
-  let bestCount = 2; // need at least 3 occurrences
-  for (const [brand, count] of brandCounts) {
-    if (count > bestCount) {
-      bestBrand = brand;
-      bestCount = count;
-    }
-  }
-  if (bestBrand) return collapseDouble(bestBrand);
+  const strongBrand = findFrequentBrand(lines);
+  if (strongBrand) return strongBrand;
 
   // 6. Prefer a content line that names a venue type, but filter out generic terms and sentences.
   const venueLine = lines.find((l) => {
