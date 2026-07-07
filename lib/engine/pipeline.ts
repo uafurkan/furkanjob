@@ -14,6 +14,12 @@ import type { Draft, DraftOption, EngineProfile } from "./types";
 function cleanCompanyName(raw: string): string {
   let s = raw.trim();
 
+  // Strip trailing street address fragments: "Company 288 Fenton St Glenholme" → "Company"
+  // Copyright lines often include the full address after the brand name.
+  s = s.replace(/\s+\d+[A-Za-z]?\s+\w[\w\s]*\b(street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|way|close|court|ct|crescent|terrace|boulevard|blvd)\b.*$/i, "").trim();
+  // Also strip bare number prefixes left over from above (e.g. "288" alone after stripping "Fenton St…").
+  s = s.replace(/\s+\d+\s*$/, "").trim();
+
   // Remove trailing legal/policy/navigation/job-platform fragments (greedy: strip multiple if stacked).
   const TAIL_PATTERNS = [
     // Legal / policy
