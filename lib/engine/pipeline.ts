@@ -110,16 +110,15 @@ function looksLikeBrandName(name: string): boolean {
 
 // A single bare word (no multi-word structure, no venue/legal suffix) is exactly the shape of a
 // person's first name, which is what an LLM sometimes mistakes for the business name on a sparse
-// page (e.g. a "Contact Mark for bookings" note). Only trust a single-word company guess when it's
-// actually grounded — it repeats 3+ times on the page, or it matches the site's own domain.
-function singleWordGuessIsGrounded(name: string, text: string, urls: string[]): boolean {
+// page (e.g. a "Contact Mark for bookings" note). A repeated first name on a small "contact us" page
+// ("Contact Mark", "Email Mark", "Mark's direct line") passes a naive repetition check just as easily
+// as a real one-word brand would — repetition alone is NOT a safe signal here. The only safe signal is
+// that the word actually matches the business's own domain (a first name essentially never does).
+function singleWordGuessIsGrounded(name: string, urls: string[]): boolean {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length !== 1) return true; // multi-word names are already a stronger signal
   const word = words[0].toLowerCase();
-  const occurrences = (text.toLowerCase().match(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g")) || []).length;
-  if (occurrences >= 3) return true;
-  if (domainCoreWords(urls).includes(word)) return true;
-  return false;
+  return domainCoreWords(urls).includes(word);
 }
 
 export type PipelineResult = {
@@ -188,7 +187,7 @@ async function runPipelineInner(opts: {
     const cleaned = cleanCompanyName(analysis.company);
     if (
       cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)
-      && singleWordGuessIsGrounded(cleaned, text, analysis.urls)
+      && singleWordGuessIsGrounded(cleaned, analysis.urls)
     ) {
       analysis.company = cleaned;
     }
@@ -203,7 +202,7 @@ async function runPipelineInner(opts: {
         const cleaned = cleanCompanyName(ai.company);
         if (
           cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)
-          && singleWordGuessIsGrounded(cleaned, text, analysis.urls)
+          && singleWordGuessIsGrounded(cleaned, analysis.urls)
         ) {
           analysis.company = cleaned;
         }
