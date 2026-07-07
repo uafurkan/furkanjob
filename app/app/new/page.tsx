@@ -197,7 +197,7 @@ export default function NewApplication() {
     if (!d) return;
     setText(d.text);
     setLanguage(d.language);
-    setAuto(d.auto);
+    // Do NOT restore auto-send mode from draft — always start in safe semi-auto (user must opt in each session).
     setRes(d.res);
     setTo(d.to);
     setSubject(d.subject);
@@ -464,10 +464,11 @@ export default function NewApplication() {
       }
       // Full-auto sends only when there's no hard eligibility block — otherwise stop and let the
       // user read the warning and decide (semi-auto), even in full-auto mode.
+      // Always route through doSend (10-second undo countdown) so the user can cancel.
       if (d.eligibility?.status === "blocked") {
         setMsg({ kind: "warn", text: t("new.fit.blockedAuto") });
       } else if (auto && !d.overLimit && d.emails.length) {
-        await executeActualSend({ to: toVal, subject: parsedDrafts[0].subject, body: initialBody, meta: d });
+        doSend({ to: toVal, subject: parsedDrafts[0].subject, body: initialBody, meta: d });
       }
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message });
