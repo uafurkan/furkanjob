@@ -175,6 +175,16 @@ export type FindResult = {
   checkedOrigins: string[];
 };
 
+// A DuckDuckGo hit for a private business can land on an unrelated official/government page
+// (a district council's tourism/accommodation listing, a chamber of commerce directory…) that
+// happens to rank for the query — and that page's own general contact email gets scraped as if
+// it belonged to the business. Reject institutional domains from generic web-search results
+// unless the business genuinely IS a government body (isGovernmentOrg).
+function isInstitutionalDomain(email: string): boolean {
+  const domain = (email.split("@")[1] || "").toLowerCase();
+  return /(^|\.)(gov|govt|mil)(\.|$)/.test(domain) || /(^|\.)council(\.|$)/.test(domain);
+}
+
 export async function findEmails(opts: {
   urls?: string[];
   company?: string;
@@ -183,8 +193,9 @@ export async function findEmails(opts: {
   locality?: string;
   address?: string;
   phone?: string;
+  isGovernmentOrg?: boolean;
 }): Promise<FindResult> {
-  const { urls = [], company = "", country = "", countryCode = "", locality = "", address = "", phone = "" } = opts;
+  const { urls = [], company = "", country = "", countryCode = "", locality = "", address = "", phone = "", isGovernmentOrg = false } = opts;
   const checked = new Set<string>(); // origins we touched, for recovery links
   const remember = (list: string[]) => { for (const u of list) { const o = origin(u); if (o) checked.add(o); } };
 
@@ -224,6 +235,7 @@ export async function findEmails(opts: {
     const resultUrls = await duckduckgo(q);
     remember(resultUrls);
     emails = await scrapeEmailsFromUrls(resultUrls);
+    if (!isGovernmentOrg) emails = emails.filter((e) => !isInstitutionalDomain(e));
     if (emails.length) return { emails, source: "web-search", checkedOrigins: [...checked] };
   }
   return { emails: [], source: "none", checkedOrigins: [...checked] };

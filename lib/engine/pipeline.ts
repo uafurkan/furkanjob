@@ -46,16 +46,23 @@ function cleanCompanyName(raw: string): string {
     "new zealand","australia","united states","united kingdom","canada","ireland","germany","france",
     "italy","spain","portugal","netherlands","switzerland","austria","greece","sweden","denmark",
     "norway","belgium","finland","poland","czechia",
+    // Abbreviations copyright lines commonly use instead of the full country name.
+    "nz","au","uk","usa","us","ca",
   ]);
   const CITIES = new Set([
     "auckland","wellington","christchurch","hamilton","dunedin","tauranga","napier","palmerston north",
-    "rotorua","queenstown","whangarei","invercargill","nelson","blenheim",
+    "rotorua","queenstown","whangarei","invercargill","nelson","blenheim","taupo","new plymouth",
+    "hastings","gisborne","wanaka",
     "sydney","melbourne","brisbane","perth","adelaide","canberra","hobart","darwin","cairns","gold coast",
     "london","edinburgh","glasgow","manchester","birmingham","toronto","vancouver","calgary",
     "new york","los angeles","chicago","houston","miami","las vegas","san francisco",
   ]);
+  // Generic industry descriptors that copyright lines append after the town name ("Chevron Motel,
+  // Taupo Accommodation, NZ") — not part of the brand, but not a recognized city/country either, so
+  // they'd otherwise block the city strip below from ever reaching "Taupo".
+  const GENERIC_TRAILING_WORDS = new Set(["accommodation", "accommodations", "hospitality"]);
 
-  // Repeatedly strip trailing country/city names until stable.
+  // Repeatedly strip trailing country/city/generic-descriptor words until stable.
   let stripped = false;
   let prev2 = "";
   while (s !== prev2) {
@@ -69,6 +76,11 @@ function cleanCompanyName(raw: string): string {
         const candidate = words.slice(0, -len).join(" ").replace(/[,·•–—\-]+$/, "").trim();
         if (candidate.length >= 2) { s = candidate; stripped = true; break; }
       }
+    }
+    if (s !== prev2) continue;
+    const lastWord = words[words.length - 1]?.toLowerCase().replace(/[,·•–—\-]+$/, "");
+    if (words.length > 1 && lastWord && GENERIC_TRAILING_WORDS.has(lastWord)) {
+      s = words.slice(0, -1).join(" ").replace(/[,·•–—\-]+$/, "").trim();
     }
   }
   // Only remove trailing city names when a country was also stripped (avoids "Hotel Montreal" → "Hotel").
@@ -250,6 +262,7 @@ async function runPipelineInner(opts: {
       locality: analysis.locality,
       address: analysis.address,
       phone: analysis.phone,
+      isGovernmentOrg: analysis.orgType === "government",
     });
     emails = pickBestEmail(found.emails);
     emailSource = found.source;
