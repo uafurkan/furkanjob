@@ -1,5 +1,5 @@
 // Orchestrates: understand (AI-first, heuristic fallback) → find emails if none → resolve language → draft.
-import { analyze, detectTextLang, countryByCode, pickBestEmail, decodeHtmlEntities, type Analysis } from "./detect";
+import { analyze, detectTextLang, countryByCode, pickBestEmail, decodeHtmlEntities, domainCoreWords, type Analysis } from "./detect";
 import { findEmails } from "./websearch";
 import { buildDraft, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
 import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, withAiDeadline, type AiTier, type Eligibility } from "./ai";
@@ -108,6 +108,20 @@ function looksLikeBrandName(name: string): boolean {
   return capitalized.length / significant.length >= 0.6;
 }
 
+// A single bare word (no multi-word structure, no venue/legal suffix) is exactly the shape of a
+// person's first name, which is what an LLM sometimes mistakes for the business name on a sparse
+// page (e.g. a "Contact Mark for bookings" note). Only trust a single-word company guess when it's
+// actually grounded — it repeats 3+ times on the page, or it matches the site's own domain.
+function singleWordGuessIsGrounded(name: string, text: string, urls: string[]): boolean {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length !== 1) return true; // multi-word names are already a stronger signal
+  const word = words[0].toLowerCase();
+  const occurrences = (text.toLowerCase().match(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g")) || []).length;
+  if (occurrences >= 3) return true;
+  if (domainCoreWords(urls).includes(word)) return true;
+  return false;
+}
+
 export type PipelineResult = {
   analysis: Analysis;
   emails: string[];
@@ -172,7 +186,10 @@ async function runPipelineInner(opts: {
   const BLACKLISTED_COMPANIES = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|mynet|superonline|ttmail|turknet|kablonet|google|skip to content|skip to main content|skip navigation|skip|home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|privacy policy|terms of service|terms & conditions|website use|disclaimer|wix|shopify|squarespace|godaddy|wordpress|weebly|weweb|facebook|instagram|twitter|linkedin|youtube|tiktok|apple|android|admin login|admin|login|faq|faqs)$/i;
   if (analysis.company) {
     const cleaned = cleanCompanyName(analysis.company);
-    if (cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)) {
+    if (
+      cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)
+      && singleWordGuessIsGrounded(cleaned, text, analysis.urls)
+    ) {
       analysis.company = cleaned;
     }
   }
@@ -184,7 +201,10 @@ async function runPipelineInner(opts: {
     if (ai) {
       if (ai.company) {
         const cleaned = cleanCompanyName(ai.company);
-        if (cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)) {
+        if (
+          cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)
+          && singleWordGuessIsGrounded(cleaned, text, analysis.urls)
+        ) {
           analysis.company = cleaned;
         }
       }

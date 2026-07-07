@@ -561,6 +561,56 @@ function findFrequentBrand(lines: string[]): string | null {
   return bestBrand ? collapseDouble(bestBrand) : null;
 }
 
+// Extract the normalized "core words" of the first usable (non-social) URL's domain — e.g.
+// "lakeoftranquility.co.uk" -> ["lake", "tranquility"]. Used to sanity-check an AI-guessed
+// company name against the site's own address rather than trusting it blindly.
+export function domainCoreWords(urls: string[]): string[] {
+  const validUrl = urls.find(u => !/\b(facebook|instagram|twitter|x|linkedin|google|youtube|tiktok|apple|android|wix|squarespace|shopify|wordpress)\b/i.test(u));
+  if (!validUrl) return [];
+  try {
+    const urlStr = validUrl.startsWith("http") ? validUrl : "https://" + validUrl;
+    const hostname = new URL(urlStr).hostname.replace(/^www\./, "");
+    const core = hostname.split(".")[0];
+    return core
+      .replace(VENUE_TERM_RE, " $1")
+      .replace(/[-_]/g, " ")
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && !/^(of|the|and|for)$/.test(w));
+  } catch {
+    return [];
+  }
+}
+
+// Turn the first usable (non-social) URL's domain into a nicely-cased brand name —
+// "lakeoftranquility.co.uk" -> "Lake Of Tranquility". Returns "" if no usable URL.
+function brandFromUrl(urls: string[]): string {
+  const validUrl = urls.find(u => !/\b(facebook|instagram|twitter|x|linkedin|google|youtube|tiktok|apple|android|wix|squarespace|shopify|wordpress)\b/i.test(u));
+  if (!validUrl) return "";
+  try {
+    const urlStr = validUrl.startsWith("http") ? validUrl : "https://" + validUrl;
+    const hostname = new URL(urlStr).hostname;
+    const parts = hostname.replace(/^www\./, "").split(".");
+    if (parts.length < 2) return "";
+    let name = parts[0]
+      .replace(VENUE_TERM_RE, " $1")
+      .replace(/[-_]/g, " ")
+      // Split a glued connector word ("lakeoftranquility" -> "lake of tranquility") — only when
+      // there's enough letters on both sides to be real words, so short false hits ("wexford",
+      // "thecafe") aren't mangled.
+      .replace(/([a-z]{3,})(of|and|the)([a-z]{3,})/i, "$1 $2 $3")
+      .replace(/\s+/g, " ")
+      .trim();
+    name = name.replace(/\b\w/g, c => c.toUpperCase());
+    if (name && name.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|site|home)$/i.test(name.toLowerCase())) {
+      return name;
+    }
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 export function guessCompany(text: string, emails: string[], urls: string[] = []): string {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -651,7 +701,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
       const nearby = lines.slice(Math.max(0, ci - 1), ci + 3).join(" ");
       const builderCreditNearby = /\b(proudly created with|powered by|made with|built with)\b.{0,25}\b(wix|squarespace|shopify|godaddy|wordpress|weebly|webflow)\b/i.test(nearby);
       if (builderCreditNearby) {
-        const strongBrand = findFrequentBrand(lines);
+        const strongBrand = findFrequentBrand(lines) || brandFromUrl(urls);
         if (strongBrand) return strongBrand;
       }
 
@@ -805,27 +855,8 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   }
 
   // 7. Try to guess from URLs if available
-  if (urls.length) {
-    try {
-      const validUrl = urls.find(u => !/\b(facebook|instagram|twitter|x|linkedin|google|youtube|tiktok|apple|android|wix|squarespace|shopify|wordpress)\b/i.test(u));
-      if (validUrl) {
-        const urlStr = validUrl.startsWith("http") ? validUrl : "https://" + validUrl;
-        const hostname = new URL(urlStr).hostname;
-        const parts = hostname.replace(/^www\./, "").split(".");
-        if (parts.length >= 2) {
-          let name = parts[0]
-            .replace(VENUE_TERM_RE, " $1")
-            .replace(/[-_]/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
-          name = name.replace(/\b\w/g, c => c.toUpperCase());
-          if (name && name.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress|site|home)$/i.test(name.toLowerCase())) {
-            return name;
-          }
-        }
-      }
-    } catch (e) {}
-  }
+  const urlBrand = brandFromUrl(urls);
+  if (urlBrand) return urlBrand;
 
   // 8. Fallback to the first non-junk, non-disclaimer line
   const fallbackLine = lines.find((l) => {
