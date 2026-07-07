@@ -534,10 +534,25 @@ function isSentenceLike(s: string): boolean {
 // (every page has "Contact Us", "Home", "About Us" etc. in its nav and headings).
 const NAV_PHRASE_RE = /^(home|about|about us|contact|contact us|log in|sign in|sign up|book now|read more|learn more|get started|menu|menus|gallery|our story|follow us|terms of use|terms and conditions|privacy policy|skip to content|find us|book a table|opening hours|more info|click here|day tickets|overnight|lake rules)$/i;
 
+// Embedded third-party widgets (maps, fonts, stock photos, chat widgets…) carry their OWN "©"
+// attribution line in the scraped page text — "Leaflet | © OpenStreetMap contributors" sits right
+// next to a map embed and has nothing to do with the business. A copyright-line match on one of
+// these is never the real company name; skip it and keep scanning for the business's own line.
+const THIRD_PARTY_ATTRIBUTION_RE =
+  /^(openstreetmap( contributors)?|leaflet|mapbox(gl)?|google( maps)?|here technologies|esri|tomtom|unsplash|pexels|pixabay|font\s?awesome|google fonts|maki icons|carto(db)?|stadia maps|thunderforest)$/i;
+
 // Title-case a SHOUTY (ALL-CAPS) line so it matches the casing of the same phrase appearing
 // elsewhere in mixed case (e.g. a hero heading "LAKE OF TRANQUILITY" vs. body text
 // "Lake of Tranquility") — otherwise they're counted as different strings and neither reaches
 // the repetition threshold.
+// Applies titleCaseShout only when the candidate actually IS a shouty ALL-CAPS line — a normal
+// mixed-case name ("Dux Dine") must pass through untouched.
+function normalizeIfShouty(s: string): string {
+  const letters = s.replace(/[^a-zA-Z]/g, "");
+  const isShouty = letters.length >= 4 && letters === letters.toUpperCase() && letters !== letters.toLowerCase();
+  return isShouty ? titleCaseShout(s) : s;
+}
+
 function titleCaseShout(line: string): string {
   let first = true;
   const connectors = new Set(BRAND_CONNECTOR_WORDS.split("|"));
@@ -742,12 +757,12 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
         for (const seg of segments) {
           if (seg === copyrightSegment) continue;
           const candidate = cleanSegment(seg);
-          if (candidate) return candidate;
+          if (candidate && !THIRD_PARTY_ATTRIBUTION_RE.test(candidate)) return candidate;
         }
       }
 
       const candidate = cleanSegment(clean);
-      if (candidate) return candidate;
+      if (candidate && !THIRD_PARTY_ATTRIBUTION_RE.test(candidate)) return candidate;
     }
   }
 
@@ -843,7 +858,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
       if (rest.toLowerCase().startsWith(prefix.toLowerCase())) {
         let candidate = stripBuilderCredit(prefix.trim().replace(/\s*[-–—,|:].*/g, "").trim());
         if (candidate.length >= 3 && !/^(home|menu|book|cart|contact|about|welcome|the|and|for)$/i.test(candidate) && !isSentenceLike(candidate)) {
-          return collapseDouble(candidate);
+          return normalizeIfShouty(collapseDouble(candidate));
         }
       }
     }
@@ -882,7 +897,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   });
 
   if (venueLine) {
-    return collapseDouble(stripBuilderCredit(venueLine.replace(/\s+[-–—|].*$/, "").trim()));
+    return normalizeIfShouty(collapseDouble(stripBuilderCredit(venueLine.replace(/\s+[-–—|].*$/, "").trim())));
   }
 
   // 7. Try to guess from URLs if available
@@ -906,7 +921,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   });
 
   if (fallbackLine) {
-    return collapseDouble(stripBuilderCredit(fallbackLine.replace(/\s+[-–—|].*$/, "").trim()));
+    return normalizeIfShouty(collapseDouble(stripBuilderCredit(fallbackLine.replace(/\s+[-–—|].*$/, "").trim())));
   }
 
   return "your company";
