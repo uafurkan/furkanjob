@@ -500,6 +500,26 @@ function cleanSegment(clean: string): string | null {
 // "House of Cards") without breaking the capitalized-word heuristic.
 const BRAND_CONNECTOR_WORDS = "of|the|and|for|de|la|le|du|von|van|el|los|las|di|da";
 
+// A browser renders a broken <img>'s `alt` attribute as visible page text when the image fails
+// to load. Site builders (Wix in particular) auto-generate these as full descriptive sentences —
+// "A green sign that says victoria court motor lodge" — and when a user copy-pastes the rendered
+// page, that sentence can sit right at the top, looking exactly like a real doubled brand heading
+// to the "concatenated title" heuristic below. Reject anything that reads like an image caption
+// or a narrative sentence rather than a proper-noun business name, wherever a candidate is pulled
+// straight from raw page text (not already cleaned/capitalized by cleanSegment).
+const IMAGE_DESCRIPTION_RE =
+  /\b(a|an)\s+\w+\s+(sign|photo|photograph|picture|image|screenshot|graphic|logo|banner)\s+(of|that|which|showing|depicting|with)\b/i;
+function isSentenceLike(s: string): boolean {
+  if (IMAGE_DESCRIPTION_RE.test(s)) return true;
+  const words = s.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 5) return false;
+  const stopWords = new Set(["a", "an", "the", "of", "in", "on", "at", "for", "with", "and", "by", "to", "from", "that", "says", "shows", "reads", "is", "was", "with"]);
+  const significant = words.filter((w) => !stopWords.has(w.toLowerCase()));
+  if (!significant.length) return true;
+  const capitalized = significant.filter((w) => /^[A-Z]/.test(w));
+  return capitalized.length / significant.length < 0.5;
+}
+
 // Generic nav/section labels that are NOT a business name even if they repeat 3+ times
 // (every page has "Contact Us", "Home", "About Us" etc. in its nav and headings).
 const NAV_PHRASE_RE = /^(home|about|about us|contact|contact us|log in|sign in|sign up|book now|read more|learn more|get started|menu|menus|gallery|our story|follow us|terms of use|terms and conditions|privacy policy|skip to content|find us|book a table|opening hours|more info|click here|day tickets|overnight|lake rules)$/i;
@@ -812,7 +832,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
       const rest = line.slice(len);
       if (rest.toLowerCase().startsWith(prefix.toLowerCase())) {
         let candidate = stripBuilderCredit(prefix.trim().replace(/\s*[-–—,|:].*/g, "").trim());
-        if (candidate.length >= 3 && !/^(home|menu|book|cart|contact|about|welcome|the|and|for)$/i.test(candidate)) {
+        if (candidate.length >= 3 && !/^(home|menu|book|cart|contact|about|welcome|the|and|for)$/i.test(candidate) && !isSentenceLike(candidate)) {
           return collapseDouble(candidate);
         }
       }
@@ -826,7 +846,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     const m = aboutLine.match(/^(.{3,35}?)\s+(?:is|was|are|has|have|offers?|provides?|serves?|opened|started|began)\b/i);
     if (m) {
       const candidate = m[1].trim();
-      if (candidate.length >= 3 && !JUNK_COMPANY_LINES.test(candidate) && !DISCLAIMER_RE.test(candidate)) {
+      if (candidate.length >= 3 && !JUNK_COMPANY_LINES.test(candidate) && !DISCLAIMER_RE.test(candidate) && !isSentenceLike(candidate)) {
         return collapseDouble(candidate);
       }
     }
@@ -847,6 +867,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     if (!VENUE_TERM_WORD_RE.test(l)) return false;
     // Avoid full narrative sentences
     if (/\b(our|we|us|visit|welcome|check|open|hours|closed|from|cook|making|some)\b/i.test(l)) return false;
+    if (isSentenceLike(l)) return false;
     return true;
   });
 
@@ -870,6 +891,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     // Skip common menu/food content lines
     if (/^\d+\s*$/.test(l) || /\b(add|served with|choice of|extra|GFO?|DF|vegan)\b/i.test(l)) return false;
     if (/\$\s*\d|\d+\.\d{2}$|\b\d{2}\s*(GF|DF|V)\b/.test(l)) return false;
+    if (isSentenceLike(l)) return false;
     return true;
   });
 
