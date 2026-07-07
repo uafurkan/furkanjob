@@ -411,7 +411,7 @@ export function detectPositions(text: string): string[] {
 // of name extraction a hotel always got.
 const VENUE_WORDS =
   "restaurant|cafe|café|bistro|lodge|inn|bar|kitchen|grill|brasserie|dining|eatery|tavern|pub|" +
-  "hotel|suites|motel|resort|hostel|" +
+  "hotel|suites|motel|motor|resort|hostel|" +
   "clinic|dental|hospital|pharmacy|surgery|medical|health|healthcare|vet|veterinary|care|" +
   "farm|orchard|vineyard|winery|dairy|" +
   "university|college|academy|school|institute|" +
@@ -431,6 +431,11 @@ const VENUE_WORDS =
 const VENUE_TERM_RE = new RegExp(`(${VENUE_WORDS})`, "i");
 // Word-bounded variant for testing full lines/sentences (avoids mid-word hits like "inn" inside "dinner").
 const VENUE_TERM_WORD_RE = new RegExp(`\\b(?:${VENUE_WORDS})\\b`, "i");
+// Global variant for splitting glued multi-word domains ("clearwatermotorlodge" has TWO venue
+// words back to back — "motor" and "lodge" — so a single non-global replace only inserts a space
+// before the first one, leaving "Clearwatermotor Lodge". Every `.replace(..., " $1")` call site
+// needs every occurrence split, not just the first.
+const VENUE_TERM_RE_G = new RegExp(`(${VENUE_WORDS})`, "gi");
 
 // Strips a trailing website-builder/agency credit clause, however it's phrased —
 // "Powered by Wix", "Powered and secured by Wix", "Site by WeWeb", "designed & hosted by Acme" —
@@ -469,6 +474,11 @@ function cleanSegment(clean: string): string | null {
   // Common copyright phrasing is "© 2024 by Company Name" — after the year is stripped
   // upstream, a leading "by" is left dangling. Drop it (a real company name never starts with it).
   s = s.replace(/^by\s+/i, "").trim();
+
+  // A nearby nav/legal label can glue directly onto the front with no separator once HTML tags
+  // are stripped ("Privacy PolicyBoulevard Waters Motor Lodge" -> the copyright regex only found
+  // "©" further along, so the whole prefix rides along as one segment). Strip it before continuing.
+  s = s.replace(/^(privacy policy|terms of service|terms & conditions|terms and conditions|cookie policy|cookie notice|sitemap|accessibility statement)\s*/i, "").trim();
 
   // Strip a trailing builder/agency credit clause however it's phrased (see BUILDER_CREDIT_TAIL_RE).
   s = stripBuilderCredit(s);
@@ -592,7 +602,7 @@ export function domainCoreWords(urls: string[]): string[] {
     const hostname = new URL(urlStr).hostname.replace(/^www\./, "");
     const core = hostname.split(".")[0];
     return core
-      .replace(VENUE_TERM_RE, " $1")
+      .replace(VENUE_TERM_RE_G, " $1")
       .replace(/[-_]/g, " ")
       .toLowerCase()
       .split(/\s+/)
@@ -613,7 +623,7 @@ function brandFromUrl(urls: string[]): string {
     const parts = hostname.replace(/^www\./, "").split(".");
     if (parts.length < 2) return "";
     let name = parts[0]
-      .replace(VENUE_TERM_RE, " $1")
+      .replace(VENUE_TERM_RE_G, " $1")
       .replace(/[-_]/g, " ")
       // Split a glued connector word ("lakeoftranquility" -> "lake of tranquility") — only when
       // there's enough letters on both sides to be real words, so short false hits ("wexford",
@@ -766,7 +776,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
           const hostname = new URL(urlStr).hostname;
           const core = hostname.replace(/^www\./, "").split(".")[0];
           let name = core
-            .replace(VENUE_TERM_RE, " $1")
+            .replace(VENUE_TERM_RE_G, " $1")
             .replace(/[-_]/g, " ")
             .replace(/\s+/g, " ")
             .trim();
@@ -788,7 +798,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
     if (core) {
       if (!ISP_DOMAINS.test(core)) {
         let name = core
-          .replace(VENUE_TERM_RE, " $1")
+          .replace(VENUE_TERM_RE_G, " $1")
           .replace(/[-_]/g, " ")
           .replace(/\s+/g, " ")
           .trim();
@@ -803,7 +813,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
         if (!genericUsernames.test(username)) {
           let cleaned = username
             .replace(/(?:nz|au|uk|usa?)$/i, "")
-            .replace(VENUE_TERM_RE, " $1")
+            .replace(VENUE_TERM_RE_G, " $1")
             .replace(/[-_]/g, " ")
             .replace(/\s+/g, " ")
             .trim();
