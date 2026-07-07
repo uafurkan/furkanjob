@@ -114,6 +114,7 @@ export default function NewApplication() {
   const [undoCountdown, setUndoCountdown] = useState<number | null>(null);
   const undoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingSendData = useRef<{ to: string; subject: string; body: string; meta: GenResult } | null>(null);
+  const analyzeAbortRef = useRef<AbortController | null>(null);
   const [selectedDraftIndex, setSelectedDraftIndex] = useState<number>(0);
   const [currentDrafts, setCurrentDrafts] = useState<{ subject: string; body: string; style: string }[]>([]);
   const [signatureChecked, setSignatureChecked] = useState(false);
@@ -401,6 +402,15 @@ export default function NewApplication() {
     ({ text: t("new.src.text"), "page-scrape": t("new.src.scrape"), "web-search": t("new.src.web"), none: t("new.src.none") } as Record<string, string>)[s] || s;
   const langLabel = (c: string) => APP_LANGS.find((l) => l.code === c)?.label || c;
 
+  function stopAnalyzing() {
+    if (analyzeAbortRef.current) {
+      analyzeAbortRef.current.abort();
+      analyzeAbortRef.current = null;
+    }
+    setAnalyzing(false);
+    setStage(null);
+  }
+
   async function analyze() {
     if (!text.trim()) return setMsg({ kind: "warn", text: t("new.pasteFirst") });
     setAnalyzing(true);
@@ -412,6 +422,8 @@ export default function NewApplication() {
     setAskError(null);
     setShowCustomInput(false);
     setCustomQuestion("");
+    const controller = new AbortController();
+    analyzeAbortRef.current = controller;
     const stageTimer1 = setTimeout(() => setStage(t("new.stage.searching")), 1400);
     const stageTimer = setTimeout(() => setStage(t("new.stage.drafting")), 3800);
     try {
@@ -419,6 +431,7 @@ export default function NewApplication() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text, language }),
+        signal: controller.signal,
       });
       const d: GenResult = await safeJson(r);
       if (!r.ok) throw new Error((d as any).error || "Error");
@@ -471,10 +484,11 @@ export default function NewApplication() {
         doSend({ to: toVal, subject: parsedDrafts[0].subject, body: initialBody, meta: d });
       }
     } catch (e: any) {
-      setMsg({ kind: "err", text: e.message });
+      if (e?.name !== "AbortError") setMsg({ kind: "err", text: e.message });
     } finally {
       clearTimeout(stageTimer1);
       clearTimeout(stageTimer);
+      analyzeAbortRef.current = null;
       setAnalyzing(false);
       setStage(null);
     }
@@ -864,6 +878,9 @@ export default function NewApplication() {
           <button className="btn btn-primary" data-loading={analyzing || sending || fetchingUrl} onClick={analyze} disabled={analyzing || sending || fetchingUrl}>
             {analyzing ? (stage || t("new.analyzing")) : sending ? t("new.sending") : auto ? t("new.analyzeSend") : t("new.analyze")}
           </button>
+          {analyzing && (
+            <button className="btn btn-sm" onClick={stopAnalyzing}>{t("new.stop")}</button>
+          )}
           <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>⌘↵</span>
           {res && <span className="chip">{res.draftSource === "ai" ? t("new.aiLabel") : t("new.tmpl")}</span>}
           {res && <span className="chip">{langLabel(res.language)}</span>}
