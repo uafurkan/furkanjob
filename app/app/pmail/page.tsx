@@ -8,7 +8,7 @@ import Link from "next/link";
 
 export const metadata = { title: "Pmail" };
 
-export default async function PmailPage() {
+export default async function PmailPage({ searchParams }: { searchParams?: { id?: string } }) {
   const { t } = getT();
   const user = (await getCurrentUser())!;
   const [apps, used] = await Promise.all([
@@ -88,6 +88,7 @@ export default async function PmailPage() {
             );
           })()}
           <ApplicationsBoard
+            initialSelectedId={searchParams?.id}
             initial={apps.map((a) => ({
               id: a.id, company: a.company ?? null, country: a.country ?? null, subject: a.subject,
               recipients: a.recipients, status: a.status, error: a.error ?? null,

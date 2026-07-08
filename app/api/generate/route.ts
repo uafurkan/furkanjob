@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfile, getUsage, getDefaultCv, listApplications } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
 import { enrichProfileWithDocuments } from "@/lib/profile-context";
+import { findDuplicateApplication } from "@/lib/applications";
 import { runPipeline } from "@/lib/engine/pipeline";
 import { fetchPageText } from "@/lib/engine/websearch";
 import { aiSubjectVariant, withAiDeadline } from "@/lib/engine/ai";
@@ -96,17 +97,12 @@ async function handleGenerate(req: Request) {
     ).catch(() => null),
   ]);
 
-  // Duplicate guard: have we already applied to this company or any of these emails?
+  // Duplicate guard: have we already applied to this company (by name, or by recipient
+  // email/domain — info@ vs hr@ vs careers@ at the same business all count)?
   let duplicate: { id: string; company: string | null; when: string } | null = null;
   try {
     const prior = await listApplications(user.id);
-    const emailSet = new Set(result.emails.map((e) => e.toLowerCase()));
-    const companyLc = (result.analysis.company || "").trim().toLowerCase();
-    const hit = prior.find(
-      (a) =>
-        (companyLc && (a.company || "").trim().toLowerCase() === companyLc) ||
-        a.recipients.some((r) => emailSet.has(r.toLowerCase()))
-    );
+    const hit = findDuplicateApplication(prior, { company: result.analysis.company, emails: result.emails });
     if (hit) duplicate = { id: hit.id, company: hit.company ?? null, when: hit.createdAt };
   } catch {}
 

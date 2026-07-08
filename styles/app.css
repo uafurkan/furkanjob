@@ -810,15 +810,19 @@
 /* ---------- Application Detail ---------- */
 .detail-modal { overflow-y: auto; }
 .detail-header {
-  display: flex; align-items: flex-start; gap: var(--space-3);
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
   padding: 20px 22px 14px;
   border-bottom: 1px solid rgba(255,255,255,.08);
   position: sticky; top: 0;
-  background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(80,100,200,.06));
+  /* Solid-enough backdrop so content scrolling underneath the sticky header never bleeds
+     through and overlaps the title/buttons visually. */
+  background: linear-gradient(160deg, rgba(32,36,56,.94), rgba(20,24,40,.94));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  z-index: 1;
+  z-index: 2;
 }
+.detail-header-title { flex: 1 1 160px; min-width: 0; }
+.detail-header-actions { flex: 0 0 auto; margin-left: auto; }
 .detail-company { font-size: var(--text-18); font-weight: 700; letter-spacing: -.02em; }
 .detail-body { padding: 18px 22px 24px; overflow-y: auto; }
 .detail-meta-grid {
@@ -844,6 +848,8 @@
 .mail-reading-pane { flex: 1; min-width: 0; }
 .app-row-active { box-shadow: inset 0 0 0 1.5px var(--accent-bright), var(--glass-shadow); }
 .mail-row-snippet { display: block; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-page-bar { padding: 2px 2px 6px; }
+.mail-page-bar select.input { min-height: auto; }
 
 .detail-header-inline {
   background: var(--glass-fill);

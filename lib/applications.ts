@@ -29,6 +29,58 @@ export function isFollowupDue(status: string, sentAt: string | null, createdAt: 
   return ageDays >= FOLLOWUP_DAYS;
 }
 
+// ---------- Duplicate-application detection ----------
+// Public webmail domains never identify a specific business, so a shared domain there is
+// meaningless as a "same company" signal — only a company's own domain counts.
+const FREE_EMAIL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "outlook.com", "hotmail.com",
+  "hotmail.co.uk", "live.com", "icloud.com", "me.com", "aol.com", "protonmail.com", "proton.me",
+  "gmx.com", "gmx.de", "mail.com", "yandex.com", "zoho.com",
+]);
+
+const COMPANY_SUFFIXES = /\b(ltd|limited|llc|l l c|inc|incorporated|plc|corp|corporation|co|company|pty|gmbh|srl|s r l|sa|s a|nv|ag|group|holdings)\b\.?/gi;
+
+export function normalizeCompanyName(name: string | null | undefined): string {
+  if (!name) return "";
+  return name
+    .toLowerCase()
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[.,'’&]/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(COMPANY_SUFFIXES, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function emailDomain(email: string): string {
+  const at = email.lastIndexOf("@");
+  return at === -1 ? "" : email.slice(at + 1).trim().toLowerCase();
+}
+
+export type DuplicateCandidate = { id: string; company?: string | null; recipients: string[]; createdAt: string };
+
+// Smarter than a raw company-string/email match: also recognizes the same business by its
+// email domain (info@ vs hr@ vs careers@ at the same company all count) and by company name
+// once legal suffixes ("Ltd", "Group", ...) and punctuation are normalized away.
+export function findDuplicateApplication<T extends DuplicateCandidate>(
+  prior: T[],
+  current: { company?: string | null; emails: string[] }
+): T | null {
+  const emailSet = new Set(current.emails.map((e) => e.trim().toLowerCase()).filter(Boolean));
+  const domainSet = new Set(
+    [...emailSet].map(emailDomain).filter((d) => d && !FREE_EMAIL_DOMAINS.has(d))
+  );
+  const companyKey = normalizeCompanyName(current.company);
+
+  for (const a of prior) {
+    const aEmails = a.recipients.map((r) => r.trim().toLowerCase()).filter(Boolean);
+    if (aEmails.some((e) => emailSet.has(e))) return a;
+    if (domainSet.size && aEmails.some((e) => domainSet.has(emailDomain(e)))) return a;
+    if (companyKey && companyKey === normalizeCompanyName(a.company)) return a;
+  }
+  return null;
+}
+
 // ---------- Insights (response-rate analytics over the pipeline) ----------
 const DISPATCHED = new Set(["sent", "replied", "interview", "offer", "rejected"]);
 const RESPONDED = new Set(["replied", "interview", "offer", "rejected"]);

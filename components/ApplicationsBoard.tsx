@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useT } from "@/components/i18n";
 import { SETTABLE_STATUSES, PIPELINE_STATUSES, STATUS_CLASS, isFollowupDue } from "@/lib/applications";
 
@@ -128,23 +128,23 @@ function ReadingPane({
     <div className="detail-header-inline">
       <div className="detail-header">
         <button className="btn btn-sm mail-back-btn" onClick={onBack}>{t("apps.detail.back")}</button>
-        <div className="stack gap-1">
+        <div className="stack gap-1 detail-header-title">
           <span className="detail-company">{app.company || "—"}</span>
           {app.country && <span className="chip" style={{ alignSelf: "start" }}>{app.country}</span>}
         </div>
-        {app.status === "failed" && app.body && (
-          <button className="btn btn-sm" data-loading={resending === app.id} style={{ marginLeft: "auto" }}
-            onClick={() => onResend(app)}>
-            {t("apps.resend")}
-          </button>
-        )}
-        {due && app.status !== "failed" && (
-          <button className="btn btn-sm" data-loading={loadingFu === app.id} style={{ marginLeft: app.status === "failed" ? 0 : "auto" }}
-            onClick={() => onFollowup(app)}>
-            {t("apps.followup")}
-          </button>
-        )}
-        <button className="btn btn-sm btn-danger" onClick={() => onDelete(app)}>{t("apps.delete")}</button>
+        <div className="row gap-2 wrap detail-header-actions">
+          {app.status === "failed" && app.body && (
+            <button className="btn btn-sm" data-loading={resending === app.id} onClick={() => onResend(app)}>
+              {t("apps.resend")}
+            </button>
+          )}
+          {due && app.status !== "failed" && (
+            <button className="btn btn-sm" data-loading={loadingFu === app.id} onClick={() => onFollowup(app)}>
+              {t("apps.followup")}
+            </button>
+          )}
+          <button className="btn btn-sm btn-danger" onClick={() => onDelete(app)}>{t("apps.delete")}</button>
+        </div>
       </div>
       <div className="detail-body stack gap-3">
         <div className="stack gap-2">
@@ -214,17 +214,21 @@ function ReadingPane({
   );
 }
 
-export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
+
+export default function ApplicationsBoard({ initial, initialSelectedId }: { initial: AppRow[]; initialSelectedId?: string }) {
   const { t, lang } = useT();
   const [apps, setApps] = useState<AppRow[]>(initial);
   const [fu, setFu] = useState<Followup | null>(null);
   const [loadingFu, setLoadingFu] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId || null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"date" | "company" | "status">("date");
   const [filterFollowup, setFilterFollowup] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
   const label = (s: string) => t(`apps.status.${s}`);
   const counts = PIPELINE_STATUSES.map((s) => ({ s, n: apps.filter((a) => a.status === s).length }));
@@ -253,6 +257,25 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
     });
 
   const active = visible.find((a) => a.id === selectedId) || null;
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const clampedPage = Math.min(page, pageCount);
+  const pageStart = (clampedPage - 1) * pageSize;
+  const pageItems = visible.slice(pageStart, pageStart + pageSize);
+
+  // Reset to page 1 whenever the visible set is re-sliced by a search/filter/sort/page-size change.
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterStatus, filterFollowup, sortBy, pageSize]);
+
+  // Jump straight to the page containing a deep-linked application (e.g. from the
+  // "already applied" duplicate banner), once, on mount.
+  useEffect(() => {
+    if (!initialSelectedId) return;
+    const idx = visible.findIndex((a) => a.id === initialSelectedId);
+    if (idx >= 0) setPage(Math.floor(idx / pageSize) + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [resending, setResending] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -441,8 +464,32 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
             </p>
           )}
 
+          {visible.length > 0 && (
+            <div className="row gap-2 wrap mail-page-bar" style={{ alignItems: "center" }}>
+              <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>
+                {t("apps.pageInfo")
+                  .replace("{from}", String(pageStart + 1))
+                  .replace("{to}", String(Math.min(pageStart + pageSize, visible.length)))
+                  .replace("{total}", String(visible.length))}
+              </span>
+              <select
+                className="input"
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                style={{ marginLeft: "auto", fontSize: "var(--text-12)", width: "auto", padding: "2px 6px" }}
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>{n} / {t("apps.perPage")}</option>
+                ))}
+              </select>
+              <button className="btn btn-sm" disabled={clampedPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
+              <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>{clampedPage} / {pageCount}</span>
+              <button className="btn btn-sm" disabled={clampedPage >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))}>›</button>
+            </div>
+          )}
+
           <div className="stack gap-2">
-            {visible.map((a) => {
+            {pageItems.map((a) => {
               const due = isFollowupDue(a.status, a.sentAt, a.createdAt);
               return (
                 <div
