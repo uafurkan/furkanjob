@@ -450,7 +450,7 @@ export default function ApplicationsBoard({ initial, initialSelectedId }: { init
               className="input"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as "date" | "company" | "status")}
-              style={{ flex: "0 0 auto", fontSize: "var(--text-13)" }}
+              style={{ flex: "0 0 auto", width: "auto", fontSize: "var(--text-13)" }}
             >
               <option value="date">{t("apps.sort.date")}</option>
               <option value="company">{t("apps.sort.company")}</option>

@@ -36,7 +36,7 @@ export default async function AdminApplications({ searchParams }: { searchParams
           name="status"
           defaultValue={searchParams?.status || ""}
           className="input"
-          style={{ flex: "0 0 auto", fontSize: "var(--text-14)" }}
+          style={{ flex: "0 0 auto", width: "auto", fontSize: "var(--text-14)" }}
         >
           <option value="">All statuses</option>
           {statuses.map((s) => (
