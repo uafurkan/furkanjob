@@ -30,7 +30,7 @@ export default async function HomePage() {
   if (!cv) nudges.push({ key: "home.nudge.cv", href: "/app/profile", cta: t("home.nudge.ctaProfile") });
   if (!account?.provider) nudges.push({ key: "home.nudge.gmail", href: "/app/profile", cta: t("home.nudge.ctaProfile") });
   if (!profile?.fullName) nudges.push({ key: "home.nudge.profile", href: "/app/profile", cta: t("home.nudge.ctaProfile") });
-  if (followupDue > 0) nudges.push({ key: "home.nudge.followup", href: "/app/profile#applications", cta: t("home.nudge.ctaApps") });
+  if (followupDue > 0) nudges.push({ key: "home.nudge.followup", href: "/app/pmail", cta: t("home.nudge.ctaApps") });
 
   // Response rate (only if ≥ 3 dispatched applications to be meaningful)
   const ins = computeInsights(apps);
@@ -196,7 +196,7 @@ export default async function HomePage() {
         <div className="row gap-2" style={{ alignItems: "center" }}>
           <h2 className="section-title">{t("home.recent")}</h2>
           {apps.length > 0 && (
-            <Link href="/app/profile#applications" className="text-secondary" style={{ fontSize: "var(--text-13)", marginLeft: "auto" }}>
+            <Link href="/app/pmail" className="text-secondary" style={{ fontSize: "var(--text-13)", marginLeft: "auto" }}>
               {t("home.viewAll")} →
             </Link>
           )}
@@ -209,7 +209,7 @@ export default async function HomePage() {
         ) : (
           <div className="stack gap-2">
             {recent.map((a) => (
-              <Link key={a.id} href="/app/profile#applications" className="home-recent-row">
+              <Link key={a.id} href="/app/pmail" className="home-recent-row">
                 <span className="home-recent-dot" data-status={a.status} aria-hidden />
                 <b>{a.company || "—"}</b>
                 {a.country && <span className="home-recent-sub text-secondary">{a.country}</span>}

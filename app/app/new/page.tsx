@@ -954,7 +954,7 @@ export default function NewApplication() {
               <span>
                 {t("new.duplicate").replace("{when}", new Date(res.duplicate.when).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }))}
               </span>
-              <Link href="/app/profile#applications" className="btn btn-sm" style={{ marginLeft: "auto", fontSize: "var(--text-12)" }}>
+              <Link href="/app/pmail" className="btn btn-sm" style={{ marginLeft: "auto", fontSize: "var(--text-12)" }}>
                 {t("new.duplicateView")}
               </Link>
             </div>

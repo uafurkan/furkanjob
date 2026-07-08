@@ -22,7 +22,7 @@ function reminderHtml(name: string, companies: string[]): string {
     </p>
     ${list ? `<ul style="font-size:14px;color:#444;padding-left:18px">${list}</ul>` : ""}
     <p style="font-size:15px">
-      <a href="${BASE}/app/profile#applications" style="color:#2f6bdc;font-weight:600">
+      <a href="${BASE}/app/pmail" style="color:#2f6bdc;font-weight:600">
         Send follow-ups →
       </a>
     </p>

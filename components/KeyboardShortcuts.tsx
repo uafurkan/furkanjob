@@ -7,6 +7,7 @@ const SHORTCUTS = [
   { key: "n", hint: "New application", hintTr: "Yeni başvuru", href: "/app/new" },
   { key: "h", hint: "Home", hintTr: "Ana sayfa", href: "/app/home" },
   { key: "p", hint: "Profile", hintTr: "Profil", href: "/app/profile" },
+  { key: "m", hint: "Pmail", hintTr: "Pmail", href: "/app/pmail" },
   { key: "b", hint: "Billing / Pro", hintTr: "Ücretlendirme", href: "/app/billing" },
 ];
 

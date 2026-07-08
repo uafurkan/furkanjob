@@ -76,26 +76,155 @@ function mdToHtml(md: string): string {
     .replace(/^/, "<p>").replace(/$/, "</p>");
 }
 
+// Short plain-text preview of the body for the list row (like a Gmail snippet).
+function snippet(body: string | undefined, max = 90): string {
+  if (!body) return "";
+  const plain = body.replace(/\*\*|\*/g, "").replace(/\s+/g, " ").trim();
+  return plain.length > max ? plain.slice(0, max).trim() + "…" : plain;
+}
+
+// ── Reading pane — the right-hand column showing the selected application ──
+function ReadingPane({
+  app, lang, t, onBack, onDelete, onResend, onFollowup, resending, loadingFu, onNotesSaved,
+}: {
+  app: AppRow;
+  lang: string;
+  t: (k: string) => string;
+  onBack: () => void;
+  onDelete: (a: AppRow) => void;
+  onResend: (a: AppRow) => void;
+  onFollowup: (a: AppRow) => void;
+  resending: string | null;
+  loadingFu: string | null;
+  onNotesSaved: (id: string, notes: string) => void;
+}) {
+  const [notes, setNotes] = useState(app.notes || "");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const due = isFollowupDue(app.status, app.sentAt, app.createdAt);
+
+  const copyBody = useCallback(async () => {
+    if (!app.body) return;
+    await navigator.clipboard.writeText(app.body);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }, [app.body]);
+
+  async function saveNotes() {
+    setSavingNotes(true);
+    try {
+      await fetch(`/api/applications/${app.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ notes }),
+      });
+      onNotesSaved(app.id, notes);
+    } finally {
+      setSavingNotes(false);
+    }
+  }
+
+  return (
+    <div className="detail-header-inline">
+      <div className="detail-header">
+        <button className="btn btn-sm mail-back-btn" onClick={onBack}>{t("apps.detail.back")}</button>
+        <div className="stack gap-1">
+          <span className="detail-company">{app.company || "—"}</span>
+          {app.country && <span className="chip" style={{ alignSelf: "start" }}>{app.country}</span>}
+        </div>
+        {app.status === "failed" && app.body && (
+          <button className="btn btn-sm" data-loading={resending === app.id} style={{ marginLeft: "auto" }}
+            onClick={() => onResend(app)}>
+            {t("apps.resend")}
+          </button>
+        )}
+        {due && app.status !== "failed" && (
+          <button className="btn btn-sm" data-loading={loadingFu === app.id} style={{ marginLeft: app.status === "failed" ? 0 : "auto" }}
+            onClick={() => onFollowup(app)}>
+            {t("apps.followup")}
+          </button>
+        )}
+        <button className="btn btn-sm btn-danger" onClick={() => onDelete(app)}>{t("apps.delete")}</button>
+      </div>
+      <div className="detail-body stack gap-3">
+        <div className="stack gap-2">
+          <span className="field-label">{t("apps.detail.timeline")}</span>
+          <ol className="app-timeline">
+            {buildTimeline(app).map((n) => (
+              <li key={n.key} className={`app-tl-node app-tl-${n.state}`}>
+                <span className="app-tl-dot" aria-hidden />
+                <span className="app-tl-label">{t(`apps.tl.${n.key}`)}</span>
+                {n.date && (
+                  <span className="app-tl-date">
+                    {new Date(n.date).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US", { day: "2-digit", month: "short" })}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="detail-meta-grid">
+          <span className="field-label">{t("apps.detail.to")}</span>
+          <span className="mono" style={{ fontSize: "var(--text-13)" }}>{app.recipients.join(", ") || "—"}</span>
+          <span className="field-label">{t("new.subject")}</span>
+          <span style={{ fontSize: "var(--text-14)" }}>{app.subject}</span>
+          {app.sentAt && <>
+            <span className="field-label">{t("apps.detail.sent")}</span>
+            <span style={{ fontSize: "var(--text-13)" }}>{new Date(app.sentAt).toLocaleString(lang === "tr" ? "tr-TR" : "en-US")}</span>
+          </>}
+          {app.positions && app.positions.length > 0 && <>
+            <span className="field-label">{t("apps.detail.positions")}</span>
+            <div className="row gap-1 wrap">{app.positions.map((p) => <span key={p} className="chip">{p}</span>)}</div>
+          </>}
+          {app.emailSource && <>
+            <span className="field-label">{t("apps.detail.source")}</span>
+            <span className="chip">{t(`apps.source.${app.emailSource}`)}</span>
+          </>}
+          {app.draftSource && <>
+            <span className="field-label">{t("apps.detail.draft")}</span>
+            <span className="chip">{t(`apps.draft.${app.draftSource}`)}</span>
+          </>}
+        </div>
+        {app.body && (
+          <div className="stack gap-2">
+            <div className="row gap-2" style={{ alignItems: "center" }}>
+              <span className="field-label">{t("apps.detail.body")}</span>
+              <button className="btn btn-sm" style={{ marginLeft: "auto", fontSize: "var(--text-12)" }} onClick={copyBody}>
+                {copied ? t("apps.detail.copied") : t("apps.detail.copy")}
+              </button>
+            </div>
+            <div className="detail-body-text" dangerouslySetInnerHTML={{ __html: mdToHtml(app.body) }} />
+          </div>
+        )}
+        <div className="stack gap-2">
+          <span className="field-label">{t("apps.detail.notes")}</span>
+          <textarea
+            className="textarea"
+            style={{ minHeight: 80, fontSize: "var(--text-13)" }}
+            placeholder={t("apps.detail.notesPlaceholder")}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+          <button className="btn btn-sm" data-loading={savingNotes} style={{ alignSelf: "flex-end" }} onClick={saveNotes}>
+            {t("apps.detail.saveNotes")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
   const { t, lang } = useT();
   const [apps, setApps] = useState<AppRow[]>(initial);
   const [fu, setFu] = useState<Followup | null>(null);
   const [loadingFu, setLoadingFu] = useState<string | null>(null);
-  const [detail, setDetail] = useState<AppRow | null>(null);
-  const [detailNotes, setDetailNotes] = useState("");
-  const [savingNotes, setSavingNotes] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"date" | "company" | "status">("date");
   const [filterFollowup, setFilterFollowup] = useState(false);
-
-  const copyBody = useCallback(async (text: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  }, []);
 
   const label = (s: string) => t(`apps.status.${s}`);
   const counts = PIPELINE_STATUSES.map((s) => ({ s, n: apps.filter((a) => a.status === s).length }));
@@ -112,6 +241,7 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
         (a.company || "").toLowerCase().includes(q) ||
         (a.country || "").toLowerCase().includes(q) ||
         a.subject.toLowerCase().includes(q) ||
+        (a.body || "").toLowerCase().includes(q) ||
         a.recipients.some((r) => r.toLowerCase().includes(q))
       );
     })
@@ -121,6 +251,8 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
       // date: newest first (default)
       return new Date(b.sentAt || b.createdAt).getTime() - new Date(a.sentAt || a.createdAt).getTime();
     });
+
+  const active = visible.find((a) => a.id === selectedId) || null;
 
   const [resending, setResending] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -180,7 +312,7 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
       const r = await fetch(`/api/applications/${id}`, { method: "DELETE" });
       if (!r.ok) throw new Error();
       setApps((prev) => prev.filter((x) => x.id !== id));
-      setDetail(null);
+      setSelectedId((cur) => (cur === id ? null : cur));
       setConfirmDelete(null);
     } catch {
       setMsg({ kind: "err", text: t("apps.deleteFailed") });
@@ -278,91 +410,116 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
         </a>
       </div>
 
-      {/* Search + sort */}
-      <div className="row gap-2">
-        <input
-          className="input"
-          placeholder={t("apps.search")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ fontSize: "var(--text-14)", flex: 1 }}
-        />
-        <select
-          className="input"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as "date" | "company" | "status")}
-          style={{ flex: "0 0 auto", fontSize: "var(--text-13)" }}
-        >
-          <option value="date">{t("apps.sort.date")}</option>
-          <option value="company">{t("apps.sort.company")}</option>
-          <option value="status">{t("apps.sort.status")}</option>
-        </select>
-      </div>
-
-      {visible.length === 0 && (search || filterStatus !== "all") && (
-        <p className="text-secondary" style={{ fontSize: "var(--text-14)", textAlign: "center", padding: "var(--space-4) 0" }}>
-          {t("apps.noResults")}
-        </p>
-      )}
-
-      <div className="stack gap-3">
-        {visible.map((a) => {
-          const due = isFollowupDue(a.status, a.sentAt, a.createdAt);
-          return (
-            <div key={a.id} className="glass card app-row" style={{ cursor: "pointer" }} onClick={() => { setDetail(a); setDetailNotes(a.notes || ""); }}>
-              <div className="stack gap-2" style={{ width: "100%" }}>
-                <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
-                  <b>{a.company || "—"}</b>
-                  {a.country && <span className="chip">{a.country}</span>}
-                  {SETTABLE_STATUSES.includes(a.status as any) ? (
-                    <select
-                      className={`status-select ${STATUS_CLASS[a.status] || ""}`}
-                      value={a.status}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => { e.stopPropagation(); changeStatus(a.id, e.target.value); }}
-                    >
-                      {SETTABLE_STATUSES.map((s) => (
-                        <option key={s} value={s}>{label(s)}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className={`chip ${STATUS_CLASS[a.status] || ""}`}>{label(a.status)}</span>
-                  )}
-                  {a.status === "failed" && a.body && (
-                    <button className="btn btn-sm" data-loading={resending === a.id}
-                      onClick={(e) => { e.stopPropagation(); resend(a); }}
-                      style={{ marginLeft: "auto" }}>
-                      {t("apps.resend")}
-                    </button>
-                  )}
-                  {due && a.status !== "failed" && (
-                    <button className="btn btn-sm" data-loading={loadingFu === a.id}
-                      onClick={(e) => { e.stopPropagation(); openFollowup(a); }}
-                      style={{ marginLeft: "auto" }}>
-                      {t("apps.followup")}
-                    </button>
-                  )}
-                </div>
-                <span className="text-secondary" style={{ fontSize: "var(--text-14)" }}>{a.subject}</span>
-                <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
-                  <span className="mono text-secondary" style={{ fontSize: "var(--text-12)" }}>
-                    → {a.recipients.join(", ") || "—"}
-                  </span>
-                  <span className="text-secondary" style={{ fontSize: "var(--text-12)", marginLeft: "auto" }}>
-                    {timeSince(a.sentAt || a.createdAt, lang)}
-                  </span>
-                  {a.notes && (
-                    <span title={a.notes} style={{ fontSize: 14, lineHeight: 1, opacity: .7 }}>📝</span>
-                  )}
-                </div>
-                {a.error && <span className="chip-warn" style={{ fontSize: "var(--text-12)" }}>{a.error}</span>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       {msg && <div className={`notice notice-${msg.kind}`}>{msg.text}</div>}
+
+      {/* Gmail-style two-pane layout: search + list on the left, reading pane on the right. */}
+      <div className={`mail-shell${selectedId ? " has-selection" : ""}`}>
+        <div className="mail-list-pane">
+          <div className="row gap-2" style={{ marginBottom: "var(--space-3)" }}>
+            <input
+              className="input"
+              placeholder={t("apps.search")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ fontSize: "var(--text-14)", flex: 1 }}
+            />
+            <select
+              className="input"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "date" | "company" | "status")}
+              style={{ flex: "0 0 auto", fontSize: "var(--text-13)" }}
+            >
+              <option value="date">{t("apps.sort.date")}</option>
+              <option value="company">{t("apps.sort.company")}</option>
+              <option value="status">{t("apps.sort.status")}</option>
+            </select>
+          </div>
+
+          {visible.length === 0 && (search || filterStatus !== "all") && (
+            <p className="text-secondary" style={{ fontSize: "var(--text-14)", textAlign: "center", padding: "var(--space-4) 0" }}>
+              {t("apps.noResults")}
+            </p>
+          )}
+
+          <div className="stack gap-2">
+            {visible.map((a) => {
+              const due = isFollowupDue(a.status, a.sentAt, a.createdAt);
+              return (
+                <div
+                  key={a.id}
+                  className={`glass card app-row${a.id === selectedId ? " app-row-active" : ""}`}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setSelectedId(a.id)}
+                >
+                  <div className="stack gap-1" style={{ width: "100%" }}>
+                    <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
+                      <b style={{ fontSize: "var(--text-14)" }}>{a.company || "—"}</b>
+                      {SETTABLE_STATUSES.includes(a.status as any) ? (
+                        <select
+                          className={`status-select ${STATUS_CLASS[a.status] || ""}`}
+                          value={a.status}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => { e.stopPropagation(); changeStatus(a.id, e.target.value); }}
+                          style={{ marginLeft: "auto" }}
+                        >
+                          {SETTABLE_STATUSES.map((s) => (
+                            <option key={s} value={s}>{label(s)}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`chip ${STATUS_CLASS[a.status] || ""}`} style={{ marginLeft: "auto" }}>{label(a.status)}</span>
+                      )}
+                    </div>
+                    <span className="text-secondary" style={{ fontSize: "var(--text-13)", fontWeight: 600 }}>{a.subject}</span>
+                    {a.body && (
+                      <span className="text-secondary mail-row-snippet" style={{ fontSize: "var(--text-12)" }}>{snippet(a.body)}</span>
+                    )}
+                    <div className="row gap-2 wrap" style={{ alignItems: "center" }}>
+                      <span className="mono text-secondary" style={{ fontSize: "var(--text-12)" }}>
+                        → {a.recipients.join(", ") || "—"}
+                      </span>
+                      <span className="text-secondary" style={{ fontSize: "var(--text-12)", marginLeft: "auto" }}>
+                        {timeSince(a.sentAt || a.createdAt, lang)}
+                      </span>
+                      {a.notes && (
+                        <span title={a.notes} style={{ fontSize: 14, lineHeight: 1, opacity: .7 }}>📝</span>
+                      )}
+                      {due && <span className="chip chip-warn" style={{ fontSize: "var(--text-12)" }}>{t("apps.filter.followup")}</span>}
+                    </div>
+                    {a.error && <span className="chip-warn" style={{ fontSize: "var(--text-12)" }}>{a.error}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mail-reading-pane">
+          {active ? (
+            <ReadingPane
+              key={active.id}
+              app={active}
+              lang={lang}
+              t={t}
+              onBack={() => setSelectedId(null)}
+              onDelete={(a) => setConfirmDelete(a)}
+              onResend={resend}
+              onFollowup={openFollowup}
+              resending={resending}
+              loadingFu={loadingFu}
+              onNotesSaved={(id, notes) => setApps((prev) => prev.map((x) => x.id === id ? { ...x, notes } : x))}
+            />
+          ) : (
+            <div className="mail-reading-empty">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".35">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="M2 6l10 7 10-7" />
+              </svg>
+              <p className="text-secondary">{t("apps.selectPrompt")}</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {fu && (
         <div className="confirm-overlay" onClick={() => !fu.sending && setFu(null)}>
@@ -403,104 +560,6 @@ export default function ApplicationsBoard({ initial }: { initial: AppRow[] }) {
               <button className="btn btn-danger" data-loading={deleting === confirmDelete.id} onClick={() => deleteApp(confirmDelete.id)} disabled={!!deleting}>
                 {t("apps.deleteConfirmBtn")}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {detail && (
-        <div className="confirm-overlay" onClick={() => { setDetail(null); setDetailNotes(""); }}>
-          <div className="confirm-modal detail-modal" style={{ maxWidth: 640, width: "94%", maxHeight: "88vh" }} onClick={(e) => e.stopPropagation()}>
-            <div className="detail-header">
-              <div className="stack gap-1">
-                <span className="detail-company">{detail.company || "—"}</span>
-                {detail.country && <span className="chip" style={{ alignSelf: "start" }}>{detail.country}</span>}
-              </div>
-              <button className="btn btn-sm btn-danger" style={{ marginLeft: "auto" }} onClick={() => setConfirmDelete(detail)}>{t("apps.delete")}</button>
-              <button className="btn btn-sm" onClick={() => { setDetail(null); setDetailNotes(""); }}>{t("apps.detail.close")}</button>
-            </div>
-            <div className="detail-body stack gap-3">
-              <div className="stack gap-2">
-                <span className="field-label">{t("apps.detail.timeline")}</span>
-                <ol className="app-timeline">
-                  {buildTimeline(detail).map((n) => (
-                    <li key={n.key} className={`app-tl-node app-tl-${n.state}`}>
-                      <span className="app-tl-dot" aria-hidden />
-                      <span className="app-tl-label">{t(`apps.tl.${n.key}`)}</span>
-                      {n.date && (
-                        <span className="app-tl-date">
-                          {new Date(n.date).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US", { day: "2-digit", month: "short" })}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-              <div className="detail-meta-grid">
-                <span className="field-label">{t("apps.detail.to")}</span>
-                <span className="mono" style={{ fontSize: "var(--text-13)" }}>{detail.recipients.join(", ") || "—"}</span>
-                <span className="field-label">{t("new.subject")}</span>
-                <span style={{ fontSize: "var(--text-14)" }}>{detail.subject}</span>
-                {detail.sentAt && <>
-                  <span className="field-label">{t("apps.detail.sent")}</span>
-                  <span style={{ fontSize: "var(--text-13)" }}>{new Date(detail.sentAt).toLocaleString(lang === "tr" ? "tr-TR" : "en-US")}</span>
-                </>}
-                {detail.positions && detail.positions.length > 0 && <>
-                  <span className="field-label">{t("apps.detail.positions")}</span>
-                  <div className="row gap-1 wrap">{detail.positions.map((p) => <span key={p} className="chip">{p}</span>)}</div>
-                </>}
-                {detail.emailSource && <>
-                  <span className="field-label">{t("apps.detail.source")}</span>
-                  <span className="chip">{t(`apps.source.${detail.emailSource}`)}</span>
-                </>}
-                {detail.draftSource && <>
-                  <span className="field-label">{t("apps.detail.draft")}</span>
-                  <span className="chip">{t(`apps.draft.${detail.draftSource}`)}</span>
-                </>}
-              </div>
-              {detail.body && (
-                <div className="stack gap-2">
-                  <div className="row gap-2" style={{ alignItems: "center" }}>
-                    <span className="field-label">{t("apps.detail.body")}</span>
-                    <button className="btn btn-sm" style={{ marginLeft: "auto", fontSize: "var(--text-12)" }}
-                      onClick={() => copyBody(detail.body || "")}>
-                      {copied ? t("apps.detail.copied") : t("apps.detail.copy")}
-                    </button>
-                  </div>
-                  <div className="detail-body-text" dangerouslySetInnerHTML={{ __html: mdToHtml(detail.body) }} />
-                </div>
-              )}
-              <div className="stack gap-2">
-                <span className="field-label">{t("apps.detail.notes")}</span>
-                <textarea
-                  className="textarea"
-                  style={{ minHeight: 80, fontSize: "var(--text-13)" }}
-                  placeholder={t("apps.detail.notesPlaceholder")}
-                  value={detailNotes}
-                  onChange={(e) => setDetailNotes(e.target.value)}
-                />
-                <button
-                  className="btn btn-sm"
-                  data-loading={savingNotes}
-                  style={{ alignSelf: "flex-end" }}
-                  onClick={async () => {
-                    setSavingNotes(true);
-                    try {
-                      await fetch(`/api/applications/${detail.id}`, {
-                        method: "PATCH",
-                        headers: { "content-type": "application/json" },
-                        body: JSON.stringify({ notes: detailNotes }),
-                      });
-                      setApps((prev) => prev.map((x) => x.id === detail.id ? { ...x, notes: detailNotes } : x));
-                      setDetail({ ...detail, notes: detailNotes });
-                    } finally {
-                      setSavingNotes(false);
-                    }
-                  }}
-                >
-                  {t("apps.detail.saveNotes")}
-                </button>
-              </div>
             </div>
           </div>
         </div>

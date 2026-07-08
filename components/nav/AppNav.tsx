@@ -10,6 +10,7 @@ const MAIN_TABS = [
   { href: "/app/home", key: "nav.home", icon: IconHome },
   { href: "/app/new", key: "nav.new", icon: IconPlus },
   { href: "/app/profile", key: "nav.profile", icon: IconUser },
+  { href: "/app/pmail", key: "nav.pmail", icon: IconMail },
 ];
 const PRO_TAB = { href: "/app/billing", key: "nav.pro", icon: IconSpark };
 
@@ -123,6 +124,14 @@ function IconUser() {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+    </svg>
+  );
+}
+function IconMail() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M2 6l10 7 10-7" />
     </svg>
   );
 }
