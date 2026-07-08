@@ -3,6 +3,74 @@ import { useState, useCallback, useEffect } from "react";
 import { useT } from "@/components/i18n";
 import { SETTABLE_STATUSES, PIPELINE_STATUSES, STATUS_CLASS, isFollowupDue } from "@/lib/applications";
 
+function EmailFinder({ company, recipients }: { company: string | null; recipients: string[] }) {
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const searchOnGoogle = () => {
+    const query = company ? `${company} contact email` : "contact email";
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, "_blank");
+  };
+
+  return (
+    <div style={{ gridColumn: "1 / -1", position: "relative" }}>
+      <span
+        className="mono"
+        style={{
+          fontSize: "var(--text-13)",
+          cursor: "pointer",
+          padding: "4px 6px",
+          borderRadius: "4px",
+          transition: "background-color 0.2s",
+        }}
+        onClick={() => setShowDropdown(!showDropdown)}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)")}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+      >
+        {recipients.join(", ") || "—"}
+      </span>
+      {showDropdown && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            marginTop: "4px",
+            backgroundColor: "rgba(20,24,40,0.95)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: "6px",
+            padding: "8px 0",
+            minWidth: "200px",
+            zIndex: 1000,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+          }}
+        >
+          <button
+            onClick={() => {
+              searchOnGoogle();
+              setShowDropdown(false);
+            }}
+            style={{
+              width: "100%",
+              padding: "8px 12px",
+              background: "none",
+              border: "none",
+              color: "inherit",
+              textAlign: "left",
+              cursor: "pointer",
+              fontSize: "var(--text-13)",
+              transition: "background-color 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          >
+            🔍 {company ? `${company} contact email` : "Search for contact email"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export type AppRow = {
   id: string;
   company: string | null;
@@ -164,8 +232,7 @@ function ReadingPane({
           </ol>
         </div>
         <div className="detail-meta-grid">
-          <span className="field-label">{t("apps.detail.to")}</span>
-          <span className="mono" style={{ fontSize: "var(--text-13)" }}>{app.recipients.join(", ") || "—"}</span>
+          <EmailFinder company={app.company} recipients={app.recipients} />
           <span className="field-label">{t("new.subject")}</span>
           <span style={{ fontSize: "var(--text-14)" }}>{app.subject}</span>
           {app.sentAt && <>
