@@ -38,6 +38,23 @@ const FREE_EMAIL_DOMAINS = new Set([
   "gmx.com", "gmx.de", "mail.com", "yandex.com", "zoho.com",
 ]);
 
+// ISP-hosted mailboxes are just as shared as webmail: thousands of unrelated small businesses
+// run on hotelname@xtra.co.nz, cafe@bigpond.com, shop@btinternet.com… A matching domain there
+// says NOTHING about the business — only the FULL address identifies it. Cores mirror the
+// ISP_DOMAINS provider list in lib/engine/detect.ts (kept local so client pages importing this
+// module don't pull the whole detection engine into their bundle).
+const ISP_DOMAIN_CORE_RE =
+  /^(xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|optus|bigpond|internode|iinet|aapt|tpg|dodo|telstra|singtel|starhub|maxis|celcom|digi|bsnl|jio|airtel|mynet|superonline|ttmail|turknet|kablonet|shaw|rogers|telus|bell|sympatico|videotron|cogeco|eastlink|sasktel|btinternet|btconnect|virginmedia|talktalk|blueyonder|ntlworld|plusnet|t-online|freenet|alice|libero|virgilio|wanadoo|orange|sfr|neuf|laposte|cox|comcast|charter|spectrum|roadrunner|twc|verizon|att|bellsouth|sbcglobal|earthlink|windstream|suddenlink|optonline|netzero|juno|sky|rediffmail|yandex|farmside|actrix|westnet|adam|netspace|chariot|tassie|picknowl|ozemail)$/i;
+
+// True when a recipient domain is a shared mailbox provider (webmail or ISP) rather than the
+// business's own domain — i.e. it must NOT be used for domain-level "same company" matching.
+export function isSharedInboxDomain(domain: string): boolean {
+  if (!domain) return true;
+  if (FREE_EMAIL_DOMAINS.has(domain)) return true;
+  const core = domain.split(".")[0];
+  return ISP_DOMAIN_CORE_RE.test(core);
+}
+
 const COMPANY_SUFFIXES = /\b(ltd|limited|llc|l l c|inc|incorporated|plc|corp|corporation|co|company|pty|gmbh|srl|s r l|sa|s a|nv|ag|group|holdings)\b\.?/gi;
 
 export function normalizeCompanyName(name: string | null | undefined): string {
@@ -67,8 +84,10 @@ export function findDuplicateApplication<T extends DuplicateCandidate>(
   current: { company?: string | null; emails: string[] }
 ): T | null {
   const emailSet = new Set(current.emails.map((e) => e.trim().toLowerCase()).filter(Boolean));
+  // Shared webmail/ISP domains are excluded here — for those, only the exact-address match
+  // above can identify the business (two different @xtra.co.nz mailboxes are two businesses).
   const domainSet = new Set(
-    [...emailSet].map(emailDomain).filter((d) => d && !FREE_EMAIL_DOMAINS.has(d))
+    [...emailSet].map(emailDomain).filter((d) => d && !isSharedInboxDomain(d))
   );
   const companyKey = normalizeCompanyName(current.company);
 
