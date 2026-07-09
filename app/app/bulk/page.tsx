@@ -57,14 +57,30 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Deterministic safety net for when the AI returns a revised body but skips the subject: swap
-// the old "Role1 / Role2" role list for the new one inside the existing subject string.
-function fallbackSubject(currentSubject: string, oldRoles: string[], newRoles: string[]): string {
-  const oldJoined = oldRoles.join(" / ");
-  if (oldJoined && currentSubject.includes(oldJoined)) {
-    return currentSubject.replace(oldJoined, newRoles.join(" / "));
+function joinRolesNatural(roles: string[], sep: string): string {
+  if (roles.length <= 1) return roles[0] || "";
+  return roles.slice(0, -1).join(", ") + ` ${sep} ` + roles[roles.length - 1];
+}
+
+function swapRolesInText(text: string, oldRoles: string[], newRoles: string[], natural: boolean): string {
+  const separators = natural
+    ? [" / ", " and ", " & ", " ve ", " und ", " et ", " e ", " y ", ", "]
+    : [" / "];
+  for (const sep of separators) {
+    const oldJoined = oldRoles.join(sep);
+    if (oldJoined && text.includes(oldJoined)) {
+      return text.replace(oldJoined, natural ? joinRolesNatural(newRoles, sep.trim()) : newRoles.join(sep));
+    }
   }
-  return currentSubject;
+  if (natural && oldRoles.length > 1) {
+    for (const conj of ["and", "ve", "und", "et", "e", "y", "&"]) {
+      const oldNat = joinRolesNatural(oldRoles, conj);
+      if (oldNat && text.includes(oldNat)) {
+        return text.replace(oldNat, joinRolesNatural(newRoles, conj));
+      }
+    }
+  }
+  return text;
 }
 
 const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
@@ -556,7 +572,7 @@ export default function BulkApply() {
         applyFor: next,
         body: newBody,
         subject: d.subject,
-        coverLetterBody: it.includeCoverLetter ? fallbackSubject(it.coverLetterBody || "", current, next) : it.coverLetterBody,
+        coverLetterBody: it.includeCoverLetter ? swapRolesInText(it.coverLetterBody || "", current, next, true) : it.coverLetterBody,
         rolesSyncing: null,
       });
     } catch (e: any) {
