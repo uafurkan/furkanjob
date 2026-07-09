@@ -2,11 +2,30 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { listApplications } from "@/lib/db";
 import { reportError } from "@/lib/observability";
-import puppeteer from "puppeteer";
-import Tesseract from "tesseract.js";
 
 export const runtime = "nodejs";
-export const maxDuration = 300; // 5 min timeout for large PDFs
+export const maxDuration = 60; // Vercel serverless function cap (Hobby/Pro without Fluid Compute)
+
+// Vercel's serverless functions don't ship a system Chrome and can't fit full puppeteer's
+// bundled Chromium (~300MB) in the deployment package. @sparticuz/chromium provides a
+// Lambda-compatible binary; locally (where a real Chrome is installed) we fall back to the
+// full `puppeteer` package instead, since @sparticuz/chromium's binary is Linux-only.
+async function launchBrowser() {
+  if (process.env.VERCEL) {
+    const chromium = (await import("@sparticuz/chromium")).default;
+    const puppeteerCore = (await import("puppeteer-core")).default;
+    return puppeteerCore.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  }
+  const puppeteer = (await import("puppeteer")).default;
+  return puppeteer.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    headless: true,
+  });
+}
 
 const PER_PAGE = 60;
 
@@ -172,27 +191,16 @@ ${slice.length === 0
 </body>
 </html>`;
 
-    // Launch Puppeteer and render PDF
-    browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      headless: true,
-    });
+    // Launch a headless browser and render PDF (Puppeteer's PDF output is natively text-searchable).
+    browser = await launchBrowser();
     const page_obj = await browser.newPage();
     await page_obj.setContent(html, { waitUntil: "networkidle0" });
 
-    let pdfBuffer = await page_obj.pdf({
+    const pdfBuffer = await page_obj.pdf({
       format: "A4",
       printBackground: true,
       margin: { top: 0, bottom: 0, left: 0, right: 0 },
     });
-
-    // Optional: Apply OCR to embed searchable text layer
-    if (withOcr && pdfBuffer && pdfBuffer.length > 0) {
-      // OCR processing (can be slow for large PDFs)
-      // For now, we'll skip this as Puppeteer's PDF is already reasonably searchable
-      // To enable: convert PDF pages to images, run Tesseract, embed results
-      console.log("[OCR] Puppeteer PDF is text-friendly by default");
-    }
 
     await page_obj.close();
     await browser.close();
