@@ -1,8 +1,8 @@
 // Orchestrates: understand (AI-first, heuristic fallback) → find emails if none → resolve language → draft.
 import { analyze, detectTextLang, countryByCode, pickBestEmail, decodeHtmlEntities, domainCoreWords, type Analysis } from "./detect";
 import { findEmails } from "./websearch";
-import { buildDraft, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
-import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, withAiDeadline, type AiTier, type Eligibility } from "./ai";
+import { buildDraft, buildCoverLetter, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
+import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, withAiDeadline, withAiSubBudget, type AiTier, type Eligibility } from "./ai";
 import { pickRelevantRoles } from "./match";
 import { isVisaCovered } from "./visa";
 import { workKindForRoles, visaFor, registrationNote, type OrgType, type Intent } from "./professions";
@@ -208,7 +208,10 @@ async function runPipelineInner(opts: {
   // Smart layer: let the model clean up company/country/positions/language from the messy page.
   let aiLang: AppLang | undefined;
   if (aiEnabled()) {
-    const ai = await aiAnalyze(text, tier);
+    // Capped sub-budget: analysis is the first of four sequential/parallel AI calls in this
+    // pipeline — without a cap, a slow/rate-limited provider chain here could burn the whole
+    // request deadline before the drafts/cover-letter stage (the actual deliverable) gets a turn.
+    const ai = await withAiSubBudget(12000, () => aiAnalyze(text, tier));
     if (ai) {
       if (ai.company) {
         const cleaned = cleanCompanyName(ai.company);
@@ -292,7 +295,9 @@ async function runPipelineInner(opts: {
     applyFor = businessPositions.slice(0, 2);
   } else {
     if (aiEnabled()) {
-      const fit = await aiAssessFit({
+      // Same reasoning as the analysis sub-budget above: cap this stage so it can't starve the
+      // drafts/cover-letter stage that follows it.
+      const fit = await withAiSubBudget(12000, () => aiAssessFit({
         text,
         company: analysis.company,
         countryName: analysis.country.name,
@@ -302,7 +307,7 @@ async function runPipelineInner(opts: {
         orgType,
         lang: language,
         tier,
-      });
+      }));
       if (fit) {
         applyFor = fit.applyFor;
         droppedRoles = fit.droppedRoles;
@@ -362,6 +367,11 @@ async function runPipelineInner(opts: {
       body: fallbackDraft.body,
       style: "Balanced & Personal"
     }];
+  }
+  // AI cover letter failed/unavailable: use the dedicated cover-letter template, never the email
+  // body — a cover letter that's a verbatim copy of the email defeats the point of attaching one.
+  if (!coverLetterBody) {
+    coverLetterBody = buildCoverLetter(draftAnalysis, profile, language, authorization);
   }
 
   return {

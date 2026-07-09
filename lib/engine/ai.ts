@@ -102,8 +102,10 @@ export function aiEnabled(): boolean {
 }
 
 // Per-attempt timeout so a slow/dead provider fails fast and the chain moves on quickly
-// instead of the whole request hanging on the first (possibly unresponsive) provider.
-const PROVIDER_TIMEOUT_MS = 14000;
+// instead of the whole request hanging on the first (possibly unresponsive) provider. Kept
+// short enough that a full 6-provider chain can still fail over within one pipeline sub-budget
+// (see withAiSubBudget below) instead of a single slow provider eating the whole stage.
+const PROVIDER_TIMEOUT_MS = 8000;
 
 // A single API request (e.g. /api/generate) makes several SEQUENTIAL AI calls (analyze, fit
 // assessment, drafts, cover letter, subject variant), and each one independently walks a chain
@@ -125,6 +127,19 @@ function remainingBudgetMs(): number {
   return deadline ? deadline - Date.now() : Infinity;
 }
 
+// Reserve a SLICE of the outer request deadline for one pipeline stage (e.g. analysis, fit
+// assessment), so that stage can never eat the whole request budget and starve the stage that
+// runs after it. This only ever SHRINKS the outer deadline for calls made inside `fn` — it can't
+// extend it, so the overall withAiDeadline ceiling from runPipeline is still respected. Without
+// this, a slow/rate-limited early stage could exhaust the entire budget before the drafts/cover-
+// letter stage ever got a turn, which is exactly what silently forced the deterministic template
+// even with several free providers configured.
+export function withAiSubBudget<T>(ms: number, fn: () => Promise<T>): Promise<T> {
+  const remaining = remainingBudgetMs();
+  const budget = remaining === Infinity ? ms : Math.max(1000, Math.min(ms, remaining));
+  return requestDeadline.run(Date.now() + budget, fn);
+}
+
 // Circuit breaker: a provider that just failed hard (rate-limited or timing out) is skipped for
 // a cooldown period instead of being re-probed by every subsequent AI call. This matters twice:
 // within one request, the pipeline makes 4-5 sequential AI calls, and without this each of them
@@ -137,8 +152,12 @@ const providerCooldownUntil = new Map<string, number>();
 const COOLDOWN_RATE_LIMIT_MS = 5 * 60 * 1000;
 const COOLDOWN_FAILURE_MS = 60 * 1000;
 
+// Keyed by API key (not just baseUrl+model) so that separate keys pointing at the same
+// endpoint/model — e.g. several independent Groq free-tier keys — get independent cooldowns.
+// Without the key suffix, one key hitting a 429 would cool down every other key sharing that
+// baseUrl+model too, even though each key has its own separate quota.
 function providerKey(r: Resolved): string {
-  return r.kind === "anthropic" ? `anthropic:${r.model}` : `${r.baseUrl}:${r.model}`;
+  return r.kind === "anthropic" ? `anthropic:${r.model}` : `${r.baseUrl}:${r.model}:${r.apiKey.slice(-8)}`;
 }
 
 function coolingDown(r: Resolved): boolean {
@@ -478,7 +497,10 @@ Rules:
 - If it's implied or country-typical but not stated → status "warning" at most. Never invent a constraint from the page.
 - CRITICAL: Be deterministic. Same inputs = same output. Do not vary your assessment.`;
 
-  const parsed = extractJson<Partial<FitAssessment>>(await complete(prompt, 600, opts.tier || "free", "low", 0));
+  // 600 was too tight: reasoning-model providers (gpt-oss) emit inline chain-of-thought tokens
+  // even at "low" effort, which was truncating the JSON mid-object before the closing braces and
+  // silently failing extractJson — collapsing every fit assessment to the fitScore:0 fallback.
+  const parsed = extractJson<Partial<FitAssessment>>(await complete(prompt, 1100, opts.tier || "free", "low", 0));
   if (!parsed) return null;
   const clampStr = (a: unknown): string[] =>
     Array.isArray(a) ? a.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4) : [];
