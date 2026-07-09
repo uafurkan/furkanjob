@@ -204,3 +204,71 @@ export function buildDraft(
 
   return { subject, body: lines.join("\n") };
 }
+
+// Cover-letter-specific intro/closing so the deterministic fallback is never a verbatim copy of
+// the email body (the AI cover letter has its own distinct prompt/structure — this fallback only
+// fires when every AI provider fails, and it should still read like a letter, not a re-pasted email).
+const COVER: Record<AppLang, { intro: (r: string, c: string) => string; closing: (c: string) => string }> = {
+  en: {
+    intro: (r, c) => `I am pleased to submit my application for the ${r} position(s) at ${c}. Please accept this letter and my attached CV as a formal expression of interest.`,
+    closing: (c) => `I have attached my CV for your review and would welcome the opportunity to discuss my application further at your convenience. Thank you for considering my application to ${c}.`,
+  },
+  tr: {
+    intro: (r, c) => `${c} bünyesindeki ${r} pozisyon(lar)ı için başvurumu sunmaktan memnuniyet duyarım. Bu mektubu ve ekteki CV'mi resmi bir ilgi beyanı olarak kabul etmenizi rica ederim.`,
+    closing: (c) => `CV'mi incelemeniz için ekledim; uygun bir zamanda başvurumu detaylandırma fırsatı bulmaktan memnuniyet duyarım. ${c} başvurumu değerlendirdiğiniz için teşekkür ederim.`,
+  },
+  es: {
+    intro: (r, c) => `Me complace presentar mi candidatura para el/los puesto(s) de ${r} en ${c}. Le ruego acepte esta carta y mi CV adjunto como una expresión formal de interés.`,
+    closing: (c) => `He adjuntado mi CV para su revisión y estaría encantado de conversar sobre mi candidatura cuando le resulte conveniente. Gracias por considerar mi candidatura a ${c}.`,
+  },
+  fr: {
+    intro: (r, c) => `C'est avec plaisir que je soumets ma candidature pour le(s) poste(s) de ${r} chez ${c}. Je vous prie d'accepter cette lettre et mon CV ci-joint comme une expression formelle d'intérêt.`,
+    closing: (c) => `Vous trouverez mon CV ci-joint pour examen ; je serais ravi d'échanger davantage sur ma candidature à votre convenance. Je vous remercie d'examiner ma candidature chez ${c}.`,
+  },
+  de: {
+    intro: (r, c) => `Gerne reiche ich hiermit meine Bewerbung für die Position(en) als ${r} bei ${c} ein. Bitte betrachten Sie dieses Schreiben und meinen beigefügten Lebenslauf als formellen Ausdruck meines Interesses.`,
+    closing: (c) => `Meinen Lebenslauf habe ich zur Ansicht beigefügt und würde mich freuen, meine Bewerbung zu gegebener Zeit näher zu besprechen. Vielen Dank, dass Sie meine Bewerbung bei ${c} in Betracht ziehen.`,
+  },
+  it: {
+    intro: (r, c) => `Sono lieto di presentare la mia candidatura per la/le posizione(i) di ${r} presso ${c}. Vi prego di accettare questa lettera e il mio CV allegato come formale espressione di interesse.`,
+    closing: (c) => `Ho allegato il mio CV per la vostra valutazione e sarei lieto di discutere ulteriormente la mia candidatura quando vi fosse comodo. Vi ringrazio per aver considerato la mia candidatura presso ${c}.`,
+  },
+  pt: {
+    intro: (r, c) => `Tenho o prazer de submeter a minha candidatura para a(s) vaga(s) de ${r} na ${c}. Peço que aceite esta carta e o meu CV em anexo como uma expressão formal de interesse.`,
+    closing: (c) => `Anexei o meu CV para sua análise e teria todo o gosto em discutir a minha candidatura com mais detalhe quando lhe for conveniente. Obrigado por considerar a minha candidatura à ${c}.`,
+  },
+};
+
+export function buildCoverLetter(
+  analysis: Analysis,
+  profile: EngineProfile,
+  lang: AppLang = "en",
+  authorization?: { authorized: boolean; visaLabel?: string | null }
+): string {
+  const f = F[lang] || F.en;
+  const cv = COVER[lang] || COVER.en;
+  const roles = rolesForApplication(analysis, profile, lang);
+  const roleLine = roles.join(" / ");
+
+  let greeting = f.greeting;
+  if (!isFormalOrg(analysis.orgType || "generic")) {
+    if (analysis.country.code === "NZ") greeting = "Kia Ora,";
+    else if (analysis.country.code === "ES") greeting = "Hola,";
+    else if (analysis.country.code === "FR") greeting = "Bonjour,";
+    else if (analysis.country.code === "DE") greeting = "Hallo,";
+    else if (analysis.country.code === "IT") greeting = "Ciao,";
+    else if (analysis.country.code === "PT") greeting = "Olá,";
+  }
+
+  const lines: string[] = [greeting, "", cv.intro(roleLine, analysis.company), ""];
+  if (authorization?.authorized) {
+    lines.push(f.visaHeld(authorization.visaLabel || analysis.country.visa, analysis.country.name), "");
+  } else if (profile.needsVisaSponsorship) {
+    lines.push(f.visa(analysis.country.visa, analysis.country.name, profile.relocation), "");
+  }
+  if (profile.shortBio) lines.push(profile.shortBio.trim(), "");
+  if (profile.languages.length) lines.push(f.languages(profile.languages.join(", ")), "");
+  lines.push(cv.closing(analysis.company));
+
+  return lines.join("\n");
+}
