@@ -195,11 +195,37 @@ export default function NewApplication() {
   const fetchedUrlRef = useRef<string | null>(null);
   const [profileTargetRoles, setProfileTargetRoles] = useState<string[]>([]);
   const [rolesSyncing, setRolesSyncing] = useState<string | null>(null);
+  const [emailHealthMap, setEmailHealthMap] = useState<Record<string, { status: string; label: string; hint: string | null }>>({});
+  const [forceHealthBypass, setForceHealthBypass] = useState(false);
 
   // Auto-focus textarea on mount (not if restoring a draft)
   useEffect(() => {
     if (!loadDraft()) textareaRef.current?.focus();
   }, []);
+
+  // Reset force-bypass when recipient changes — a different address needs a fresh check.
+  useEffect(() => { setForceHealthBypass(false); }, [to]);
+
+  // Background email health check — runs whenever the "to" field changes.
+  // Fans out one GET /api/email-health?email=... per address, non-blocking.
+  useEffect(() => {
+    const addresses = to.split(/[,;]/).map((e) => e.trim()).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    if (!addresses.length) return;
+    let cancelled = false;
+    (async () => {
+      const updates: Record<string, { status: string; label: string; hint: string | null }> = {};
+      await Promise.all(addresses.map(async (email) => {
+        try {
+          const r = await fetch(`/api/email-health?email=${encodeURIComponent(email)}`);
+          if (!r.ok || cancelled) return;
+          const h = await r.json();
+          updates[email] = { status: h.status, label: h.label, hint: h.hint };
+        } catch {}
+      }));
+      if (!cancelled) setEmailHealthMap((prev) => ({ ...prev, ...updates }));
+    })();
+    return () => { cancelled = true; };
+  }, [to]);
 
   // Keyboard shortcut: Cmd/Ctrl+Enter → analyze (or send if result ready)
   useEffect(() => {
@@ -627,13 +653,23 @@ export default function NewApplication() {
           ccSelf,
           documentIds: selectedDocs,
           cvId: selectedCv || undefined,
+          forceSkipHealthCheck: forceHealthBypass,
         }),
       });
       const d = await safeJson(r);
       if (r.status === 402) { setMsg({ kind: "warn", text: t("new.limitReached") }); return; }
+      // Email health block: server detected a dead/noreply address. Show a warning with a "send anyway" option.
+      if (r.status === 422 && d.healthBlock) {
+        const hint = d.healthHint || d.error || t("new.health.blocked");
+        setMsg({ kind: "warn", text: `${hint} — ${t("new.health.sendAnyway")}` });
+        setForceHealthBypass(true);
+        setSending(false);
+        return;
+      }
       if (!r.ok) throw new Error(d.error || "Error");
       const attachLabel = d.coverLetterAttached ? t("new.coverLetterAttached") : d.cvAttached ? t("new.cvAttached") : t("new.cvNone");
       const okText = `${d.sentTo.join(", ")} ${attachLabel}`;
+      setForceHealthBypass(false);
       discardDraft();
       setMsg({ kind: "ok", text: okText });
     } catch (e: any) {
@@ -1165,8 +1201,15 @@ export default function NewApplication() {
             >
               {to.split(/[,;]/).map((e) => e.trim()).filter(Boolean).map((email, idx, emailPills) => {
                 const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+                const health = emailHealthMap[email];
+                const healthDotClass = health
+                  ? health.status === "ok" || health.status === "ok-role" ? "health-dot health-dot--ok"
+                  : health.status === "warn-role" ? "health-dot health-dot--warn"
+                  : "health-dot health-dot--dead"
+                  : "";
                 return (
-                  <span key={idx} className={`email-pill${isValid ? "" : " invalid"}`}>
+                  <span key={idx} className={`email-pill${isValid ? "" : " invalid"}`} title={health?.hint || undefined}>
+                    {health && <span className={healthDotClass} aria-hidden="true" />}
                     {email}
                     <button
                       type="button"

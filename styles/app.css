@@ -541,6 +541,17 @@
 }
 .visa-intel-note svg { flex-shrink: 0; margin-top: 1px; color: var(--content-tertiary); }
 
+/* ---------- Email Health Dot ---------- */
+.health-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  margin-right: 4px; flex-shrink: 0; vertical-align: middle;
+  animation: health-pop .25s ease;
+}
+@keyframes health-pop { from { transform: scale(0); } to { transform: scale(1); } }
+.health-dot--ok   { background: #34c759; box-shadow: 0 0 4px rgba(52,199,89,.5); }
+.health-dot--warn { background: #ffa500; box-shadow: 0 0 4px rgba(255,165,0,.4); }
+.health-dot--dead { background: #ff453a; box-shadow: 0 0 4px rgba(255,69,58,.5); }
+
 /* ---------- Application Intelligence Panel ---------- */
 .intel-panel {
   display: flex; flex-direction: column; gap: var(--space-2);

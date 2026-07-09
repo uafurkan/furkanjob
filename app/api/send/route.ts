@@ -12,6 +12,7 @@ import {
 import { buildCoverLetterDocx } from "@/lib/engine/coverletter";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
+import { checkRecipientsHealth } from "@/lib/engine/email-health";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 
@@ -53,6 +54,30 @@ async function handleSend(req: Request) {
 
   if (!recipients.length) return NextResponse.json({ error: "No recipient email address." }, { status: 400 });
   if (!subject || !text) return NextResponse.json({ error: "Subject or body is empty." }, { status: 400 });
+
+  // Email health guard: run MX + noreply check before spending resources on attachments/mailer.
+  // "no-mx" = domain can't receive mail (will hard-bounce); "noreply" = automated address never read.
+  // "warn-role" (info@, contact@) is allowed — it may be the only address available.
+  // The force=true param lets the user bypass the warning after they've been notified once.
+  const forceSkipHealthCheck = body?.forceSkipHealthCheck === true;
+  if (!forceSkipHealthCheck) {
+    const healthResults = await checkRecipientsHealth(recipients);
+    const dead = healthResults.find(({ health }) => health.status === "no-mx" || health.status === "noreply" || health.status === "invalid");
+    if (dead) {
+      return NextResponse.json(
+        {
+          ok: false,
+          healthBlock: true,
+          email: dead.email,
+          healthStatus: dead.health.status,
+          healthLabel: dead.health.label,
+          healthHint: dead.health.hint,
+          error: dead.health.hint || `Recipient "${dead.email}" does not look deliverable.`,
+        },
+        { status: 422 }
+      );
+    }
+  }
 
   // Threading: our own Message-ID for this email; optional reply-to a prior application's email.
   const mailDomain = (process.env.NEXT_PUBLIC_BASE_URL || "https://paply.me").replace(/^https?:\/\//, "").replace(/\/.*$/, "") || "paply.me";
