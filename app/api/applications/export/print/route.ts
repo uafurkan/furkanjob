@@ -4,6 +4,28 @@ import { listApplications } from "@/lib/db";
 import { reportError } from "@/lib/observability";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // Vercel serverless function cap (Hobby/Pro without Fluid Compute)
+
+// Vercel's serverless functions don't ship a system Chrome and can't fit full puppeteer's
+// bundled Chromium (~300MB) in the deployment package. @sparticuz/chromium provides a
+// Lambda-compatible binary; locally (where a real Chrome is installed) we fall back to the
+// full `puppeteer` package instead, since @sparticuz/chromium's binary is Linux-only.
+async function launchBrowser() {
+  if (process.env.VERCEL) {
+    const chromium = (await import("@sparticuz/chromium")).default;
+    const puppeteerCore = (await import("puppeteer-core")).default;
+    return puppeteerCore.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  }
+  const puppeteer = (await import("puppeteer")).default;
+  return puppeteer.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    headless: true,
+  });
+}
 
 const PER_PAGE = 60;
 
@@ -41,6 +63,7 @@ function bodyToHtml(text: string): string {
 }
 
 export async function GET(req: Request) {
+  let browser: any = null;
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -123,23 +146,6 @@ export async function GET(req: Request) {
   }
   .logo { font-size: 22px; font-weight: 700; color: #1a73e8; letter-spacing: -0.5px; }
   .header-meta { font-size: 12px; color: #666; }
-  .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-  .btn-print {
-    padding: 6px 16px; background: #1a73e8; color: #fff;
-    border: none; border-radius: 4px; cursor: pointer; font-size: 13px;
-  }
-  .nav-bar {
-    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-    margin-bottom: 20px; font-size: 12px; color: #444;
-  }
-  .page-link {
-    display: inline-block; padding: 4px 10px; border-radius: 4px;
-    border: 1px solid #dadce0; text-decoration: none; color: #1a73e8;
-    font-size: 12px;
-  }
-  .page-link.current {
-    background: #1a73e8; color: #fff; border-color: #1a73e8; font-weight: 600;
-  }
   .mail-card {
     border: 1px solid #e0e0e0; border-radius: 8px;
     margin-bottom: 24px; overflow: hidden;
@@ -165,12 +171,6 @@ export async function GET(req: Request) {
   .mail-body p:last-child { margin-bottom: 0; }
   .page-break { page-break-after: always; }
   .empty { color: #666; text-align: center; padding: 48px; }
-
-  @media print {
-    body { padding: 0; max-width: 100%; }
-    .no-print { display: none !important; }
-    .page-break { page-break-after: always; }
-  }
 </style>
 </head>
 <body>
@@ -178,31 +178,49 @@ export async function GET(req: Request) {
 <div class="print-header">
   <span class="logo">paply</span>
   <span class="header-meta">${esc(date)} · ${sent.length} total · showing ${start}–${end}</span>
-  <div class="header-actions no-print">
-    <button class="btn-print" onclick="window.print()">⬇ Save as PDF</button>
-  </div>
 </div>
 
-${totalPages > 1 ? `<div class="nav-bar no-print">Page: ${navLinks}</div>` : ""}
+${totalPages > 1 ? `<div style="margin-bottom:20px;font-size:12px;color:#444;">Page: ${navLinks}</div>` : ""}
 
 ${slice.length === 0
   ? `<div class="empty">No sent applications yet.</div>`
   : mailCards
 }
 
-${totalPages > 1 ? `<div class="nav-bar no-print" style="margin-top:24px;border-top:1px solid #e0e0e0;padding-top:16px;">Page: ${navLinks}</div>` : ""}
-
 </body>
 </html>`;
 
-    return new NextResponse(html, {
+    // Render via a headless browser instead of relying on the client's own print-to-PDF —
+    // that path produced vector-only pages with no extractable text. A server-rendered PDF is
+    // natively text-searchable (OCR-friendly) without any extra processing step.
+    browser = await launchBrowser();
+    const page_obj = await browser.newPage();
+    await page_obj.setContent(html, { waitUntil: "networkidle0" });
+
+    const pdfBuffer = await page_obj.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: { top: 0, bottom: 0, left: 0, right: 0 },
+    });
+
+    await page_obj.close();
+    await browser.close();
+
+    const filename = `paply-applications-page${safePage}-of${totalPages}-${date.replace(/\s+/g, "-")}.pdf`;
+
+    return new NextResponse(pdfBuffer, {
       headers: {
-        "content-type": "text/html; charset=utf-8",
+        "content-type": "application/pdf",
+        "content-disposition": `attachment; filename="${filename}"`,
         "cache-control": "no-store",
       },
     });
   } catch (e: any) {
     await reportError(e, { route: "applications/export/print" });
-    return NextResponse.json({ error: e?.message || "Export failed" }, { status: 500 });
+    return NextResponse.json({ error: e?.message || "PDF export failed" }, { status: 500 });
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
   }
 }
