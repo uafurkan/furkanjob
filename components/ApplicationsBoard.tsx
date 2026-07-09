@@ -500,7 +500,7 @@ export default function ApplicationsBoard({ initial, initialSelectedId }: { init
             {t("apps.export")}
           </a>
           <a
-            href="/api/applications/export/print?page=1"
+            href="/api/applications/export/print"
             download
             className="btn btn-sm"
             style={{ fontSize: "var(--text-12)", textDecoration: "none" }}

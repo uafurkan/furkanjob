@@ -3,9 +3,5 @@
     { "path": "/api/cron/weekly-digest", "schedule": "0 9 * * 1" },
     { "path": "/api/cron/followup-reminder", "schedule": "0 10 * * *" }
   ],
-  "functions": {
-    "app/api/applications/export/print/route.ts": {
-      "memory": 2048
-    }
-  }
+  "functions": {}
 }
