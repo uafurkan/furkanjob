@@ -152,8 +152,12 @@ const providerCooldownUntil = new Map<string, number>();
 const COOLDOWN_RATE_LIMIT_MS = 5 * 60 * 1000;
 const COOLDOWN_FAILURE_MS = 60 * 1000;
 
+// Keyed by API key (not just baseUrl+model) so that separate keys pointing at the same
+// endpoint/model — e.g. several independent Groq free-tier keys — get independent cooldowns.
+// Without the key suffix, one key hitting a 429 would cool down every other key sharing that
+// baseUrl+model too, even though each key has its own separate quota.
 function providerKey(r: Resolved): string {
-  return r.kind === "anthropic" ? `anthropic:${r.model}` : `${r.baseUrl}:${r.model}`;
+  return r.kind === "anthropic" ? `anthropic:${r.model}` : `${r.baseUrl}:${r.model}:${r.apiKey.slice(-8)}`;
 }
 
 function coolingDown(r: Resolved): boolean {
@@ -493,7 +497,10 @@ Rules:
 - If it's implied or country-typical but not stated → status "warning" at most. Never invent a constraint from the page.
 - CRITICAL: Be deterministic. Same inputs = same output. Do not vary your assessment.`;
 
-  const parsed = extractJson<Partial<FitAssessment>>(await complete(prompt, 600, opts.tier || "free", "low", 0));
+  // 600 was too tight: reasoning-model providers (gpt-oss) emit inline chain-of-thought tokens
+  // even at "low" effort, which was truncating the JSON mid-object before the closing braces and
+  // silently failing extractJson — collapsing every fit assessment to the fitScore:0 fallback.
+  const parsed = extractJson<Partial<FitAssessment>>(await complete(prompt, 1100, opts.tier || "free", "low", 0));
   if (!parsed) return null;
   const clampStr = (a: unknown): string[] =>
     Array.isArray(a) ? a.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4) : [];
