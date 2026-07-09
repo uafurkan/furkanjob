@@ -5,6 +5,8 @@ import { reportError } from "@/lib/observability";
 
 export const runtime = "nodejs";
 
+const PER_PAGE = 60;
+
 const DRAFT_LABEL: Record<string, string> = {
   template: "Smart Template",
   ai: "AI-Generated",
@@ -34,26 +36,29 @@ function fmtDate(iso: string): string {
 function bodyToHtml(text: string): string {
   return text
     .split(/\n\n+/)
-    .map((para) =>
-      `<p>${para
-        .split(/\n/)
-        .map(esc)
-        .join("<br>")}</p>`
-    )
+    .map((para) => `<p>${para.split(/\n/).map(esc).join("<br>")}</p>`)
     .join("\n");
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+
     const apps = await listApplications(user.id);
     const sent = apps.filter((a) => a.status !== "draft");
+    const totalPages = Math.max(1, Math.ceil(sent.length / PER_PAGE));
+    const safePage = Math.min(page, totalPages);
+    const slice = sent.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
     const date = new Date().toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+    const start = (safePage - 1) * PER_PAGE + 1;
+    const end = Math.min(safePage * PER_PAGE, sent.length);
 
-    const mailCards = sent.map((a, i) => {
+    const mailCards = slice.map((a, i) => {
       const draftLabel = DRAFT_LABEL[a.draftSource] || a.draftSource;
       const isAi = a.draftSource === "ai";
       const statusLabel = STATUS_LABEL[a.status] || a.status;
@@ -62,7 +67,7 @@ export async function GET() {
       const recipients = a.recipients.length ? a.recipients.join(", ") : "—";
 
       return `
-<div class="mail-card${i < sent.length - 1 ? " page-break" : ""}">
+<div class="mail-card${i < slice.length - 1 ? " page-break" : ""}">
   <div class="mail-header">
     <div class="mail-meta-row">
       <span class="company">${esc(a.company || "Unknown")}</span>
@@ -81,12 +86,22 @@ export async function GET() {
 </div>`;
     }).join("\n");
 
+    const navLinks = (() => {
+      const links: string[] = [];
+      for (let p = 1; p <= totalPages; p++) {
+        links.push(
+          `<a href="?page=${p}" class="page-link${p === safePage ? " current" : ""}">${p}</a>`
+        );
+      }
+      return links.join("");
+    })();
+
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Paply — Application Emails (${date})</title>
+<title>Paply — Emails page ${safePage}/${totalPages} (${date})</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -100,70 +115,52 @@ export async function GET() {
   }
   .print-header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 16px;
     border-bottom: 2px solid #e0e0e0;
     padding-bottom: 12px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
-  .print-header .logo {
-    font-size: 22px;
-    font-weight: 700;
-    color: #1a73e8;
-    letter-spacing: -0.5px;
+  .logo { font-size: 22px; font-weight: 700; color: #1a73e8; letter-spacing: -0.5px; }
+  .header-meta { font-size: 12px; color: #666; }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .btn-print {
+    padding: 6px 16px; background: #1a73e8; color: #fff;
+    border: none; border-radius: 4px; cursor: pointer; font-size: 13px;
   }
-  .print-header .meta {
+  .nav-bar {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 20px; font-size: 12px; color: #444;
+  }
+  .page-link {
+    display: inline-block; padding: 4px 10px; border-radius: 4px;
+    border: 1px solid #dadce0; text-decoration: none; color: #1a73e8;
     font-size: 12px;
-    color: #666;
+  }
+  .page-link.current {
+    background: #1a73e8; color: #fff; border-color: #1a73e8; font-weight: 600;
   }
   .mail-card {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    margin-bottom: 28px;
-    overflow: hidden;
+    border: 1px solid #e0e0e0; border-radius: 8px;
+    margin-bottom: 24px; overflow: hidden;
   }
   .mail-header {
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
-    padding: 14px 18px;
+    background: #f8f9fa; border-bottom: 1px solid #e0e0e0; padding: 14px 18px;
   }
-  .mail-meta-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  .company {
-    font-size: 15px;
-    font-weight: 600;
-    color: #202124;
-  }
+  .mail-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .company { font-size: 15px; font-weight: 600; color: #202124; }
   .badge {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    padding: 2px 8px;
-    border-radius: 10px;
-    text-transform: uppercase;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+    padding: 2px 8px; border-radius: 10px; text-transform: uppercase;
   }
   .badge-ai { background: #e8f0fe; color: #1a73e8; }
   .badge-template { background: #e6f4ea; color: #137333; }
   .badge-status { background: #f1f3f4; color: #5f6368; }
   .meta-table { width: 100%; border-collapse: collapse; }
   .meta-table td { padding: 2px 0; vertical-align: top; }
-  .meta-key {
-    color: #666;
-    width: 64px;
-    min-width: 64px;
-    padding-right: 12px;
-    font-size: 12px;
-  }
+  .meta-key { color: #666; width: 64px; min-width: 64px; padding-right: 12px; font-size: 12px; }
   .meta-val { color: #202124; font-size: 13px; }
-  .mail-body {
-    padding: 18px 18px 20px;
-    line-height: 1.6;
-    color: #202124;
-  }
+  .mail-body { padding: 18px 18px 20px; line-height: 1.6; color: #202124; }
   .mail-body p { margin-bottom: 10px; }
   .mail-body p:last-child { margin-bottom: 0; }
   .page-break { page-break-after: always; }
@@ -177,19 +174,24 @@ export async function GET() {
 </style>
 </head>
 <body>
+
 <div class="print-header">
   <span class="logo">paply</span>
-  <span class="meta">Application emails — exported ${esc(date)} · ${sent.length} mail${sent.length !== 1 ? "s" : ""}</span>
-  <button class="no-print" onclick="window.print()" style="margin-left:auto;padding:6px 16px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Save as PDF</button>
+  <span class="header-meta">${esc(date)} · ${sent.length} total · showing ${start}–${end}</span>
+  <div class="header-actions no-print">
+    <button class="btn-print" onclick="window.print()">⬇ Save as PDF</button>
+  </div>
 </div>
-${sent.length === 0
+
+${totalPages > 1 ? `<div class="nav-bar no-print">Page: ${navLinks}</div>` : ""}
+
+${slice.length === 0
   ? `<div class="empty">No sent applications yet.</div>`
   : mailCards
 }
-<script>
-  // Auto-open print dialog so one click is enough
-  window.addEventListener("load", () => window.print());
-</script>
+
+${totalPages > 1 ? `<div class="nav-bar no-print" style="margin-top:24px;border-top:1px solid #e0e0e0;padding-top:16px;">Page: ${navLinks}</div>` : ""}
+
 </body>
 </html>`;
 
