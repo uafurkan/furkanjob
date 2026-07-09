@@ -508,6 +508,14 @@ export default function ApplicationsBoard({ initial, initialSelectedId }: { init
           >
             {t("apps.exportPdf")}
           </a>
+          <a
+            href="/api/applications/export/pdf-ocr?page=1"
+            download
+            className="btn btn-sm"
+            style={{ fontSize: "var(--text-12)", textDecoration: "none" }}
+          >
+            {t("apps.exportPdfOcr")}
+          </a>
         </div>
       </div>
 
