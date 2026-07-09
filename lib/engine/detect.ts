@@ -442,7 +442,7 @@ const VENUE_TERM_RE_G = new RegExp(`(${VENUE_WORDS})`, "gi");
 // by matching the VERB(+by/with) construction itself rather than an enumerated platform-name
 // list. This means it works for any web builder/agency in the world, not just the ones we know.
 const BUILDER_CREDIT_TAIL_RE =
-  /\s*[-–—|•·/.,:]*\s*(?:proudly\s+)?(?:(?:website|site)\s+by|(?:powered|hosted|secured|built|designed|developed|created|managed|maintained)(?:\s*(?:,|&|and)\s*(?:powered|hosted|secured|built|designed|developed|created|managed|maintained))*\s+(?:by|with))\s+.*$/i;
+  /\s*[-–—|•·/.,:]*\s*(?:proudly\s+)?(?:(?:tourism\s+|themed\s+|custom\s+|professional\s+|bespoke\s+){0,3}(?:website|site)s?\s+(?:built\s+|designed\s+|created\s+)?by|(?:powered|hosted|secured|built|designed|developed|created|managed|maintained|themed)(?:\s*(?:,|&|and)\s*(?:powered|hosted|secured|built|designed|developed|created|managed|maintained))*\s+(?:by|with))\s+.*$/i;
 
 function stripBuilderCredit(s: string): string {
   return s.replace(BUILDER_CREDIT_TAIL_RE, "").trim();
@@ -590,6 +590,9 @@ function findFrequentBrand(lines: string[]): string | null {
       if (brand.length >= 4 && brand.length <= 35
         && !NAV_PHRASE_RE.test(brand)
         && !/^(The|And|For|With|Add|Our|All|New|Day|Hot|Big|Free|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Saturday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Greek|Asian|Italian|French|GFO|ONLINE|RESTAURANT|BOOKINGS|RISE|SHINE|CROWDS|LOVE|THESE|HAPPY|HENS|LAY|EGGS|SIDE|KICKS|BAKERS|CORNER|STARTERS|MAIN|COURSES|SIDES|DESSERTS|AUTUMN|MATCH|FOR THE TABLE)$/i.test(brand)
+        // Room/amenity vocabulary repeats on every accommodation page ("Premium King Studio with
+        // Spa Pool" ×12) far more than the brand itself does — never the business name.
+        && !/^(?:Spa Pool|Spa|Pool|Studio|Suite|Room|Rooms|King|Twin|Queen|Double|Single|Bedroom|Apartment|Villa|Deluxe|Premium|Executive|Corporate|Standard|Superior|Family|Accessible|Book Online|Book Now|Check Availability|Meeting Rooms?|Conference|Amenities|Fitness Centre|Parking)(?:\s+(?:Spa Pool|Spa|Pool|Studio|Suite|Room|Rooms|King|Twin|Queen|Double|Single|Bedroom|Apartment|Villa|Deluxe|Premium|Executive|Corporate|Standard|Superior|Family|Accessible))*$/i.test(brand)
       ) {
         brandCounts.set(brand, (brandCounts.get(brand) || 0) + 1);
       }
@@ -656,8 +659,84 @@ function brandFromUrl(urls: string[]): string {
   }
 }
 
+// Known ISP/generic email providers that are never the business name.
+const ISP_DOMAINS = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|optus|bigpond|internode|iinet|aapt|tpg|dodo|telstra|singtel|starhub|maxis|celcom|digi|tm|bsnl|jio|airtel|tata|idea|mynet|superonline|ttmail|turknet|kablonet|shaw|rogers|telus|bell|sympatico|videotron|cogeco|eastlink|sasktel|btinternet|btconnect|virginmedia|talktalk|blueyonder|ntlworld|plusnet|gmx|web|t-online|freenet|alice|libero|virgilio|wanadoo|orange|sfr|free|neuf|laposte|cox|comcast|charter|spectrum|roadrunner|twc|verizon|att|bellsouth|sbcglobal|earthlink|windstream|suddenlink|optonline|netzero|juno|mac|sky|hushmail|hush|rediffmail|yandex|mailru|rambler|farmside|actrix|westnet|adam|netspace|chariot|tassie|picknowl|ozemail)$/i;
+
+// Turn the business's own email domain into a brand name ("reservations@angleseamotel.com" ->
+// "Anglesea Motel"). Returns "" for ISP/generic providers or unusable domains.
+function brandFromEmailDomain(emails: string[]): string {
+  if (!emails.length) return "";
+  const domain = emails[0].split("@")[1] || "";
+  const core = domain.split(".")[0];
+  if (!core || ISP_DOMAINS.test(core)) return "";
+  let name = core
+    .replace(VENUE_TERM_RE_G, " $1")
+    .replace(/[-_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  name = name.replace(/\b\w/g, (c) => c.toUpperCase());
+  if (name && name.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress)$/i.test(name.toLowerCase())) {
+    return name;
+  }
+  return "";
+}
+
+// A copyright footer is NOT automatically the business. Many small-business sites — hospitality
+// especially — are built by booking-engine/website vendors (Seekom, ResBook, SiteMinder, STAAH,
+// template agencies…) whose own "© YEAR Vendor" line ships with the template, so the © name can be
+// a company the applicant has never heard of. Only trust the © candidate when the page itself
+// corroborates it: its words appear in the site's own email/URL domain, or the name repeats on
+// other lines (headings, address block, intro). This is exactly how a human (or a frontier LLM
+// reading the whole page) decides the site's identity — the domain and repetition win.
+function copyrightNameCorroborated(candidate: string, lines: string[], emails: string[], urls: string[]): boolean {
+  const stop = /^(the|and|for|of|ltd|limited|inc|llc|pty|co|group|motel|hotel|lodge|cafe|restaurant|bar|centre|center|club|inn)$/;
+  const coreWords = candidate.toLowerCase().split(/[^a-z0-9']+/i).filter((w) => w.length >= 3 && !stop.test(w));
+  if (!coreWords.length) return false;
+  const domains: string[] = [];
+  for (const e of emails) {
+    const d = (e.split("@")[1] || "").split(".")[0];
+    if (d && !ISP_DOMAINS.test(d)) domains.push(d.toLowerCase());
+  }
+  for (const u of urls.slice(0, 3)) {
+    if (/\b(facebook|instagram|twitter|x|linkedin|google|youtube|tiktok|apple|android|wix|squarespace|shopify|wordpress)\b/i.test(u)) continue;
+    try {
+      const host = new URL(u.startsWith("http") ? u : "https://" + u).hostname.replace(/^www\./, "").split(".")[0];
+      if (host) domains.push(host.toLowerCase());
+    } catch {}
+  }
+  const domainStr = domains.join(" ");
+  if (coreWords.some((w) => domainStr.includes(w))) return true;
+  // Repetition: the name also appears on at least one NON-copyright line of the page (heading,
+  // address block, hero…). A vendor credit ("© Seekom") never does — its only mention IS the footer.
+  const norm = (s: string) => s.toLowerCase().replace(/['’]/g, "");
+  const lower = norm(candidate);
+  for (const l of lines) {
+    if (/©|copyright|\(c\)/i.test(l)) continue;
+    if (norm(l).includes(lower)) return true;
+  }
+  return false;
+}
+
+// When the © name fails corroboration, fall back to the signals that reflect the site's own
+// identity, strongest first: a name repeating 3+ times on the page, the email domain, the URL domain.
+function strongestPageBrand(lines: string[], emails: string[], urls: string[]): string {
+  return findFrequentBrand(lines) || brandFromEmailDomain(emails) || brandFromUrl(urls) || "";
+}
+
 export function guessCompany(text: string, emails: string[], urls: string[] = []): string {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  // ™/® glue themselves to the brand ("voco™ Auckland") and break word matching everywhere below.
+  const lines = text.replace(/[™®]/g, " ").split("\n").map((l) => l.trim().replace(/\s{2,}/g, " ")).filter(Boolean);
+
+  // 0.1 Explicit employer statement on job-listing pages: "Join our team at X". This outranks
+  // every other signal — recruitment addresses often belong to a parent group
+  // (recruitment@imperiumcollection.com) while the actual venue is named right in this sentence.
+  for (const l of lines) {
+    const m = l.match(/\bjoin (?:our|the) (?:team|crew|family|wh(?:ā|a)nau|staff) at\s+(.{2,60}?)(?=\s+in\s+[A-Z]|[.!?\n]|$)/i);
+    if (m) {
+      const candidate = m[1].trim().replace(/[,;:]$/, "");
+      if (candidate.length >= 3 && !isSentenceLike(candidate)) return collapseDouble(candidate);
+    }
+  }
 
   // 0. Facebook page detection: when the user copies a Facebook business page,
   //    the page name appears prominently (in a heading or in metadata like "Page · Restaurant").
@@ -738,6 +817,16 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
       clean = clean.replace(/\b\d{4}\s*[-–—,]\s*\d{4}\b/g, ""); // e.g. 2016-2026
       clean = clean.replace(/\b\d{4}\b/g, ""); // e.g. 2016
 
+      // Cut at the first sentence boundary — trademark/legal boilerplate follows the name on the
+      // same line ("© Eagle's Nest. Eagle's Nest and the Eagle's Nest logo are trademarks of…").
+      clean = clean.split(/(?<=[a-z'’])\.(?:\s|$)/i)[0].trim();
+      // "X is owned and operated by Y" — the venue the applicant knows is X, not the holding
+      // entity Y ("voco Auckland City Centre is owned and operated by Pro-invest Group Pty Ltd").
+      const ownedBy = clean.match(/^(.{3,60}?)\s+(?:is|are)\s+(?:owned|operated|managed|run)\b/i);
+      if (ownedBy) clean = ownedBy[1].trim();
+      // Strip glued website-vendor credits ("Rock Solid Backpackers Tourism Themed Websites by ResBook").
+      clean = stripBuilderCredit(clean);
+
       // Site builders (Wix, Squarespace, GoDaddy, …) stamp a default "© YEAR by <Template Name>"
       // footer that many owners never customize — a dead giveaway is a "Proudly created with /
       // Powered by <builder>" credit line right next to it. When that's present, the copyright
@@ -757,12 +846,18 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
         for (const seg of segments) {
           if (seg === copyrightSegment) continue;
           const candidate = cleanSegment(seg);
-          if (candidate && !THIRD_PARTY_ATTRIBUTION_RE.test(candidate)) return candidate;
+          if (candidate && !THIRD_PARTY_ATTRIBUTION_RE.test(candidate)) {
+            if (copyrightNameCorroborated(candidate, lines, emails, urls)) return candidate;
+            return strongestPageBrand(lines, emails, urls) || candidate;
+          }
         }
       }
 
       const candidate = cleanSegment(clean);
-      if (candidate && !THIRD_PARTY_ATTRIBUTION_RE.test(candidate)) return candidate;
+      if (candidate && !THIRD_PARTY_ATTRIBUTION_RE.test(candidate)) {
+        if (copyrightNameCorroborated(candidate, lines, emails, urls)) return candidate;
+        return strongestPageBrand(lines, emails, urls) || candidate;
+      }
     }
   }
 
@@ -805,22 +900,13 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   }
 
   // 2. Try the email domain name (extremely reliable)
-  // Blacklist known ISP/generic email providers that are NOT the business name.
-  const ISP_DOMAINS = /^(gmail|googlemail|outlook|hotmail|yahoo|icloud|proton|protonmail|mail|live|me|msn|ymail|aol|zoho|fastmail|xtra|spark|clear|slingshot|orcon|snap|woosh|paradise|callplus|telecom|vodafone|optus|bigpond|internode|iinet|aapt|tpg|dodo|telstra|singtel|starhub|maxis|celcom|digi|tm|bsnl|jio|airtel|tata|idea|mynet|superonline|ttmail|turknet|kablonet|shaw|rogers|telus|bell|sympatico|videotron|cogeco|eastlink|sasktel|btinternet|btconnect|virginmedia|talktalk|blueyonder|ntlworld|plusnet|gmx|web|t-online|freenet|alice|libero|virgilio|wanadoo|orange|sfr|free|neuf|laposte|cox|comcast|charter|spectrum|roadrunner|twc|verizon|att|bellsouth|sbcglobal|earthlink|windstream|suddenlink|optonline|netzero|juno|mac|sky|hushmail|hush|rediffmail|yandex|mailru|rambler|farmside|actrix|westnet|adam|netspace|chariot|tassie|picknowl|ozemail)$/i;
   if (emails.length) {
     const domain = emails[0].split("@")[1] || "";
     const core = domain.split(".")[0];
     if (core) {
       if (!ISP_DOMAINS.test(core)) {
-        let name = core
-          .replace(VENUE_TERM_RE_G, " $1")
-          .replace(/[-_]/g, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-        name = name.replace(/\b\w/g, (c) => c.toUpperCase());
-        if (name && name.length > 2 && !/^(wix|shopify|squarespace|godaddy|wordpress)$/i.test(name.toLowerCase())) {
-          return name;
-        }
+        const name = brandFromEmailDomain(emails);
+        if (name) return name;
       } else {
         // If it's a generic email provider, try to clean the username (e.g. "zephyrrestaurantnz" -> "Zephyr Restaurant")
         const username = emails[0].split("@")[0] || "";
@@ -838,6 +924,26 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
           }
         }
       }
+    }
+  }
+
+  // 2.5. Logo alt-text names the brand: scraped pages carry "X - logo" / "A logo for X is shown…"
+  // lines from <img alt> attributes. That alt text is written by the site owner about their OWN
+  // logo — a direct identity statement, far stronger than any frequency heuristic.
+  for (const l of lines) {
+    let candidate = "";
+    const dash = l.match(/^(.{2,40}?)\s*[-–—|:]\s*logo$/i) || l.match(/^(.{2,40}?)\s+logo$/i);
+    const alt = l.match(/\blogo (?:for|of) (?:the )?(.{2,40}?)\s+is shown\b/i);
+    if (dash) candidate = dash[1].trim();
+    else if (alt) candidate = alt[1].trim();
+    if (
+      candidate.length >= 3 && !NAV_PHRASE_RE.test(candidate) && !isSentenceLike(candidate)
+      && !/\b(and|&)\b.*\b(hotel|logo)\b/i.test(candidate) // "Voco and IHG Hotel logo" = co-brand banner, ambiguous
+      && !/^(the|a|an|white|black|company|site|footer|header|main|our)$/i.test(candidate)
+    ) {
+      // Alt text is often all-lowercase ("a logo for newina") — title-case those.
+      if (candidate === candidate.toLowerCase()) candidate = candidate.replace(/\b\w/g, (c) => c.toUpperCase());
+      return normalizeIfShouty(collapseDouble(candidate));
     }
   }
 

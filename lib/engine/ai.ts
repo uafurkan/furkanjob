@@ -359,7 +359,9 @@ Organization text:
 ${text.slice(0, 6000)}
 """`;
 
-  const parsed = extractJson<AiAnalysis>(await complete(prompt, 500, tier));
+  // Generous budget for the same reason as aiAssessFit below: reasoning-model providers spend
+  // inline chain-of-thought tokens before the JSON, and a truncated object fails extractJson.
+  const parsed = extractJson<AiAnalysis>(await complete(prompt, 900, tier));
   if (!parsed) return null;
   const langs = APP_LANGS.map((l) => l.code) as string[];
   const orgType = typeof parsed.orgType === "string" && (VALID_ORG_TYPES as string[]).includes(parsed.orgType) ? (parsed.orgType as OrgType) : undefined;
@@ -422,6 +424,17 @@ reproducible: given the same inputs, you MUST return the same JSON every time. D
 Determine which of the applicant's target roles fit THIS specific business, calculate the fit score using the
 STRICT RUBRIC below, and flag any hard eligibility constraint the listing itself states.
 
+FIRST, classify the page context — it changes how you reason about roles:
+(a) JOB LISTING: the page advertises specific vacancies. Roles the business "offers" = the advertised vacancies.
+(b) ORGANIZATION'S OWN WEBSITE (homepage/about/booking/contact — the common case for cold outreach): the page
+    advertises NO vacancies. NEVER claim the page "lists", "advertises" or "offers" a position — it doesn't.
+    Instead, infer which roles an organization like this PLAUSIBLY EMPLOYS from its type, size and the
+    facilities/amenities the page actually mentions. Facilities imply roles: accommodation → front desk,
+    night audit, housekeeping; a restaurant/bar/café/conference or function facilities → waitstaff, kitchen,
+    F&B; a spa → therapists; and so on. In this mode the application is speculative (unsolicited) — that is
+    normal and fine, but your fitSummary must reflect it honestly (e.g. "they don't advertise vacancies, but
+    a motel with conference facilities typically needs front desk and F&B staff").
+
 APPLICANT
 - Target roles (wish list): ${profile.targetRoles.join(", ") || "(none set)"}
 - Target countries (where they want to go): ${profile.targetCountries.join(", ") || "(none set — treat any destination as acceptable)"}
@@ -445,9 +458,11 @@ ${opts.text.slice(0, 5000)}
 Calculate fitScore by summing these components:
 
 1. ROLE MATCH (0-35 points)
-   - 35: At least one target role is an exact or near-exact match for what the business offers
-   - 25: Target role is in the same job family (e.g. "Front Desk" at a hotel offering "Receptionist")
-   - 15: Target role is loosely related to the business type (e.g. "Waiter" at a restaurant, but listing doesn't mention waiter)
+   - 35: At least one target role is an exact or near-exact match for an ADVERTISED vacancy (job-listing pages only)
+   - 30: No vacancies advertised, but a target role is one this organization's type/facilities clearly employ
+        (e.g. "Front Desk" at a motel; "Waiter" at a venue with a restaurant/bar/conference facilities)
+   - 25: Target role is in the same job family as an advertised or clearly-employed role
+   - 15: Target role is loosely related to the business type
    - 5: Target role has minimal relevance to this business
    - 0: No target role fits this business at all
 
@@ -491,6 +506,14 @@ Return STRICT JSON ONLY, exactly these keys:
 
 Rules:
 - applyFor must be a subset of realistic roles for this organization. Prefer the applicant's own wording.
+- droppedRoles: drop a target role ONLY when this organization realistically would NOT employ it at all
+  (e.g. "Night Audit" at a standalone restaurant, "Dentist" at a motel). Do NOT drop a role merely because
+  the page doesn't mention it — on an organization's own website almost no roles are mentioned. If the page's
+  facilities imply the role (conference/function rooms or a restaurant → waitstaff; lodging → housekeeping,
+  night audit), the role FITS and belongs in applyFor (up to the 1-2 limit; if more fit, keep the strongest
+  and do not list the rest as dropped).
+- fitSummary must be grounded ONLY in what the page actually says. Never claim a position is "listed" or
+  "offered" unless the page truly advertises that vacancy.
 - If the organization's country is NOT among the applicant's target countries, mention that briefly in fitSummary (it may still be a fine opportunity — inform, don't block).
 - eligibility.note ONLY from explicit text in the page — with ONE exception: if the applicant's matched role is a regulated profession (doctor, dentist, nurse, pharmacist, teacher, electrician, plumber…) and they would be moving countries, you may set status "warning" with a short note that local professional registration/licensure is typically required (name the typical body if you are confident, e.g. AHPRA in Australia, GDC/NMC in the UK, dental/medical council elsewhere). Licensing alone is NEVER "blocked" unless the page explicitly requires current local registration.
 - If the applicant needs sponsorship AND the listing says no sponsorship / must already have work rights → status "blocked".
