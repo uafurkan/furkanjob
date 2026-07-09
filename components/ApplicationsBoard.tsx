@@ -500,21 +500,12 @@ export default function ApplicationsBoard({ initial, initialSelectedId }: { init
             {t("apps.export")}
           </a>
           <a
-            href="/api/applications/export/print"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-sm"
-            style={{ fontSize: "var(--text-12)", textDecoration: "none" }}
-          >
-            {t("apps.exportPdf")}
-          </a>
-          <a
-            href="/api/applications/export/pdf-ocr?page=1"
+            href="/api/applications/export/print?page=1"
             download
             className="btn btn-sm"
             style={{ fontSize: "var(--text-12)", textDecoration: "none" }}
           >
-            {t("apps.exportPdfOcr")}
+            {t("apps.exportPdf")}
           </a>
         </div>
       </div>
