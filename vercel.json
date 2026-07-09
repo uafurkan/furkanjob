@@ -5,7 +5,7 @@
   ],
   "functions": {
     "app/api/applications/export/print/route.ts": {
-      "memory": 3009
+      "memory": 2048
     }
   }
 }
