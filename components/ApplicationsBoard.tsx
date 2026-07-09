@@ -490,14 +490,25 @@ export default function ApplicationsBoard({ initial, initialSelectedId }: { init
             {t("apps.filter.followup")}: <b style={{ marginLeft: 4 }}>{followupCount}</b>
           </span>
         )}
-        <a
-          href="/api/applications/export"
-          download
-          className="btn btn-sm"
-          style={{ marginLeft: "auto", fontSize: "var(--text-12)", textDecoration: "none" }}
-        >
-          {t("apps.export")}
-        </a>
+        <div className="row gap-2" style={{ marginLeft: "auto" }}>
+          <a
+            href="/api/applications/export"
+            download
+            className="btn btn-sm"
+            style={{ fontSize: "var(--text-12)", textDecoration: "none" }}
+          >
+            {t("apps.export")}
+          </a>
+          <a
+            href="/api/applications/export/print"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-sm"
+            style={{ fontSize: "var(--text-12)", textDecoration: "none" }}
+          >
+            {t("apps.exportPdf")}
+          </a>
+        </div>
       </div>
 
       {msg && <div className={`notice notice-${msg.kind}`}>{msg.text}</div>}
