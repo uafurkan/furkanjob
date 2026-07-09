@@ -510,6 +510,37 @@
 .fit-eligibility-warning svg { color: var(--signal-warning); }
 .fit-eligibility-blocked svg { color: var(--signal-error); }
 
+/* ---------- Visa Intelligence Panel ---------- */
+.visa-intel-panel {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-soft);
+  border: 1px solid rgba(111,168,255,.28);
+  background: linear-gradient(180deg, rgba(111,168,255,.08), rgba(111,168,255,.03));
+  font-size: var(--text-13);
+}
+.visa-intel-head {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-12); font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--content-tertiary);
+}
+.visa-intel-head svg { color: var(--accent-muted); flex-shrink: 0; }
+.visa-intel-shortage {
+  display: flex; align-items: flex-start; gap: var(--space-2);
+  margin: 0; color: var(--content-primary);
+}
+.visa-intel-shortage svg { flex-shrink: 0; margin-top: 1px; color: var(--signal-success); }
+.visa-intel-whv {
+  display: flex; align-items: flex-start; gap: var(--space-2);
+  margin: 0; color: var(--content-secondary);
+}
+.visa-intel-whv svg { flex-shrink: 0; margin-top: 1px; color: var(--accent-bright); }
+.visa-intel-note {
+  display: flex; align-items: flex-start; gap: var(--space-2);
+  margin: 0; color: var(--content-tertiary);
+}
+.visa-intel-note svg { flex-shrink: 0; margin-top: 1px; color: var(--content-tertiary); }
+
 /* ---------- Loading skeleton ---------- */
 .skeleton-line {
   border-radius: var(--radius-soft);

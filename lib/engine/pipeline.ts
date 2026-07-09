@@ -6,6 +6,7 @@ import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, withAiDeadl
 import { pickRelevantRoles } from "./match";
 import { isVisaCovered } from "./visa";
 import { workKindForRoles, visaFor, registrationNote, type OrgType, type Intent } from "./professions";
+import { assessVisaOptions, type VisaIntelligence } from "./visa-smart";
 import type { Draft, DraftOption, EngineProfile } from "./types";
 
 // Strip page-title pollution from the end of an AI-extracted company name:
@@ -158,6 +159,8 @@ export type PipelineResult = {
   intent: Intent;
   // True when the listing is from a recruitment/staffing agency posting on behalf of a client.
   isRecruitmentAgency: boolean;
+  // Deep visa intelligence: best pathway, shortage list match, WHV eligibility, panel notes.
+  visaIntelligence: VisaIntelligence | null;
 };
 
 export async function runPipeline(opts: {
@@ -329,10 +332,32 @@ async function runPipelineInner(opts: {
   // Visa wording adapted to WHAT the user is actually doing there: a farm hand and a dentist
   // need different visas in the same country, and a university applicant needs a student visa.
   const workKind = workKindForRoles(applyFor.length ? applyFor : profile.targetRoles);
-  analysis.country = {
-    ...analysis.country,
-    visa: visaFor(analysis.country.code, workKind, intent, analysis.country.visa),
-  };
+  const baseVisaWording = visaFor(analysis.country.code, workKind, intent, analysis.country.visa);
+  analysis.country = { ...analysis.country, visa: baseVisaWording };
+
+  // Deep visa intelligence: shortage list match, WHV eligibility, enhanced wording, panel notes.
+  // Runs only when the user actually needs sponsorship (not already visa-covered) and the
+  // destination is known. The enhanced wording replaces the generic visaFor() sentence.
+  let visaIntelligence: VisaIntelligence | null = null;
+  if (profile.needsVisaSponsorship && !visaCovered && analysis.country.code !== "XX" && intent === "job") {
+    visaIntelligence = assessVisaOptions({
+      applyFor: applyFor.length ? applyFor : profile.targetRoles,
+      workKind,
+      countryCode: analysis.country.code,
+      countryName: analysis.country.name,
+      fallbackWording: baseVisaWording,
+      intent,
+      profile,
+    });
+    // Upgrade the visa wording in the analysis so drafts and cover letters use the enriched sentence.
+    if (visaIntelligence.wording && visaIntelligence.wording !== baseVisaWording) {
+      analysis.country = { ...analysis.country, visa: visaIntelligence.wording };
+    }
+    // Inject shortage list / WHV notes into eligibility panel when nothing else is flagged.
+    if (visaIntelligence.panelNotes.length && eligibility.status === "ok" && !eligibility.note) {
+      eligibility = { status: "warning", note: visaIntelligence.panelNotes[0] };
+    }
+  }
 
   // Regulated-profession heads-up (dentist → AHPRA/GDC/dental council…): if the fit layer didn't
   // already flag something, surface the registration requirement as a soft warning. Product
@@ -383,5 +408,6 @@ async function runPipelineInner(opts: {
     coverLetterBody,
     orgType, intent,
     isRecruitmentAgency: Boolean(analysis.isRecruitmentAgency),
+    visaIntelligence,
   };
 }

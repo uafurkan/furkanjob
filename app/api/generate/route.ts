@@ -138,6 +138,19 @@ async function handleGenerate(req: Request) {
     countryCode: result.analysis.country.code,
     visaCovered: result.visaCovered,
     visaLabel: result.visaLabel,
+    // Deep visa intelligence for the UI panel: shortage list, WHV eligibility, panel notes.
+    visaIntelligence: result.visaIntelligence
+      ? {
+          onSkillShortageList: result.visaIntelligence.onSkillShortageList,
+          shortageListName: result.visaIntelligence.shortageListName,
+          shortageStream: result.visaIntelligence.shortageStream,
+          shortageNote: result.visaIntelligence.shortageNote,
+          workingHolidayEligible: result.visaIntelligence.workingHolidayEligible,
+          workingHolidayNote: result.visaIntelligence.workingHolidayNote,
+          panelNotes: result.visaIntelligence.panelNotes,
+          wording: result.visaIntelligence.wording,
+        }
+      : null,
     fetchedUrl,
     duplicate,
     cv: cv ? { filename: cv.filename } : null,

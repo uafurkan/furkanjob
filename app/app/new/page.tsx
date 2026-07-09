@@ -34,6 +34,16 @@ type GenResult = {
   countryCode: string;
   visaCovered: boolean;
   visaLabel: string | null;
+  visaIntelligence?: {
+    onSkillShortageList: boolean;
+    shortageListName: string | null;
+    shortageStream: string | null;
+    shortageNote: string | null;
+    workingHolidayEligible: boolean;
+    workingHolidayNote: string | null;
+    panelNotes: string[];
+    wording: string;
+  } | null;
   fetchedUrl?: boolean;
   duplicate?: { id: string; company: string | null; when: string } | null;
   cv: { filename: string } | null;
@@ -976,6 +986,45 @@ export default function NewApplication() {
                   <span>{res.eligibility.note}</span>
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Visa Intelligence Panel — shortage list / WHV hints / pathway notes */}
+          {res.visaIntelligence && (res.visaIntelligence.onSkillShortageList || res.visaIntelligence.workingHolidayEligible || (res.visaIntelligence.panelNotes && res.visaIntelligence.panelNotes.length > 0)) && (
+            <div className="visa-intel-panel reveal">
+              <div className="visa-intel-head">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /><path d="M7 15h2" /><path d="M11 15h6" />
+                </svg>
+                <span>{t("new.visa.pathways")}</span>
+              </div>
+              {res.visaIntelligence.onSkillShortageList && res.visaIntelligence.shortageListName && (
+                <p className="visa-intel-shortage">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                  <span>
+                    <strong>{res.visaIntelligence.shortageListName}</strong>
+                    {res.visaIntelligence.shortageStream ? ` — ${res.visaIntelligence.shortageStream}` : ""}
+                  </span>
+                </p>
+              )}
+              {res.visaIntelligence.workingHolidayEligible && res.visaIntelligence.workingHolidayNote && (
+                <p className="visa-intel-whv">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" />
+                  </svg>
+                  <span>{res.visaIntelligence.workingHolidayNote}</span>
+                </p>
+              )}
+              {res.visaIntelligence.panelNotes && res.visaIntelligence.panelNotes.slice(1).map((note, i) => (
+                <p key={i} className="visa-intel-note">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <span>{note}</span>
+                </p>
+              ))}
             </div>
           )}
 
