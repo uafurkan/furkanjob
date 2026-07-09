@@ -44,6 +44,23 @@ type GenResult = {
     panelNotes: string[];
     wording: string;
   } | null;
+  intelligence?: {
+    skillsGap: {
+      matchedSkills: string[];
+      gapSkills: string[];
+      strengthHighlights: string[];
+      experienceRequired: number | null;
+      educationRequired: string;
+    };
+    sponsorshipSignal: "open" | "closed" | "unknown";
+    sponsorshipNote: string | null;
+    postingFreshness: "fresh" | "recent" | "old" | "unknown";
+    postingAgeDays: number | null;
+    freshnessNote: string | null;
+    postingTone: string;
+    whvTimeline: { monthsRemaining: number | null; urgencyLevel: string; note: string | null } | null;
+    responseRate: { score: number; label: "high" | "medium" | "low"; factors: string[] };
+  } | null;
   fetchedUrl?: boolean;
   duplicate?: { id: string; company: string | null; when: string } | null;
   cv: { filename: string } | null;
@@ -1025,6 +1042,86 @@ export default function NewApplication() {
                   <span>{note}</span>
                 </p>
               ))}
+            </div>
+          )}
+
+          {/* Application Intelligence Panel */}
+          {res.intelligence && (
+            <div className="intel-panel reveal">
+              <div className="intel-panel-head">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+                </svg>
+                <span>{t("new.intel.title")}</span>
+                {/* Response rate badge */}
+                <span className={`intel-rate intel-rate--${res.intelligence.responseRate.label}`}>
+                  {res.intelligence.responseRate.score}% {t(`new.intel.rate.${res.intelligence.responseRate.label}`)}
+                </span>
+              </div>
+
+              {/* Freshness */}
+              {res.intelligence.postingFreshness !== "unknown" && (
+                <p className={`intel-row intel-freshness--${res.intelligence.postingFreshness}`}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                  </svg>
+                  <span>
+                    {res.intelligence.postingAgeDays === 0
+                      ? t("new.intel.fresh.today")
+                      : res.intelligence.postingAgeDays !== null
+                        ? t("new.intel.fresh.days").replace("{n}", String(res.intelligence.postingAgeDays))
+                        : t(`new.intel.fresh.${res.intelligence.postingFreshness}`)}
+                    {res.intelligence.freshnessNote ? ` — ${res.intelligence.freshnessNote}` : ""}
+                  </span>
+                </p>
+              )}
+
+              {/* Sponsorship signal */}
+              {res.intelligence.sponsorshipSignal !== "unknown" && (
+                <p className={`intel-row intel-sponsor--${res.intelligence.sponsorshipSignal}`}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    {res.intelligence.sponsorshipSignal === "open"
+                      ? <path d="M20 6L9 17l-5-5"/>
+                      : <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>}
+                  </svg>
+                  <span>{res.intelligence.sponsorshipNote}</span>
+                </p>
+              )}
+
+              {/* Matched skills */}
+              {res.intelligence.skillsGap.matchedSkills.length > 0 && (
+                <div className="intel-skills">
+                  <span className="intel-skills-label intel-skills-label--match">{t("new.intel.skills.matched")}</span>
+                  {res.intelligence.skillsGap.matchedSkills.map((s, i) => (
+                    <span key={i} className="intel-skill-chip intel-skill-chip--match">{s}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Gap skills */}
+              {res.intelligence.skillsGap.gapSkills.length > 0 && (
+                <div className="intel-skills">
+                  <span className="intel-skills-label intel-skills-label--gap">{t("new.intel.skills.gap")}</span>
+                  {res.intelligence.skillsGap.gapSkills.map((s, i) => (
+                    <span key={i} className="intel-skill-chip intel-skill-chip--gap">{s}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* WHV timeline */}
+              {res.intelligence.whvTimeline && (res.intelligence.whvTimeline.urgencyLevel === "critical" || res.intelligence.whvTimeline.urgencyLevel === "soon" || res.intelligence.whvTimeline.urgencyLevel === "expired") && (
+                <p className={`intel-row intel-whv--${res.intelligence.whvTimeline.urgencyLevel}`}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                  </svg>
+                  <span>{res.intelligence.whvTimeline.note}</span>
+                </p>
+              )}
+
+              {/* Response rate factors */}
+              {res.intelligence.responseRate.factors.length > 0 && (
+                <p className="intel-factors">{res.intelligence.responseRate.factors.join(" · ")}</p>
+              )}
             </div>
           )}
 

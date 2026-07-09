@@ -26,6 +26,8 @@ export type EngineProfile = {
   // Labeled text extracts from the applicant's OTHER uploaded documents (visa proof,
   // certificates, diplomas, reference letters) — so every AI feature knows the full person.
   documentsText?: string | null;
+  // Working Holiday Visa expiry date (ISO string) — used to surface timeline urgency when applying for sponsored roles.
+  whvExpiry?: string | null;
 };
 
 export type Draft = { subject: string; body: string };

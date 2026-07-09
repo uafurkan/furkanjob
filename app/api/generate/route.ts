@@ -151,6 +151,32 @@ async function handleGenerate(req: Request) {
           wording: result.visaIntelligence.wording,
         }
       : null,
+    // Application intelligence: skills gap, sponsorship signal, freshness, tone, response rate.
+    intelligence: {
+      skillsGap: {
+        matchedSkills: result.skillsGap.matchedSkills,
+        gapSkills: result.skillsGap.gapSkills,
+        strengthHighlights: result.skillsGap.strengthHighlights,
+        experienceRequired: result.skillsGap.experienceRequired,
+        educationRequired: result.skillsGap.educationRequired,
+      },
+      sponsorshipSignal: result.sponsorshipSignal.signal,
+      sponsorshipNote: result.sponsorshipSignal.note,
+      postingFreshness: result.postingFreshness.label,
+      postingAgeDays: result.postingFreshness.ageDays,
+      freshnessNote: result.postingFreshness.note,
+      postingTone: result.postingTone,
+      whvTimeline: result.whvTimeline.urgencyLevel !== "unknown" ? {
+        monthsRemaining: result.whvTimeline.monthsRemaining,
+        urgencyLevel: result.whvTimeline.urgencyLevel,
+        note: result.whvTimeline.note,
+      } : null,
+      responseRate: {
+        score: result.responseRate.score,
+        label: result.responseRate.label,
+        factors: result.responseRate.factors,
+      },
+    },
     fetchedUrl,
     duplicate,
     cv: cv ? { filename: cv.filename } : null,

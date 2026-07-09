@@ -7,6 +7,12 @@ import { pickRelevantRoles } from "./match";
 import { isVisaCovered } from "./visa";
 import { workKindForRoles, visaFor, registrationNote, type OrgType, type Intent } from "./professions";
 import { assessVisaOptions, type VisaIntelligence } from "./visa-smart";
+import {
+  analyzeSkillsGap, detectSponsorshipSignal, detectPostingFreshness,
+  assessWhvTimeline, detectPostingTone, predictResponseRate,
+  type SkillsGap, type SponsorshipSignal, type PostingFreshness,
+  type WhvTimeline, type PostingTone, type ResponseRatePrediction,
+} from "./intelligence";
 import type { Draft, DraftOption, EngineProfile } from "./types";
 
 // Strip page-title pollution from the end of an AI-extracted company name:
@@ -161,6 +167,13 @@ export type PipelineResult = {
   isRecruitmentAgency: boolean;
   // Deep visa intelligence: best pathway, shortage list match, WHV eligibility, panel notes.
   visaIntelligence: VisaIntelligence | null;
+  // Application intelligence layer (deterministic, no AI required).
+  skillsGap: SkillsGap;
+  sponsorshipSignal: SponsorshipSignal;
+  postingFreshness: PostingFreshness;
+  whvTimeline: WhvTimeline;
+  postingTone: PostingTone;
+  responseRate: ResponseRatePrediction;
 };
 
 export async function runPipeline(opts: {
@@ -367,6 +380,31 @@ async function runPipelineInner(opts: {
     if (note && !visaCovered) eligibility = { status: "warning", note };
   }
 
+  // ── Intelligence layer (deterministic, O(n), no AI) ──────────────────────
+  const skillsGap        = analyzeSkillsGap(text, profile);
+  const sponsorshipSignal = detectSponsorshipSignal(text, analysis.country.code);
+  const postingFreshness  = detectPostingFreshness(text);
+  const whvTimeline       = assessWhvTimeline(profile.whvExpiry);
+  const postingTone       = detectPostingTone(text, orgType);
+  const responseRate      = predictResponseRate({
+    fitScore,
+    eligibilityStatus: eligibility.status,
+    onSkillShortageList: visaIntelligence?.onSkillShortageList ?? false,
+    sponsorshipSignal: sponsorshipSignal.signal,
+    freshness: postingFreshness.label,
+    needsVisaSponsorship: profile.needsVisaSponsorship,
+    gapCount: skillsGap.gapSkills.length,
+  });
+
+  // Surface sponsorship-closed as an eligibility block when user needs sponsorship
+  if (profile.needsVisaSponsorship && !visaCovered && sponsorshipSignal.signal === "closed" && eligibility.status === "ok") {
+    eligibility = { status: "warning", note: sponsorshipSignal.note || "This employer may require existing local work rights." };
+  }
+  // WHV critical timeline → inject as eligibility note (lower priority than existing notes)
+  if (whvTimeline.urgencyLevel === "critical" && eligibility.status === "ok" && !eligibility.note) {
+    eligibility = { status: "warning", note: whvTimeline.note || "" };
+  }
+
   // The draft targets the chosen role(s)/program(s), not the user's full wish list.
   const draftAnalysis: Analysis = { ...analysis, positions: applyFor.length ? applyFor : analysis.positions };
 
@@ -409,5 +447,6 @@ async function runPipelineInner(opts: {
     orgType, intent,
     isRecruitmentAgency: Boolean(analysis.isRecruitmentAgency),
     visaIntelligence,
+    skillsGap, sponsorshipSignal, postingFreshness, whvTimeline, postingTone, responseRate,
   };
 }
