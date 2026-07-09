@@ -1807,27 +1807,10 @@ export default function NewApplication() {
                 ))}
               </div>
               
-              {/* Closing */}
-              <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                <span>
-                  {(() => {
-                    const COVER_LETTER_L10N: Record<string, { hiringTeam: string; sincerely: string; formatDate: (d: Date) => string }> = {
-                      en: { hiringTeam: "Hiring Team", sincerely: "Sincerely,", formatDate: (d) => d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
-                      tr: { hiringTeam: "İşe Alım Ekibi", sincerely: "Saygılarımla,", formatDate: (d) => d.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) },
-                      es: { hiringTeam: "Equipo de Selección", sincerely: "Atentamente,", formatDate: (d) => d.toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) },
-                      fr: { hiringTeam: "Équipe de Recrutement", sincerely: "Cordialement,", formatDate: (d) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }) },
-                      de: { hiringTeam: "Personalabteilung", sincerely: "Mit freundlichen Grüßen,", formatDate: (d) => d.toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" }) },
-                      it: { hiringTeam: "Ufficio Selezione", sincerely: "Cordiali saluti,", formatDate: (d) => d.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" }) },
-                      pt: { hiringTeam: "Equipe de Recrutamento", sincerely: "Atenciosamente,", formatDate: (d) => d.toLocaleDateString("pt-PT", { year: "numeric", month: "long", day: "numeric" }) },
-                    };
-                    const lang = res.language || "en";
-                    const loc = COVER_LETTER_L10N[lang] || COVER_LETTER_L10N.en;
-                    return loc.sincerely;
-                  })()}
-                </span>
-                <strong style={{ color: "#0f172a" }}>{fullName || res.fullName || ""}</strong>
-              </div>
-              
+              {/* No hardcoded closing here: the sent .docx (lib/engine/coverletter.ts) renders the
+                  body as-is, so any sign-off lives IN the body (added by the signature toggle).
+                  Appending another "Sincerely, <name>" made the preview show a double signature
+                  that the recipient would never actually see. Preview must match what is sent. */}
             </div>
           </div>
         </div>
