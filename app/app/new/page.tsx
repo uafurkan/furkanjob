@@ -78,12 +78,45 @@ function clearDraft() {
 // Deterministic safety net for when the AI returns a revised body but skips the subject: swap
 // the old "Role1 / Role2" role list for the new one inside the existing subject string, so a
 // role toggle never leaves a stale subject even if that particular provider only did half the job.
-function fallbackSubject(currentSubject: string, oldRoles: string[], newRoles: string[]): string {
-  const oldJoined = oldRoles.join(" / ");
-  if (oldJoined && currentSubject.includes(oldJoined)) {
-    return currentSubject.replace(oldJoined, newRoles.join(" / "));
+function joinRolesNatural(roles: string[], sep: string): string {
+  if (roles.length <= 1) return roles[0] || "";
+  return roles.slice(0, -1).join(", ") + ` ${sep} ` + roles[roles.length - 1];
+}
+
+function swapRolesInText(text: string, oldRoles: string[], newRoles: string[], natural: boolean): string {
+  const separators = natural
+    ? [" / ", " and ", " & ", " ve ", " und ", " et ", " e ", " y ", ", "]
+    : [" / "];
+  for (const sep of separators) {
+    const oldJoined = oldRoles.join(sep);
+    if (oldJoined && text.includes(oldJoined)) {
+      return text.replace(oldJoined, natural ? joinRolesNatural(newRoles, sep.trim()) : newRoles.join(sep));
+    }
   }
-  return currentSubject;
+  if (natural && oldRoles.length > 1) {
+    for (const conj of ["and", "ve", "und", "et", "e", "y", "&"]) {
+      const oldNat = joinRolesNatural(oldRoles, conj);
+      if (oldNat && text.includes(oldNat)) {
+        return text.replace(oldNat, joinRolesNatural(newRoles, conj));
+      }
+    }
+  }
+  for (const role of oldRoles) {
+    if (!newRoles.some((r) => r.toLowerCase() === role.toLowerCase()) && text.includes(role)) {
+      text = text.replaceAll(role, "").replace(/ {2,}/g, " ").replace(/ ([,/])/g, "$1");
+    }
+  }
+  for (const role of newRoles) {
+    if (!oldRoles.some((r) => r.toLowerCase() === role.toLowerCase())) {
+      const posMatch = text.match(/\b(position|role|vacancy|pozisyon|stelle|poste|posizione|vaga|puesto)s?\b/i);
+      if (posMatch && posMatch.index !== undefined) {
+        const before = text.slice(0, posMatch.index).trimEnd();
+        const after = text.slice(posMatch.index);
+        text = `${before} ${role} ${after}`;
+      }
+    }
+  }
+  return text;
 }
 
 export default function NewApplication() {
@@ -735,7 +768,7 @@ export default function NewApplication() {
       setSubject(d.subject);
       setCurrentDrafts((prev) => prev.map((dr, i) => (i === selectedDraftIndex ? { ...dr, subject: d.subject } : dr)));
 
-      if (includeCoverLetter) setCoverLetterBody((prev) => fallbackSubject(prev, current, next));
+      if (includeCoverLetter) setCoverLetterBody((prev) => swapRolesInText(prev, current, next, true));
 
       setMsg({ kind: "ok", text: t("new.roles.updated") });
       setTimeout(() => setMsg(null), 2500);
