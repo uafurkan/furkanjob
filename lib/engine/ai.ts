@@ -834,7 +834,8 @@ Write fully in ${langName} at native speaker quality. Return STRICT JSON only: {
 Rules:
 - Formal greeting ("Dear Admissions Committee," or localized formal equivalent). Never casual.
 - Structure: (1) motivation for THIS program at THIS institution with one concrete detail from the page; (2) academic/professional background that prepares them, only real facts from the profile/CV; (3) goals — what they intend to do with the qualification; (4) closing — documents available, look forward to the application process. NO signature/sign-off/name at the end.
-- Concise, grounded, zero clichés ("since childhood I have dreamed…" is banned). Invent NO grades, test scores, or qualifications.`;
+- Concise, grounded, zero clichés ("since childhood I have dreamed…" is banned). Invent NO grades, test scores, or qualifications.
+- LOCATION RULE: Never infer or fabricate a specific city from a country name. Only use place names explicitly in the profile/CV extract.`;
     const parsedStudy = extractJson<{ body?: string }>(await complete(prompt, 1000, tier));
     return parsedStudy?.body || null;
   }
@@ -879,7 +880,8 @@ Rules for the cover letter:
   4. Conclusion (2-3 sentences): Reiterate interest, state that the resume/CV is enclosed, and express interest in discussing further. DO NOT include a signature, sign-off, or your name at the end.
 - Grounded and highly customized — depth comes from specificity, not from adjectives. Avoid clichés and generic flattery.
 - Present language skills clearly (e.g., Native, B2, A2) without exaggeration.
-- Invent no fake details, licenses, or qualifications.`;
+- Invent no fake details, licenses, or qualifications.
+- LOCATION RULE: Never infer or fabricate a specific city, district, or region from a country name. If the profile says "Turkey", write "Turkey" — never "Istanbul" or "Ankara". Only use place names that are explicitly written in the profile data or CV extract above.`;
 
   const parsed = extractJson<{ body?: string }>(await complete(prompt, 1000, tier));
   return parsed?.body || null;
@@ -1071,6 +1073,7 @@ Return STRICT JSON only:
 - Reference the organization by its correct name and at least one concrete, true detail from the page text. Show you actually know what it does.
 - NO "Sincerely"/"Kind regards"/any closing salutation, NO applicant name, email, phone, or signature block at the end — a Gmail signature is appended automatically.
 - Invent NOTHING — no email addresses, no qualifications, licenses, or facts not supported by the page or applicant profile. No clichés ("I am a passionate individual"), no fake urgency, no filler phrases.
+- LOCATION RULE: Never infer or fabricate a specific city, district, or region from a country name. If the profile says "Turkey", write "Turkey" — never "Istanbul" or "Ankara". Only use place names explicitly written in the profile data or CV extract.
 - Keep the tone mature, confident, and human. These emails should read like a real professional wrote them, not like a template or a chatbot.`;
 
   const parsed = extractJson<{ drafts?: DraftOption[] }>(await complete(prompt, 1800, tier, reasoningEffort));
@@ -1147,6 +1150,7 @@ INSTRUCTIONS:
 - Do NOT include applicant details, date, or company address at the top. Those are added automatically.
 - Write fully in ${langName} at native speaker quality.
 - Be specific, compelling, and avoid generic phrases like "I am a motivated individual".
+- LOCATION RULE: Never infer or fabricate a specific city, district, or region from a country name. If the profile says "Turkey", write "Turkey" — never "Istanbul" or "Ankara". Only use place names explicitly written in the profile data or CV extract.
 - Return STRICT JSON only: {"body": "..."}`;
 
   const parsed = extractJson<{ body?: string }>(await complete(prompt, 1200, opts.tier || "free"));
