@@ -22,6 +22,17 @@ import type { Draft, DraftOption, EngineProfile } from "./types";
 function cleanCompanyName(raw: string): string {
   let s = raw.trim();
 
+  // Strip phone numbers appended to or embedded in company names.
+  // AU/NZ toll-free: "Company 1300 454 824" or "Company 0800 123 456"
+  s = s.replace(/\s+(?:1[38]\d{2}|0[78]\d{2})\s+\d{3}\s+\d{3}\s*$/g, "").trim();
+  // Generic digit blocks: "Company 03 4567 8901"
+  s = s.replace(/\s+\(?\d{2,4}\)?\s*\d{3,4}[\s\-]\d{3,4}\s*$/g, "").trim();
+  // Strip leading "1300" / "1800" phone prefix when it starts the whole string
+  // (vanity numbers like "1300 4 KITCHENS" → keep the word part only)
+  s = s.replace(/^(?:1[38]\d{2}|0[78]\d{2})\s+/i, "").trim();
+  // Strip trailing lone phone digit group left after above (e.g. "4 KITCHENS 454")
+  s = s.replace(/\s+\d{3,4}\s*$/, "").trim();
+
   // Strip trailing street address fragments: "Company 288 Fenton St Glenholme" → "Company"
   // Copyright lines often include the full address after the brand name.
   s = s.replace(/\s+\d+[A-Za-z]?\s+\w[\w\s]*\b(street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|way|close|court|ct|crescent|terrace|boulevard|blvd)\b.*$/i, "").trim();

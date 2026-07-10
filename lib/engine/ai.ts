@@ -336,6 +336,7 @@ Return STRICT JSON ONLY, no prose, exactly these keys:
    - NEVER include geographic descriptors or city/country names after the brand (e.g., '© 2026 Capri on Fenton, Rotorua, New Zealand. Privacy Policy' → return ONLY 'Capri on Fenton', not 'Capri On Fenton Rotorua New Zealand Privacy Policy').
    - If a copyright line contains the brand + city + country + legal text, extract ONLY the brand name.
    - Deduplicate repeated logo/header text (e.g. 'Hotel MontrealHotel Montreal' -> 'Hotel Montreal').
+   - NEVER include phone numbers in the company name. If the business uses a vanity phone number as a display name (e.g. '1300 4 KITCHENS', '0800 PLUMBER'), extract only the word-based brand part (e.g. '4Kitchens', 'The Plumber') and drop all digit groups.
    - If unsure, infer the name from copyright lines (e.g., '© 2026 The Green View Hotel') or the domain of emails/links in the text.
    - NEVER return generic email provider names (like 'Gmail', 'Yahoo', 'Hotmail', 'Outlook', 'Proton', 'ProtonMail') or ISP names (like 'Xtra', 'Spark', 'Slingshot', 'Orcon', 'Clear') as the organization name.
    - If the only email is on a generic provider/ISP (e.g. 'zephyrestaurantnz@gmail.com'), do NOT return 'Gmail'. Instead, extract and clean the brand name from the username/prefix part of the email address (e.g., 'zephyrestaurantnz@gmail.com' -> 'Zephyr Restaurant').
@@ -494,7 +495,7 @@ fitScore = sum of all 5 components (0-100).
 
 Return STRICT JSON ONLY, exactly these keys:
 {
-  "applyFor": ["1-2 of the applicant's target roles that truly fit this business; if none fit, the single closest realistic role for this venue"],
+  "applyFor": ["1-2 of the applicant's target roles that truly fit this business — return an EMPTY ARRAY [] if no target role is realistically employed by this organization type (e.g. hospitality roles at a kitchen design studio, law firm, or software company)"],
   "droppedRoles": ["target roles that do NOT fit this business, e.g. lodging roles at a standalone restaurant"],
   "fitScore": <number: sum from rubric above>,
   "fitSummary": "ONE short sentence in ${langName}, addressed to the applicant, explaining the fit and which role(s) you're applying for and why.",
@@ -506,6 +507,7 @@ Return STRICT JSON ONLY, exactly these keys:
 
 Rules:
 - applyFor must be a subset of realistic roles for this organization. Prefer the applicant's own wording.
+- INDUSTRY MISMATCH: If the organization's primary business means it would NEVER employ any of the applicant's target roles (e.g. a kitchen renovation/joinery studio, law firm, or software company when the applicant targets hospitality roles), return applyFor as [] and set eligibility to "blocked" with a note like "This business is a [industry] company and does not hire [applicant's field] staff."
 - droppedRoles: drop a target role ONLY when this organization realistically would NOT employ it at all
   (e.g. "Night Audit" at a standalone restaurant, "Dentist" at a motel). Do NOT drop a role merely because
   the page doesn't mention it — on an organization's own website almost no roles are mentioned. If the page's
@@ -599,7 +601,7 @@ Return STRICT JSON ONLY — exactly these keys, no prose:
   "intent": "job or study",
   "positions": ["1-3 realistic roles this organization hires or programs it offers if study"],
   "isRecruitmentAgency": false,
-  "applyFor": ["1-2 of applicant's target roles that fit; or closest realistic role if none fit"],
+  "applyFor": ["1-2 of applicant's target roles that truly fit this business — empty array [] if no target role is realistically employed here (e.g. hospitality roles at a kitchen design studio or law firm)"],
   "droppedRoles": ["applicant target roles that don't fit this specific business"],
   "fitScore": 0,
   "fitSummary": "ONE sentence in ${langName} explaining fit and which role(s) to apply for and why",
@@ -610,11 +612,11 @@ Return STRICT JSON ONLY — exactly these keys, no prose:
 }
 
 Key rules:
-- company: short proper noun/brand only. Never a sentence, perk, or nav element.
+- company: short proper noun/brand only. Never a sentence, perk, nav element, or phone number. If a vanity phone number is used as a display name (e.g. "1300 4 KITCHENS"), extract only the word-based brand (e.g. "4Kitchens").
 - countryCode: infer from TLD (.co.nz→NZ, .com.au→AU), phone, address, city names.
 - positions: prefer advertised vacancies; otherwise infer from org type.
-- applyFor: must be realistic for this org. Prefer applicant's own role wording.
-- droppedRoles: only drop when org truly wouldn't employ it (e.g. Night Audit at a standalone restaurant).
+- applyFor: must be realistic for this org. Prefer applicant's own role wording. Return [] if the org's industry means it would never employ the applicant's target roles (e.g. hospitality roles at a kitchen renovation studio).
+- droppedRoles: only drop when org truly wouldn't employ it (e.g. Night Audit at a standalone restaurant). List ALL mismatched roles when applyFor is [].
 - fitSummary: grounded in the page. Never claim a role is "listed" unless truly advertised.
 - eligibility.note: ONLY from explicit text, OR regulated-profession licensing note if moving countries.
 - isRecruitmentAgency: true only for staffing/labour-hire firms posting on behalf of a client.
@@ -632,7 +634,8 @@ Key rules:
 
   const applyFor = clampStr(parsed.applyFor);
   const droppedRoles = clampStr(parsed.droppedRoles);
-  if (!applyFor.length) return null; // unusable — fall back to separate calls
+  // Empty applyFor is valid (industry mismatch) — only fall back if the whole result is unusable
+  if (!parsed.company && !parsed.countryCode) return null;
 
   return {
     // AiAnalysis fields
