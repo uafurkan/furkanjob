@@ -241,7 +241,7 @@ async function callProvider(
 // provider to return a real answer wins. A provider that errors, times out, or returns nothing
 // usable is skipped silently and the next one takes over, so a single flaky/rate-limited
 // provider never takes the whole feature down.
-async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoningEffort: "low" | "high" = "low", temperature: number = 0.4): Promise<string | null> {
+export async function complete(prompt: string, maxTokens: number, tier: AiTier, reasoningEffort: "low" | "high" = "low", temperature: number = 0.4): Promise<string | null> {
   const chain = resolveChain(tier);
   for (const r of chain) {
     if (remainingBudgetMs() <= 0) break;
@@ -278,7 +278,7 @@ async function completeJsonWithFallback<T>(
   return null;
 }
 
-function extractJson<T>(out: string | null): T | null {
+export function extractJson<T>(out: string | null): T | null {
   if (!out) return null;
   const a = out.indexOf("{");
   const b = out.lastIndexOf("}");

@@ -151,6 +151,19 @@ async function handleGenerate(req: Request) {
           wording: result.visaIntelligence.wording,
         }
       : null,
+    // Feature 3: Cold email mode (no advertised positions → speculative enquiry).
+    coldEmail: result.coldEmail,
+    // Feature 4: Short company research snippet extracted from the page.
+    companySnippet: result.companySnippet || null,
+    // Feature 5: Salary intelligence for these roles in this country.
+    salary: result.salary.band
+      ? {
+          min: result.salary.band.min,
+          max: result.salary.band.max,
+          currency: result.salary.band.currency,
+          period: result.salary.band.period,
+        }
+      : null,
     // Application intelligence: skills gap, sponsorship signal, freshness, tone, response rate.
     intelligence: {
       skillsGap: {

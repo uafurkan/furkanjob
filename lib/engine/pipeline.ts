@@ -13,6 +13,7 @@ import {
   type SkillsGap, type SponsorshipSignal, type PostingFreshness,
   type WhvTimeline, type PostingTone, type ResponseRatePrediction,
 } from "./intelligence";
+import { getSalaryBand, type SalaryResult } from "./salary";
 import type { Draft, DraftOption, EngineProfile } from "./types";
 
 // Strip page-title pollution from the end of an AI-extracted company name:
@@ -174,6 +175,12 @@ export type PipelineResult = {
   whvTimeline: WhvTimeline;
   postingTone: PostingTone;
   responseRate: ResponseRatePrediction;
+  // Salary intelligence: indicative band for these roles in this country.
+  salary: SalaryResult;
+  // True when the business has no advertised positions and we're sending a speculative enquiry.
+  coldEmail: boolean;
+  // A 1-2 sentence company description extracted deterministically from the listing (used in AI prompts).
+  companySnippet: string | null;
 };
 
 export async function runPipeline(opts: {
@@ -380,6 +387,20 @@ async function runPipelineInner(opts: {
     if (note && !visaCovered) eligibility = { status: "warning", note };
   }
 
+  // ── Cold-email detection ──────────────────────────────────────────────────
+  // True when the listing has no advertised positions (speculative enquiry).
+  const coldEmail = intent === "job" && businessPositions.length === 0;
+
+  // ── Company research snippet ───────────────────────────────────────────────
+  // Extract 1-2 about-the-company sentences deterministically (no AI needed).
+  const companySnippet = extractCompanySnippet(text, analysis.company);
+
+  // ── Salary intelligence ───────────────────────────────────────────────────
+  const salary = getSalaryBand(
+    applyFor.length ? applyFor : profile.targetRoles,
+    analysis.country.code
+  );
+
   // ── Intelligence layer (deterministic, O(n), no AI) ──────────────────────
   const skillsGap        = analyzeSkillsGap(text, profile);
   const sponsorshipSignal = detectSponsorshipSignal(text, analysis.country.code);
@@ -448,5 +469,22 @@ async function runPipelineInner(opts: {
     isRecruitmentAgency: Boolean(analysis.isRecruitmentAgency),
     visaIntelligence,
     skillsGap, sponsorshipSignal, postingFreshness, whvTimeline, postingTone, responseRate,
+    salary, coldEmail, companySnippet,
   };
+}
+
+// Extract a short company-description snippet from the raw page text.
+// Looks for sentences that describe the business (founding, awards, specialties) and avoids
+// job-requirement or application-instruction sentences.
+function extractCompanySnippet(text: string, company: string): string | null {
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.replace(/\s+/g, " ").trim())
+    .filter((s) => s.length >= 30 && s.length <= 280);
+
+  const ABOUT_RE = /founded|established|family.?owned|award|rating|special[iz]|known for|recogni[sz]|passionate|pride|located|since \d{4}|year|heritage|tradition|best|excellent|cuisin|menu|serv[ei]/i;
+  const SKIP_RE = /apply|application|cv|résumé|resume|requirement|experience required|must have|should have|will be responsible|key duties|you will|reporting to|we are looking|we (seek|require|need)|click here|submit|role description|position overview|about the role|about this (role|job|position)/i;
+
+  const matches = sentences.filter((s) => ABOUT_RE.test(s) && !SKIP_RE.test(s)).slice(0, 2);
+  return matches.length ? matches.join(" ") : null;
 }

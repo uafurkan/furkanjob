@@ -1477,3 +1477,53 @@
 .ig-dot {
   animation: ig-hue-fill 4s linear infinite;
 }
+
+/* ── Feature 2: Draft Quality Badge ─────────────────────────────────────── */
+.quality-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--surface-raised);
+  font-size: var(--text-12); font-weight: 600;
+  border: 1px solid var(--border-subtle);
+}
+
+/* ── Feature 3: Cold Email Chip ──────────────────────────────────────────── */
+.chip-cold {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  font-style: italic;
+}
+
+.cold-email-note {
+  display: flex; align-items: flex-start; gap: 7px;
+  padding: 10px 12px; border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  font-size: var(--text-13); color: var(--text-secondary);
+}
+.cold-email-note svg { flex-shrink: 0; margin-top: 1px; color: var(--accent); }
+
+/* ── Feature 4: Company Research Snippet ─────────────────────────────────── */
+.company-snippet {
+  padding: 10px 12px; border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+}
+.company-snippet-label {
+  display: block; font-size: var(--text-11); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-tertiary); margin-bottom: 4px;
+}
+.company-snippet-text {
+  margin: 0; font-size: var(--text-13);
+  color: var(--text-secondary); line-height: 1.5;
+}
+
+/* ── Feature 5: Salary Chip ──────────────────────────────────────────────── */
+.salary-chip {
+  background: color-mix(in srgb, var(--signal-success, #10b981) 12%, transparent);
+  color: var(--signal-success, #10b981);
+  border-color: color-mix(in srgb, var(--signal-success, #10b981) 25%, transparent);
+  font-weight: 500;
+}

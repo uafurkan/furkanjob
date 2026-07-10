@@ -5,6 +5,7 @@ import { useT } from "@/components/i18n";
 import { APP_LANGS } from "@/lib/engine/template";
 import { checkRecipients, applyFix } from "@/lib/email-check";
 import { safeJson } from "@/lib/safe-fetch";
+import { scoreDraftQuality } from "@/lib/draft-quality";
 
 type Eligibility = { status: "ok" | "warning" | "blocked"; note: string };
 type GenResult = {
@@ -61,6 +62,9 @@ type GenResult = {
     whvTimeline: { monthsRemaining: number | null; urgencyLevel: string; note: string | null } | null;
     responseRate: { score: number; label: "high" | "medium" | "low"; factors: string[] };
   } | null;
+  coldEmail?: boolean;
+  companySnippet?: string | null;
+  salary?: { min: number; max: number; currency: string; period: "hourly" | "annual" } | null;
   fetchedUrl?: boolean;
   duplicate?: { id: string; company: string | null; when: string } | null;
   cv: { filename: string } | null;
@@ -1017,6 +1021,12 @@ export default function NewApplication() {
               });
             })()}
             <span className={`chip ${res.emailSource === "none" ? "chip-warn" : "chip-ok"}`}>{t("new.mail")}: {srcLabel(res.emailSource)}</span>
+            {res.coldEmail && <span className="chip chip-cold">{t("new.cold.chip")}</span>}
+            {res.salary && (
+              <span className="chip salary-chip" title={t("new.salary.title")}>
+                💰 {res.salary.min}–{res.salary.max} {res.salary.currency}/{t(res.salary.period === "hourly" ? "new.salary.hourly" : "new.salary.annual")}
+              </span>
+            )}
           </div>
 
           {(res.fitSummary || (res.eligibility && res.eligibility.status !== "ok") || (res.droppedRoles && res.droppedRoles.length > 0)) && (
@@ -1039,6 +1049,24 @@ export default function NewApplication() {
                   <span>{res.eligibility.note}</span>
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Cold Email Note */}
+          {res.coldEmail && (
+            <div className="cold-email-note reveal">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>{t("new.cold.note")}</span>
+            </div>
+          )}
+
+          {/* Company Research Snippet */}
+          {res.companySnippet && (
+            <div className="company-snippet reveal">
+              <span className="company-snippet-label">{t("new.company.about").replace("{company}", res.company)}</span>
+              <p className="company-snippet-text">{res.companySnippet}</p>
             </div>
           )}
 
@@ -1895,6 +1923,21 @@ export default function NewApplication() {
                   ? <>{t("new.attachment")}: <b>{cvs.find((c) => c.id === selectedCv)?.filename || res.cv?.filename}</b></>
                   : res.cv ? <>{t("new.attachment")}: <b>{res.cv.filename}</b></> : <span className="chip-warn">{t("new.noCv")}</span>}
               </span>
+              {(() => {
+                const q = scoreDraftQuality({ body, subject, company: res.company, positions: res.applyFor?.length ? res.applyFor : res.positions, needsVisa: res.visaCovered });
+                const labelKey = `new.quality.badge.${q.label}` as const;
+                const colorMap = { great: "var(--signal-success, #10b981)", good: "var(--accent)", fair: "var(--signal-warning, #f59e0b)", weak: "var(--text-secondary)" };
+                return (
+                  <div className="row gap-2" style={{ alignItems: "center" }}>
+                    <span className="quality-badge" style={{ color: colorMap[q.label], fontWeight: 600, fontSize: "var(--text-12)" }}>
+                      {t(labelKey)} · {q.score}/100
+                    </span>
+                    <span style={{ fontSize: "var(--text-11)", color: "var(--text-tertiary)" }}>
+                      {t("new.quality.words").replace("{n}", String(body.trim().split(/\s+/).filter(Boolean).length))}
+                    </span>
+                  </div>
+                );
+              })()}
               <div className="row gap-3">
                 {res.overLimit && <Link href="/app/billing" className="btn btn-sm">{t("new.limitPro")}</Link>}
                 {undoCountdown !== null ? (

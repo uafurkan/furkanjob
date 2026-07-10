@@ -9,6 +9,7 @@ const en: Dict = {
   "nav.home": "Home",
   "nav.new": "New",
   "nav.applications": "Applications",
+  "nav.analytics": "Analytics",
   "nav.profile": "Profile",
   "nav.pmail": "Pmail",
   "nav.pro": "Pro",
@@ -509,12 +510,58 @@ const en: Dict = {
   "guide.s4.sub": "Tap a suggested question or type your own. The assistant stays focused on this application only — tone, length, visa wording, anything.",
   "guide.s5.title": "Send from your own inbox",
   "guide.s5.sub": "Your application — with your CV attached — goes out from your Gmail. We only send, never read. You'll see it in your Sent folder.",
+
+  // Feature 2 — Draft Quality Score
+  "new.quality.title": "Draft quality",
+  "new.quality.badge.great": "Great draft",
+  "new.quality.badge.good": "Good draft",
+  "new.quality.badge.fair": "Fair draft",
+  "new.quality.badge.weak": "Needs work",
+  "new.quality.words": "{n} words",
+
+  // Feature 3 — Cold Email Mode
+  "new.cold.chip": "Speculative",
+  "new.cold.note": "No open positions found — sending as a speculative enquiry.",
+
+  // Feature 4 — Company Research Snippet
+  "new.company.about": "About {company}",
+
+  // Feature 5 — Salary Intelligence
+  "new.salary.title": "Typical salary",
+  "new.salary.band": "{min}–{max} {currency}/{period}",
+  "new.salary.hourly": "hr",
+  "new.salary.annual": "yr",
+
+  // Feature 6 — Analytics
+  "analytics.title": "Analytics",
+  "analytics.sub": "Your application performance at a glance.",
+  "analytics.total": "Total applications",
+  "analytics.totalSent": "Sent",
+  "analytics.responded": "Responded",
+  "analytics.responseRate": "Response rate",
+  "analytics.byCountry": "By country",
+  "analytics.byRole": "By role",
+  "analytics.byWeek": "Activity (12 weeks)",
+  "analytics.statusBreakdown": "Status breakdown",
+  "analytics.noData": "No applications yet — send your first one to start seeing analytics.",
+
+  // Feature 9 — LinkedIn Import
+  "pf.linkedin.title": "Import from LinkedIn",
+  "pf.linkedin.note": "Paste your LinkedIn profile text — paply extracts your name, roles and skills.",
+  "pf.linkedin.paste": "Paste LinkedIn profile text here…",
+  "pf.linkedin.parse": "Import",
+  "pf.linkedin.parsing": "Parsing…",
+  "pf.linkedin.apply": "Apply to profile",
+  "pf.linkedin.applied": "Profile updated from LinkedIn.",
+  "pf.linkedin.failed": "Couldn't parse — paste more of your LinkedIn profile.",
+  "pf.linkedin.preview": "Extracted information",
 };
 
 const tr: Dict = {
   "nav.home": "Ana sayfa",
   "nav.new": "Yeni",
   "nav.applications": "Başvurular",
+  "nav.analytics": "Analitik",
   "nav.profile": "Profil",
   "nav.pmail": "Pmail",
   "nav.pro": "Pro",
@@ -1015,6 +1062,51 @@ const tr: Dict = {
   "guide.s4.sub": "Önerilen soruyu seç ya da kendininkini yaz. Asistan yalnızca bu başvuruya odaklanır — ton, uzunluk, vize ifadesi, her şeyi sorabilirsin.",
   "guide.s5.title": "Kendi gelen kutundan gönder",
   "guide.s5.sub": "CV'n ekli başvurun Gmail'inden gönderilir. Biz sadece göndeririz, asla okumayız. Gönderildi klasöründe görürsün.",
+
+  // Feature 2 — Taslak Kalite Skoru
+  "new.quality.title": "Taslak kalitesi",
+  "new.quality.badge.great": "Harika taslak",
+  "new.quality.badge.good": "İyi taslak",
+  "new.quality.badge.fair": "Orta taslak",
+  "new.quality.badge.weak": "Geliştirilebilir",
+  "new.quality.words": "{n} kelime",
+
+  // Feature 3 — Spekülatif Mail Modu
+  "new.cold.chip": "Spekülatif",
+  "new.cold.note": "Açık pozisyon bulunamadı — spekülatif başvuru olarak gönderiliyor.",
+
+  // Feature 4 — Şirket Araştırma Özeti
+  "new.company.about": "{company} hakkında",
+
+  // Feature 5 — Maaş İstihbaratı
+  "new.salary.title": "Tipik maaş",
+  "new.salary.band": "{min}–{max} {currency}/{period}",
+  "new.salary.hourly": "sa",
+  "new.salary.annual": "yıl",
+
+  // Feature 6 — Analitik Paneli
+  "analytics.title": "Analitik",
+  "analytics.sub": "Başvuru performansına tek bakışta göz at.",
+  "analytics.total": "Toplam başvuru",
+  "analytics.totalSent": "Gönderilen",
+  "analytics.responded": "Yanıt alınan",
+  "analytics.responseRate": "Yanıt oranı",
+  "analytics.byCountry": "Ülkeye göre",
+  "analytics.byRole": "Role göre",
+  "analytics.byWeek": "Aktivite (12 hafta)",
+  "analytics.statusBreakdown": "Durum dağılımı",
+  "analytics.noData": "Henüz başvuru yok — ilk başvuruyu gönder ve analitiği görmeye başla.",
+
+  // Feature 9 — LinkedIn'den İçe Aktar
+  "pf.linkedin.title": "LinkedIn'den içe aktar",
+  "pf.linkedin.note": "LinkedIn profil metnini yapıştır — paply adını, rollerini ve becerilerini çıkarır.",
+  "pf.linkedin.paste": "LinkedIn profil metnini buraya yapıştır…",
+  "pf.linkedin.parse": "İçe aktar",
+  "pf.linkedin.parsing": "Ayrıştırılıyor…",
+  "pf.linkedin.apply": "Profile uygula",
+  "pf.linkedin.applied": "Profil LinkedIn'den güncellendi.",
+  "pf.linkedin.failed": "Ayrıştırılamadı — LinkedIn profilinden daha fazla metin yapıştır.",
+  "pf.linkedin.preview": "Çıkarılan bilgiler",
 };
 
 const DICTS: Record<Lang, Dict> = { en, tr };

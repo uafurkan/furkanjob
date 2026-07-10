@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getProfile, getDefaultCv, getDefaultEmailAccount, listDocuments, listCvs } from "@/lib/db";
 import { googleEnabled } from "@/lib/auth";
 import { DEFAULT_PROFILE } from "@/lib/engine/rules";
-import ProfileForm from "@/components/ProfileForm";
+import ProfilePageClient from "@/components/ProfilePageClient";
 import DocumentsManager from "@/components/DocumentsManager";
 import AccountData from "@/components/AccountData";
 import { computeProfileScore } from "@/lib/profile-score";
@@ -71,8 +71,7 @@ export default async function ProfilePage() {
         </div>
       )}
 
-      <ProfileForm
-        mode="edit"
+      <ProfilePageClient
         initial={initial}
         cvFilename={cv?.filename || null}
         initialCvs={cvList}

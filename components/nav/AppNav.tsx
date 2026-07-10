@@ -9,6 +9,7 @@ import AppGuide from "@/components/AppGuide";
 const MAIN_TABS = [
   { href: "/app/home", key: "nav.home", icon: IconHome },
   { href: "/app/new", key: "nav.new", icon: IconPlus },
+  { href: "/app/analytics", key: "nav.analytics", icon: IconChart },
   { href: "/app/profile", key: "nav.profile", icon: IconUser },
   { href: "/app/pmail", key: "nav.pmail", icon: IconMail },
 ];
@@ -139,6 +140,15 @@ function IconSpark() {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
       <path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z" />
+    </svg>
+  );
+}
+function IconChart() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   );
 }

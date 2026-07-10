@@ -49,6 +49,36 @@ type Item = {
   chatRevisedCoverLetter?: string | null;
   // Role currently being added/removed via the toggleable role chips (set while the AI rewrite is in flight).
   rolesSyncing?: string | null;
+  // Intelligence data from /api/generate (same shape as single-apply page)
+  visaIntelligence?: {
+    onSkillShortageList: boolean;
+    shortageListName: string | null;
+    shortageStream: string | null;
+    workingHolidayEligible: boolean;
+    workingHolidayNote: string | null;
+    panelNotes: string[];
+    wording: string;
+  } | null;
+  intelligence?: {
+    skillsGap: {
+      matchedSkills: string[];
+      gapSkills: string[];
+      strengthHighlights: string[];
+      experienceRequired: number | null;
+      educationRequired: string;
+    };
+    sponsorshipSignal: "open" | "closed" | "unknown";
+    sponsorshipNote: string | null;
+    postingFreshness: "fresh" | "recent" | "old" | "unknown";
+    postingAgeDays: number | null;
+    freshnessNote: string | null;
+    postingTone: string;
+    whvTimeline: { monthsRemaining: number | null; urgencyLevel: string; note: string | null } | null;
+    responseRate: { score: number; label: "high" | "medium" | "low"; factors: string[] };
+  } | null;
+  // Email health per address — fetched in the background after drafting
+  emailHealth?: Record<string, { status: string; label: string; hint: string | null }>;
+  forceHealthBypass?: boolean;
 };
 
 const MAX_ITEMS = 20;
@@ -139,6 +169,24 @@ export default function BulkApply() {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   }
 
+  async function checkItemHealthById(id: number, toValue: string) {
+    const addresses = toValue.split(/[,;\s]+/).map((s: string) => s.trim()).filter(Boolean);
+    if (!addresses.length) return;
+    const results: Record<string, { status: string; label: string; hint: string | null }> = {};
+    await Promise.all(
+      addresses.map(async (email) => {
+        try {
+          const r = await fetch(`/api/email-health?email=${encodeURIComponent(email)}`);
+          if (r.ok) {
+            const d = await r.json();
+            results[email] = { status: d.status, label: d.label, hint: d.hint ?? null };
+          }
+        } catch {}
+      })
+    );
+    update(id, { emailHealth: results });
+  }
+
   async function analyzeItem(it: Item): Promise<Item> {
     try {
       const r = await fetch("/api/generate", {
@@ -174,6 +222,8 @@ export default function BulkApply() {
         language: d.language, positions: d.positions, overLimit: d.overLimit,
         applyFor: d.applyFor, droppedRoles: d.droppedRoles,
         fitScore: d.fitScore, fitSummary: d.fitSummary, eligibility: d.eligibility,
+        visaIntelligence: d.visaIntelligence || null,
+        intelligence: d.intelligence || null,
         error: d.emailSource === "none" ? t("bulk.noEmail") : undefined,
         fullName: fullName,
         signatureChecked: isSigChecked,
@@ -195,8 +245,16 @@ export default function BulkApply() {
           emailSource: it.emailSource, draftSource: "template", language: it.language,
           includeCoverLetter: it.includeCoverLetter,
           coverLetterBody: it.includeCoverLetter ? it.coverLetterBody : undefined,
+          forceSkipHealthCheck: it.forceHealthBypass === true,
         }),
       });
+      // Email health block: surface the warning and flip forceHealthBypass so the next Send tap bypasses it.
+      if (r.status === 422) {
+        const d = await safeJson(r);
+        if (d.healthBlock) {
+          return { ...it, status: "drafted", forceHealthBypass: true, error: `${d.healthLabel || t("new.health.blocked")} — ${t("new.health.sendAnyway")}` };
+        }
+      }
       // Sending 15-20 items back-to-back can outrun the per-minute send rate limit —
       // wait out the server's Retry-After and retry rather than failing the tail of the queue.
       if (r.status === 429 && attempt < 4) {
@@ -209,7 +267,7 @@ export default function BulkApply() {
       const d = await safeJson(r);
       if (r.status === 402) return { ...it, status: "failed", error: t("new.limitReached") };
       if (!r.ok) throw new Error(d.error || "error");
-      return { ...it, status: "sent", error: undefined };
+      return { ...it, status: "sent", error: undefined, forceHealthBypass: false };
     } catch (e: any) {
       return { ...it, status: "failed", error: e.message };
     }
@@ -248,6 +306,10 @@ export default function BulkApply() {
         update(it.id, { status: "analyzing" });
         it = await analyzeItem(it);
         setItems((prev) => prev.map((x) => (x.id === it.id ? it : x)));
+        // Fire background email-health check for drafted items (non-blocking)
+        if (it.status === "drafted" && it.to?.trim()) {
+          checkItemHealthById(it.id, it.to);
+        }
       }
       if (!stopRef.current && auto && it.status === "drafted" && !it.overLimit && it.to.trim() && it.eligibility?.status !== "blocked") {
         update(it.id, { status: "sending" });
@@ -430,6 +492,8 @@ export default function BulkApply() {
                 fitScore: d.fitScore,
                 fitSummary: d.fitSummary,
                 eligibility: d.eligibility,
+                visaIntelligence: d.visaIntelligence || null,
+                intelligence: d.intelligence || null,
                 error: d.emailSource === "none" ? t("bulk.noEmail") : undefined,
                 fullName: d.fullName || "",
                 thinking: false,
@@ -725,7 +789,12 @@ export default function BulkApply() {
                   </span>
                 )}
                 {(it.status === "drafted" || it.status === "skipped") && (
-                  <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => update(it.id, { expanded: !it.expanded })}>
+                  <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => {
+                    const opening = !it.expanded;
+                    update(it.id, { expanded: opening });
+                    // Trigger health check on first expand if not already done
+                    if (opening && it.to?.trim() && !it.emailHealth) checkItemHealthById(it.id, it.to);
+                  }}>
                     {it.expanded ? t("bulk.collapse") : t("bulk.review")}
                   </button>
                 )}
@@ -764,9 +833,115 @@ export default function BulkApply() {
                       )}
                     </div>
                   )}
+                  {/* Visa intelligence panel */}
+                  {it.visaIntelligence && (it.visaIntelligence.onSkillShortageList || it.visaIntelligence.workingHolidayEligible || (it.visaIntelligence.panelNotes && it.visaIntelligence.panelNotes.length > 0)) && (
+                    <div className="visa-intel-panel reveal">
+                      <div className="visa-intel-head">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /><path d="M7 15h2" /><path d="M11 15h6" />
+                        </svg>
+                        <span>{t("new.visa.pathways")}</span>
+                      </div>
+                      {it.visaIntelligence.onSkillShortageList && it.visaIntelligence.shortageListName && (
+                        <p className="visa-intel-shortage">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+                          <span><strong>{it.visaIntelligence.shortageListName}</strong>{it.visaIntelligence.shortageStream ? ` — ${it.visaIntelligence.shortageStream}` : ""}</span>
+                        </p>
+                      )}
+                      {it.visaIntelligence.workingHolidayEligible && it.visaIntelligence.workingHolidayNote && (
+                        <p className="visa-intel-whv">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>
+                          <span>{it.visaIntelligence.workingHolidayNote}</span>
+                        </p>
+                      )}
+                      {it.visaIntelligence.panelNotes && it.visaIntelligence.panelNotes.slice(1).map((note, i) => (
+                        <p key={i} className="visa-intel-note">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+                          <span>{note}</span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Application intelligence panel */}
+                  {it.intelligence && (
+                    <div className="intel-panel reveal">
+                      <div className="intel-panel-head">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+                        </svg>
+                        <span>{t("new.intel.title")}</span>
+                        <span className={`intel-rate intel-rate--${it.intelligence.responseRate.label}`}>
+                          {it.intelligence.responseRate.score}% {t(`new.intel.rate.${it.intelligence.responseRate.label}`)}
+                        </span>
+                      </div>
+                      {it.intelligence.postingFreshness !== "unknown" && (
+                        <p className={`intel-row intel-freshness--${it.intelligence.postingFreshness}`}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                          <span>
+                            {it.intelligence.postingAgeDays === 0 ? t("new.intel.fresh.today")
+                              : it.intelligence.postingAgeDays !== null ? t("new.intel.fresh.days").replace("{n}", String(it.intelligence.postingAgeDays))
+                              : t(`new.intel.fresh.${it.intelligence.postingFreshness}`)}
+                            {it.intelligence.freshnessNote ? ` — ${it.intelligence.freshnessNote}` : ""}
+                          </span>
+                        </p>
+                      )}
+                      {it.intelligence.sponsorshipSignal !== "unknown" && (
+                        <p className={`intel-row intel-sponsor--${it.intelligence.sponsorshipSignal}`}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            {it.intelligence.sponsorshipSignal === "open" ? <path d="M20 6L9 17l-5-5"/> : <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>}
+                          </svg>
+                          <span>{it.intelligence.sponsorshipNote}</span>
+                        </p>
+                      )}
+                      {it.intelligence.skillsGap.matchedSkills.length > 0 && (
+                        <div className="intel-skills">
+                          <span className="intel-skills-label intel-skills-label--match">{t("new.intel.skills.matched")}</span>
+                          {it.intelligence.skillsGap.matchedSkills.map((s, i) => <span key={i} className="intel-skill-chip intel-skill-chip--match">{s}</span>)}
+                        </div>
+                      )}
+                      {it.intelligence.skillsGap.gapSkills.length > 0 && (
+                        <div className="intel-skills">
+                          <span className="intel-skills-label intel-skills-label--gap">{t("new.intel.skills.gap")}</span>
+                          {it.intelligence.skillsGap.gapSkills.map((s, i) => <span key={i} className="intel-skill-chip intel-skill-chip--gap">{s}</span>)}
+                        </div>
+                      )}
+                      {it.intelligence.whvTimeline && (it.intelligence.whvTimeline.urgencyLevel === "critical" || it.intelligence.whvTimeline.urgencyLevel === "soon" || it.intelligence.whvTimeline.urgencyLevel === "expired") && (
+                        <p className={`intel-row intel-whv--${it.intelligence.whvTimeline.urgencyLevel}`}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                          <span>{it.intelligence.whvTimeline.note}</span>
+                        </p>
+                      )}
+                      {it.intelligence.responseRate.factors.length > 0 && (
+                        <p className="intel-factors">{it.intelligence.responseRate.factors.join(" · ")}</p>
+                      )}
+                    </div>
+                  )}
+
                   <label className="field">
                     <span className="field-label">{t("new.to")}</span>
-                    <input className="input" value={it.to} onChange={(e) => update(it.id, { to: e.target.value })} placeholder="name@business.com" />
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                      <input
+                        className="input"
+                        style={{ flex: 1, minWidth: 0 }}
+                        value={it.to}
+                        onChange={(e) => {
+                          update(it.id, { to: e.target.value, emailHealth: undefined, forceHealthBypass: false });
+                          // Debounce health check on manual changes
+                          const v = e.target.value;
+                          setTimeout(() => checkItemHealthById(it.id, v), 800);
+                        }}
+                        placeholder="name@business.com"
+                      />
+                      {it.to && it.emailHealth && it.to.split(/[,;\s]+/).filter(Boolean).map((email, idx) => {
+                        const h = it.emailHealth?.[email.trim()];
+                        if (!h) return null;
+                        const cls = h.status === "ok" || h.status === "ok-role" ? "health-dot health-dot--ok"
+                          : h.status === "warn-role" ? "health-dot health-dot--warn"
+                          : "health-dot health-dot--dead";
+                        return <span key={idx} className={cls} title={h.hint || h.label} aria-hidden="true" />;
+                      })}
+                    </div>
                   </label>
                   <label className="field">
                     <span className="field-label">{t("new.subject")}</span>
