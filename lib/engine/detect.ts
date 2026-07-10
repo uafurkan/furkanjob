@@ -124,135 +124,135 @@ const COUNTRY_RULES: (CountryRule & { test: RegExp; testCaseSensitive?: RegExp }
     code: "NZ",
     name: "New Zealand",
     visa: "Accredited Employer Work Visa (AEWV) sponsorship",
-    test: /\b(new zealand|nz\b|auckland|wellington|christchurch|queenstown|kiwi|\.co\.nz|\.nz\b|nzd|napier|hamilton|tauranga|dunedin|nelson|palmerston north|rotorua|new plymouth|hastings|whangarei|invercargill|gisborne|ahuriri|wanaka|taupo|marlborough|hawke's bay|hawkes bay|otago|canterbury|waikato|bay of plenty)\b/i,
+    test: /\b(new zealand|nz\b|auckland|wellington|christchurch|queenstown|kiwi|\.co\.nz|\.nz\b|nzd|napier|hamilton|tauranga|dunedin|nelson|palmerston north|rotorua|new plymouth|hastings|whangarei|invercargill|gisborne|ahuriri|wanaka|taupo|marlborough|hawke's bay|hawkes bay|otago|canterbury|waikato|bay of plenty|masterton|whanganui|lower hutt|upper hutt|porirua|kapiti|pukekohe|warkworth|kerikeri|paihia|feilding|motueka|kaikoura|timaru|oamaru|gore|balclutha|levin|greymouth|westport|hokitika|blenheim|kaitaia|dargaville|matamata|te awamutu|cambridge|tokoroa|taumarunui|marton|dannevirke|waipukurau|havelock north)\b/i,
   },
   {
     code: "AU",
     name: "Australia",
     visa: "TSS / Skilled Work visa (employer sponsorship)",
-    test: /\b(australia|australian|sydney|melbourne|brisbane|perth|adelaide|\.com\.au|\.au\b|aud)\b/i,
+    test: /\b(australia|australian|sydney|melbourne|brisbane|perth|adelaide|darwin|hobart|canberra|gold coast|sunshine coast|wollongong|geelong|townsville|cairns|toowoomba|ballarat|bendigo|launceston|albury|mackay|rockhampton|bunbury|fremantle|mandurah|surfers paradise|alice springs|casuarina|palmerston|katherine|tennant creek|broome|geraldton|port hedland|kalgoorlie|wagga wagga|dubbo|orange|bathurst|tamworth|lismore|coffs harbour|newcastle|gosford|wollert|moorooduc|dandenong|frankston|\.com\.au|\.au\b|aud|\b(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+\d{4}\b)\b/i,
   },
   {
     code: "US",
     name: "United States",
     visa: "H-2B / work visa sponsorship",
-    test: /\b(united states|u\.s\.a|\busa\b|new york|los angeles|miami|chicago|texas|california|florida|usd)\b/i,
+    test: /\b(united states|u\.s\.a|\busa\b|new york|los angeles|miami|chicago|texas|california|florida|seattle|denver|phoenix|las vegas|portland|boston|atlanta|dallas|houston|san francisco|san diego|minneapolis|detroit|nashville|memphis|new orleans|baltimore|kansas city|pittsburgh|cleveland|columbus|indianapolis|charlotte|raleigh|salt lake|usd|\b(?:AL|AK|AZ|AR|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|UT|VT|WV|WI|WY)\s+\d{5}(?:-\d{4})?\b|\b(?:NY|CA|TX|WA|VA|DC)\s+\d{5}\b)\b/i,
   },
   {
     code: "CA",
     name: "Canada",
     visa: "LMIA-based work permit sponsorship",
-    test: /\b(canada|canadian|toronto|vancouver|montreal|\.ca\b|cad)\b/i,
+    test: /\b(canada|canadian|toronto|vancouver|montreal|ottawa|calgary|edmonton|winnipeg|quebec city|halifax|saskatoon|regina|kelowna|victoria|st john|\.ca\b|cad|\b(?:AB|BC|MB|NB|NL|NS|ON|PE|QC|SK|YT)\s+[A-Z]\d[A-Z]\s*\d[A-Z]\d\b|[A-Z]\d[A-Z]\s*\d[A-Z]\d)\b/i,
   },
   {
     code: "UK",
     name: "United Kingdom",
     visa: "Skilled Worker visa (employer sponsorship)",
-    test: /\b(united kingdom|england|scotland|london|manchester|\.co\.uk|\bgbp\b|£)\b/i,
+    test: /\b(united kingdom|england|scotland|wales|london|manchester|birmingham|leeds|liverpool|glasgow|edinburgh|bristol|sheffield|cardiff|belfast|newcastle|coventry|leicester|bradford|hull|nottingham|stoke|southampton|brighton|portsmouth|oxford|cambridge|york|bath|exeter|norwich|reading|plymouth|derby|sunderland|wolferhampton|\.co\.uk|\bgbp\b|£|\b[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}\b)\b/i,
   },
   // ---- Europe (EU/EEA/Schengen destinations) ----
   {
     code: "DE",
     name: "Germany",
     visa: "EU work visa / employer sponsorship (e.g. EU Blue Card)",
-    test: /\b(germany|deutschland|german|berlin|munich|münchen|hamburg|frankfurt|cologne|köln|\.de\b)\b/i,
+    test: /\b(germany|deutschland|german|berlin|munich|münchen|hamburg|frankfurt|cologne|köln|stuttgart|düsseldorf|dortmund|essen|leipzig|bremen|dresden|hannover|nuremberg|nürnberg|duisburg|bochum|wuppertal|bielefeld|bonn|mannheim|karlsruhe|augsburg|wiesbaden|gelsenkirchen|mönchengladbach|braunschweig|kiel|freiburg|erfurt|rostock|kassel|mainz|münster|\.de\b)\b/i,
   },
   {
     code: "ES",
     name: "Spain",
     visa: "Spanish work / residence authorization (employer sponsorship)",
-    test: /\b(spain|españa|spanish|madrid|barcelona|valencia|seville|sevilla|malaga|málaga|\.es\b)\b/i,
+    test: /\b(spain|españa|spanish|madrid|barcelona|valencia|seville|sevilla|malaga|málaga|zaragoza|bilbao|alicante|córdoba|granada|palma|las palmas|santa cruz|murcia|valladolid|vigo|gijón|jerez|\.es\b)\b/i,
   },
   {
     code: "FR",
     name: "France",
     visa: "French work visa / employer sponsorship",
-    test: /\b(france|french|paris|lyon|marseille|bordeaux|toulouse|\.fr\b)\b/i,
+    test: /\b(france|french|paris|lyon|marseille|bordeaux|toulouse|strasbourg|nantes|montpellier|rennes|reims|saint-étienne|le havre|grenoble|dijon|nîmes|toulon|clermont|brest|\.fr\b)\b/i,
     testCaseSensitive: /\bNice\b/,
   },
   {
     code: "IT",
     name: "Italy",
     visa: "Italian work visa (nulla osta / employer sponsorship)",
-    test: /\b(italy|italia|italian|rome|roma|milan|milano|venice|venezia|florence|firenze|naples|napoli|\.it\b)\b/i,
+    test: /\b(italy|italia|italian|rome|roma|milan|milano|venice|venezia|florence|firenze|naples|napoli|turin|torino|palermo|genoa|genova|bologna|bari|catania|salerno|verona|padova|trieste|brescia|taranto|modena|reggio|perugia|cagliari|\.it\b)\b/i,
   },
   {
     code: "NL",
     name: "the Netherlands",
     visa: "Dutch work permit (GVVA / employer sponsorship)",
-    test: /\b(netherlands|holland|dutch|amsterdam|rotterdam|the hague|den haag|utrecht|eindhoven|\.nl\b)\b/i,
+    test: /\b(netherlands|holland|dutch|amsterdam|rotterdam|the hague|den haag|utrecht|eindhoven|leiden|haarlem|groningen|maastricht|tilburg|breda|nijmegen|apeldoorn|enschede|arnhem|\.nl\b|\b\d{4}\s*[A-Z]{2}\b(?=.*\b(?:straat|weg|laan|plein|gracht|kade|dijk)\b))\b/i,
   },
   {
     code: "PT",
     name: "Portugal",
     visa: "Portuguese work / residence visa (employer sponsorship)",
-    test: /\b(portugal|portuguese|lisbon|lisboa|porto|algarve|madeira|\.pt\b)\b/i,
+    test: /\b(portugal|portuguese|lisbon|lisboa|porto|algarve|madeira|braga|coimbra|faro|setúbal|funchal|aveiro|évora|viana do castelo|viseu|leiria|\.pt\b)\b/i,
   },
   {
     code: "IE",
     name: "Ireland",
     visa: "Irish Employment Permit (employer sponsorship)",
-    test: /\b(ireland|irish|dublin|cork|galway|\.ie\b)\b/i,
+    test: /\b(ireland|irish|dublin|cork|galway|limerick|waterford|drogheda|dundalk|swords|bray|navan|kilkenny|ennis|sligo|tralee|carlow|newbridge|naas|athlone|portlaoise|\.ie\b)\b/i,
   },
   {
     code: "AT",
     name: "Austria",
     visa: "Austrian work permit (Rot-Weiß-Rot / employer sponsorship)",
-    test: /\b(austria|österreich|austrian|vienna|wien|salzburg|innsbruck|graz|\.at\b)\b/i,
+    test: /\b(austria|österreich|austrian|vienna|wien|salzburg|innsbruck|graz|linz|klagenfurt|villach|wels|st\.?\s*pölten|dornbirn|steyr|wiener neustadt|feldkirch|bregenz|\.at\b)\b/i,
   },
   {
     code: "CH",
     name: "Switzerland",
     visa: "Swiss work permit (employer sponsorship)",
-    test: /\b(switzerland|schweiz|suisse|swiss|zurich|zürich|geneva|genève|basel|bern|lausanne|\.ch\b)\b/i,
+    test: /\b(switzerland|schweiz|suisse|swiss|zurich|zürich|geneva|genève|basel|bern|lausanne|winterthur|st\.?\s*gallen|lucerne|luzern|lugano|biel|thun|köniz|la chaux-de-fonds|schaffhausen|fribourg|chur|neuchâtel|\.ch\b)\b/i,
   },
   {
     code: "GR",
     name: "Greece",
     visa: "Greek work / residence permit (employer sponsorship)",
-    test: /\b(greece|hellas|greek|athens|athína|thessaloniki|crete|santorini|mykonos|\.gr\b)\b/i,
+    test: /\b(greece|hellas|greek|athens|athína|thessaloniki|crete|santorini|mykonos|patras|heraklion|larissa|volos|ioannina|chania|kavala|rhodes|corfu|\.gr\b)\b/i,
   },
   {
     code: "SE",
     name: "Sweden",
     visa: "Swedish work permit (employer sponsorship)",
-    test: /\b(sweden|sverige|swedish|stockholm|gothenburg|göteborg|malmö|\.se\b)\b/i,
+    test: /\b(sweden|sverige|swedish|stockholm|gothenburg|göteborg|malmö|uppsala|västerås|örebro|linköping|helsingborg|jönköping|norrköping|lund|umeå|gävle|borås|eskilstuna|södertälje|\.se\b|\b\d{3}\s*\d{2}\b(?=\s+\b(?:stockholm|göteborg|malmö|uppsala)\b))\b/i,
   },
   {
     code: "DK",
     name: "Denmark",
     visa: "Danish work permit (employer sponsorship)",
-    test: /\b(denmark|danmark|danish|copenhagen|københavn|aarhus|\.dk\b)\b/i,
+    test: /\b(denmark|danmark|danish|copenhagen|københavn|aarhus|odense|aalborg|esbjerg|randers|kolding|horsens|vejle|roskilde|herning|silkeborg|næstved|fredericia|viborg|køge|\.dk\b)\b/i,
   },
   {
     code: "NO",
     name: "Norway",
     visa: "Norwegian residence permit for work (employer sponsorship)",
-    test: /\b(norway|norge|norwegian|oslo|bergen|trondheim|\.no\b)\b/i,
+    test: /\b(norway|norge|norwegian|oslo|bergen|trondheim|stavanger|drammen|fredrikstad|sarpsborg|kristiansand|sandnes|tromsø|ålesund|sandefjord|haugesund|skien|tønsberg|moss|bodø|\.no\b)\b/i,
   },
   {
     code: "BE",
     name: "Belgium",
     visa: "Belgian work permit (employer sponsorship)",
-    test: /\b(belgium|belgique|belgie|belgian|brussels|bruxelles|brussel|antwerp|antwerpen|ghent|gent|bruges|brugge|\.be\b)\b/i,
+    test: /\b(belgium|belgique|belgie|belgian|brussels|bruxelles|brussel|antwerp|antwerpen|ghent|gent|bruges|brugge|liège|leuven|namur|mons|aalst|mechelen|la louvière|hasselt|kortrijk|\.be\b)\b/i,
   },
   {
     code: "FI",
     name: "Finland",
     visa: "Finnish residence permit for work (employer sponsorship)",
-    test: /\b(finland|suomi|finnish|helsinki|tampere|turku|oulu|\.fi\b)\b/i,
+    test: /\b(finland|suomi|finnish|helsinki|tampere|turku|oulu|jyväskylä|lahti|kuopio|espoo|vantaa|pori|joensuu|lappeenranta|rovaniemi|vaasa|seinäjoki|kotka|mikkeli|\.fi\b)\b/i,
   },
   {
     code: "CZ",
     name: "Czech Republic",
     visa: "Czech work permit (employer sponsorship)",
-    test: /\b(czech republic|česká republika|czech|prague|praha|brno|ostrava|\.cz\b)\b/i,
+    test: /\b(czech republic|česká republika|czech|prague|praha|brno|ostrava|plzeň|plzen|liberec|olomouc|ústí|hradec králové|ceske budejovice|pardubice|zlín|havířov|kladno|most|opava|frýdek|karviná|jihlava|teplice|\.cz\b)\b/i,
   },
   {
     code: "PL",
     name: "Poland",
     visa: "Polish work permit (employer sponsorship)",
-    test: /\b(poland|polska|polish|warsaw|warszawa|kraków|wrocław|gdansk|\.pl\b)\b/i,
+    test: /\b(poland|polska|polish|warsaw|warszawa|kraków|wrocław|gdansk|gdańsk|łódź|poznan|poznań|szczecin|bydgoszcz|lublin|katowice|białystok|gdynia|częstochowa|radom|sosnowiec|toruń|kielce|rzeszów|gliwice|zabrze|olsztyn|bytom|\.pl\b)\b/i,
   },
   // ---- Middle East / Asia-Pacific ----
   {
@@ -307,10 +307,76 @@ const COUNTRY_RULES: (CountryRule & { test: RegExp; testCaseSensitive?: RegExp }
   },
 ];
 
+// ── Address-pattern country detection ──────────────────────────────────────────
+// Detects country from structured postal addresses when no city/country name is present.
+// E.g. "1/266 Trower Rd, Casuarina NT 0810" → AU (NT state + 08xx postcode)
+//      "44 Main St, Springfield, IL 62701" → US (IL state + 5-digit ZIP)
+//      "12 King St, Ottawa ON K1A 0A6" → CA (ON province + Canadian postal code)
+//      "42 High St, London SW1A 2AA" → UK (UK postcode format)
+
+const ADDRESS_COUNTRY_PATTERNS: { code: string; pattern: RegExp }[] = [
+  // Australia: state/territory abbreviation followed by a 4-digit postcode
+  // NSW 1000-2999, ACT 0200-0299/2600-2619, VIC 3000-3999, QLD 4000-4999,
+  // SA 5000-5999, WA 6000-6999, TAS 7000-7999, NT 0800-0999
+  { code: "AU", pattern: /\b(?:NSW|VIC|QLD|SA|WA|TAS|ACT)\s+[1-7]\d{3}\b/ },
+  { code: "AU", pattern: /\bNT\s+0[89]\d{2}\b/ },
+  // Also just the abbreviation on its own in an address context (street, suburb, STATE postcode)
+  { code: "AU", pattern: /,\s*(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/ },
+
+  // United States: two-letter state code followed by a 5-digit ZIP
+  { code: "US", pattern: /\b(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|DC|WV|WI|WY)\s+\d{5}(?:-\d{4})?\b/ },
+
+  // Canada: province/territory code followed by a Canadian postal code (A1A 1A1)
+  { code: "CA", pattern: /\b(?:AB|BC|MB|NB|NL|NS|ON|PE|QC|SK|YT|NT|NU)\s+[A-Z]\d[A-Z]\s*\d[A-Z]\d\b/i },
+  // Canadian postal code alone (letter-digit-letter space digit-letter-digit)
+  { code: "CA", pattern: /\b[A-Z]\d[A-Z]\s+\d[A-Z]\d\b/ },
+
+  // United Kingdom: standard postcode format (e.g. SW1A 2AA, B1 1BB, EC1A 1BB)
+  { code: "UK", pattern: /\b[A-Z]{1,2}\d{1,2}[A-Z]?\s+\d[A-Z]{2}\b/ },
+
+  // Germany: 5-digit postcode preceded by a German street pattern or "D-"
+  { code: "DE", pattern: /\bD-\d{5}\b/ },
+  { code: "DE", pattern: /\b\d{5}\s+(?:[A-ZÄÖÜ][a-zäöüß]+(?:[\s-][A-ZÄÖÜ]?[a-zäöüß]+)*)\b/ },
+
+  // Netherlands: 4-digit + 2-letter postcode (e.g. 1234 AB)
+  { code: "NL", pattern: /\b\d{4}\s+[A-Z]{2}\b/ },
+
+  // Sweden: 5-digit postcode written as NNN NN
+  { code: "SE", pattern: /\b\d{3}\s+\d{2}\b(?=\s)/ },
+
+  // Switzerland: 4-digit postcode (1000-9999) with CH- prefix
+  { code: "CH", pattern: /\bCH-\d{4}\b/ },
+
+  // Singapore: 6-digit postcode (S followed by 6 digits, or just 6 digits 01xxxx-83xxxx)
+  { code: "SG", pattern: /\bSingapore\s+\d{6}\b/i },
+  { code: "SG", pattern: /,\s*S\(\d{6}\)/ },
+
+  // Japan: 〒 symbol + 3-4-3 format
+  { code: "JP", pattern: /〒\s*\d{3}-\d{4}/ },
+  { code: "JP", pattern: /\b\d{3}-\d{4}(?=\s+[^\d])/ }, // "123-4567 Tokyo"
+
+  // New Zealand: 4-digit postcode (NZ specific ranges, not overlapping with AU)
+  // NZ postcodes: 0110-0999 (Northland/Auckland), 1010-1072, 2010-2699, 3010-3999, 4010-4999, 7010-7999, 8011-8999, 9010-9893
+  { code: "NZ", pattern: /\b(?:0[1-9]\d{2}|1[0-9]\d{2}|2[0-6]\d{2}|3[0-9]\d{2}|4[0-9]\d{2}|7[0-9]\d{2}|8[0-9]\d{2}|9[0-8]\d{2})\b(?=\s*$|\s+New Zealand|\s*\n)/m },
+];
+
+function detectCountryFromAddress(text: string): { code: string } | null {
+  for (const { code, pattern } of ADDRESS_COUNTRY_PATTERNS) {
+    if (pattern.test(text)) return { code };
+  }
+  return null;
+}
+
 export function detectCountry(text: string): CountryRule {
   for (const r of COUNTRY_RULES) {
     if (r.test.test(text)) return { code: r.code, name: r.name, visa: r.visa };
     if (r.testCaseSensitive && r.testCaseSensitive.test(text)) return { code: r.code, name: r.name, visa: r.visa };
+  }
+  // Secondary pass: detect country from postal address patterns (state abbreviation + postcode, etc.)
+  const fromAddress = detectCountryFromAddress(text);
+  if (fromAddress) {
+    const rule = COUNTRY_RULES.find((r) => r.code === fromAddress.code);
+    if (rule) return { code: rule.code, name: rule.name, visa: rule.visa };
   }
   return { code: "XX", name: "the destination country", visa: "work visa sponsorship" };
 }
