@@ -67,6 +67,12 @@ async function handleGenerate(req: Request) {
   // what's in the short profile form.
   engineProfile = await enrichProfileWithDocuments(user.id, engineProfile);
 
+  // A client-side visa type override (from the VisaTypeSelector re-draft) wins over the
+  // stored profile preference. An empty string means "clear override, use stored preference".
+  if (typeof body?.visaTypeOverride === "string" && body.visaTypeOverride) {
+    engineProfile = { ...engineProfile, preferredVisaType: body.visaTypeOverride };
+  }
+
   // Fire DB-only queries in parallel with the pipeline — they only need user.id which we have now.
   const cvPromise = getDefaultCv(user.id);
   const applicationsPromise = listApplications(user.id).catch(() => []);
@@ -154,6 +160,8 @@ async function handleGenerate(req: Request) {
       : null,
     // Feature 3: Cold email mode (no advertised positions → speculative enquiry).
     coldEmail: result.coldEmail,
+    // Visa type that was used for this draft (null = generic wording).
+    preferredVisaType: result.preferredVisaType || null,
     // Feature 4: Short company research snippet extracted from the page.
     companySnippet: result.companySnippet || null,
     // Feature 5: Salary intelligence for these roles in this country.

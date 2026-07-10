@@ -24,6 +24,7 @@ export function toEngineProfile(profile: Profile | null, user: User | null): Eng
       visaLabel: profile.visaLabel,
       visaCountries: profile.visaCountries || [],
       whvExpiry: (profile as any).whvExpiry ?? null,
+      visaPreferences: profile.visaPreferences ?? {},
     };
   }
   return {

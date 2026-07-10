@@ -799,7 +799,8 @@ export async function aiCoverLetter(
   lang: AppLang = "en",
   tier: AiTier = "free",
   applyForRoles?: string[],
-  context?: { orgType?: OrgType; intent?: Intent }
+  context?: { orgType?: OrgType; intent?: Intent },
+  preferredVisaType?: string | null
 ): Promise<string | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
@@ -852,7 +853,7 @@ APPLICANT INFO:
 - Target Roles: ${rolesLine}
 - Languages: ${profile.languages.join(", ") || "(not specified)"}
 ${currentCountryLine ? currentCountryLine + "\n" : ""}- Relocation: ${profile.relocation ? "Yes" : "No"}
-${profile.shortBio ? `- Bio / Professional Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT (use real experience from here):\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}${documentsSection(profile)}- Work eligibility: ${profile.needsVisaSponsorship ? "Requires visa sponsorship" : "Work authorized"}
+${profile.shortBio ? `- Bio / Professional Background: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT (use real experience from here):\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}${documentsSection(profile)}- Work eligibility: ${profile.needsVisaSponsorship ? (preferredVisaType ? `Requires visa sponsorship — specifically the ${preferredVisaType} program. Name this visa explicitly in the cover letter.` : "Requires visa sponsorship") : "Work authorized"}
 
 THE ORGANIZATION:
 - Name: ${analysis.company}
@@ -892,7 +893,8 @@ export async function aiDrafts(
   authorization?: { authorized: boolean; visaLabel?: string | null },
   applyForRoles?: string[],
   reasoningEffort: "low" | "high" = "low",
-  context?: { orgType?: OrgType; intent?: Intent }
+  context?: { orgType?: OrgType; intent?: Intent },
+  preferredVisaType?: string | null
 ): Promise<DraftOption[] | null> {
   if (!aiEnabled()) return null;
   const langName = APP_LANGS.find((l) => l.code === lang)?.label || "English";
@@ -976,7 +978,9 @@ Return STRICT JSON only:
   const sponsorship = authorization?.authorized
     ? `IMPORTANT — the applicant ALREADY HOLDS a valid ${authorization.visaLabel || "work authorization"} that permits them to work in ${analysis.country.name}. They do NOT need any sponsorship. State this clearly and positively as a major advantage: they are legally able to start without the employer arranging or paying for a visa, and they are immediately available. Do NOT ask for sponsorship.`
     : profile.needsVisaSponsorship
-    ? `The applicant REQUIRES visa sponsorship to work in ${analysis.country.name} (${analysis.country.visa}). State this transparently and confidently — never apologetically.`
+    ? preferredVisaType
+      ? `The applicant REQUIRES visa sponsorship to work in ${analysis.country.name}. Specifically, they are seeking an employer to sponsor them under the ${preferredVisaType} visa program. Name this specific visa (${preferredVisaType}) explicitly and confidently in the email — never apologetically. Example phrasing: "I would require employer sponsorship under the ${preferredVisaType} visa."`
+      : `The applicant REQUIRES visa sponsorship to work in ${analysis.country.name} (${analysis.country.visa}). State this transparently and confidently — never apologetically.`
     : `The applicant does not need visa sponsorship; do not mention visas.`;
 
   // Casual local greetings suit a cafe or beach hotel; a dental clinic, hospital, engineering

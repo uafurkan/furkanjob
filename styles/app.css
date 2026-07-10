@@ -1527,3 +1527,73 @@
   border-color: color-mix(in srgb, var(--signal-success, #10b981) 25%, transparent);
   font-weight: 500;
 }
+
+/* ── Visa Type Selector ──────────────────────────────────────────────────── */
+.visa-selector-panel {
+  padding: 14px 16px;
+  border-radius: var(--radius-md, 10px);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border-subtle));
+  display: flex; flex-direction: column; gap: 10px;
+}
+.visa-selector-header {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.visa-selector-title {
+  font-size: var(--text-12); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--text-tertiary);
+}
+.visa-selector-using {
+  font-size: var(--text-12); color: var(--accent); font-weight: 500;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 20px; padding: 2px 8px;
+}
+.visa-chip-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.visa-chip {
+  font-size: var(--text-12); font-weight: 500; padding: 4px 12px;
+  border-radius: 20px; border: 1px solid var(--border-subtle);
+  background: var(--surface-base); color: var(--text-secondary);
+  cursor: pointer; transition: all .15s;
+}
+.visa-chip:hover { border-color: var(--accent); color: var(--accent); }
+.visa-chip-active {
+  background: var(--accent); color: #fff;
+  border-color: var(--accent);
+}
+.visa-other-input {
+  padding: 7px 11px; border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-subtle); background: var(--surface-base);
+  color: var(--text-primary); font-size: var(--text-13);
+  outline: none; width: 100%; max-width: 280px;
+}
+.visa-other-input:focus { border-color: var(--accent); }
+.visa-selector-actions {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.visa-redraft-btn { min-width: 160px; }
+.visa-remember-btn {
+  font-size: var(--text-12); padding: 4px 12px; border-radius: 20px;
+  border: 1px dashed var(--border-subtle); background: transparent;
+  color: var(--text-secondary); cursor: pointer; transition: all .15s;
+}
+.visa-remember-btn:hover { border-color: var(--accent); color: var(--accent); border-style: solid; }
+.visa-saved-flash {
+  color: var(--signal-success, #10b981);
+  border-color: var(--signal-success, #10b981);
+  border-style: solid;
+}
+.visa-remembered-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.visa-remembered-badge {
+  font-size: var(--text-12); font-weight: 600;
+  color: var(--signal-success, #10b981);
+}
+.visa-forget-btn {
+  font-size: var(--text-11); padding: 2px 8px; border-radius: 20px;
+  border: 1px solid var(--border-subtle); background: transparent;
+  color: var(--text-tertiary); cursor: pointer;
+}
+.visa-forget-btn:hover { color: var(--signal-danger, #ef4444); border-color: var(--signal-danger, #ef4444); }

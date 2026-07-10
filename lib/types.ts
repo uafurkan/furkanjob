@@ -54,6 +54,8 @@ export type Profile = {
   digestOptOut?: boolean;
   reminderOptOut?: boolean;
   weeklyGoal?: number; // 0 = no goal set; otherwise target applications per week
+  // Per-country visa type preferences: { "AU": "482", "NZ": "AEWV" }
+  visaPreferences?: Record<string, string> | null;
 };
 
 export type Document = {

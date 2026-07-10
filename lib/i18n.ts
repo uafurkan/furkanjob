@@ -532,6 +532,18 @@ const en: Dict = {
   "new.salary.hourly": "hr",
   "new.salary.annual": "yr",
 
+  // Visa type selector
+  "visa.selector.title": "Visa type for {country}",
+  "visa.selector.choose": "Choose visa type",
+  "visa.selector.remember": "Remember for {country}",
+  "visa.selector.remembered": "Remembered",
+  "visa.selector.forget": "Forget",
+  "visa.selector.redraft": "Re-draft with this visa",
+  "visa.selector.using": "Using: {visaType}",
+  "visa.selector.other": "Other",
+  "visa.selector.other.placeholder": "Enter visa type…",
+  "visa.selector.saved": "Saved for {country}",
+
   // Feature 6 — Analytics
   "analytics.title": "Analytics",
   "analytics.sub": "Your application performance at a glance.",
@@ -1083,6 +1095,18 @@ const tr: Dict = {
   "new.salary.band": "{min}–{max} {currency}/{period}",
   "new.salary.hourly": "sa",
   "new.salary.annual": "yıl",
+
+  // Visa type selector
+  "visa.selector.title": "{country} için vize tipi",
+  "visa.selector.choose": "Vize tipi seç",
+  "visa.selector.remember": "{country} için hatırla",
+  "visa.selector.remembered": "Hatırlandı",
+  "visa.selector.forget": "Unut",
+  "visa.selector.redraft": "Bu vizeyle yeniden yaz",
+  "visa.selector.using": "Kullanılan: {visaType}",
+  "visa.selector.other": "Diğer",
+  "visa.selector.other.placeholder": "Vize tipini girin…",
+  "visa.selector.saved": "{country} için kaydedildi",
 
   // Feature 6 — Analitik Paneli
   "analytics.title": "Analitik",

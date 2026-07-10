@@ -179,6 +179,8 @@ export type PipelineResult = {
   salary: SalaryResult;
   // True when the business has no advertised positions and we're sending a speculative enquiry.
   coldEmail: boolean;
+  // The specific visa type that was used for this draft (null = generic wording).
+  preferredVisaType: string | null;
   // A 1-2 sentence company description extracted deterministically from the listing (used in AI prompts).
   companySnippet: string | null;
 };
@@ -453,6 +455,15 @@ async function runPipelineInner(opts: {
     eligibility = { status: "warning", note: whvTimeline.note || "" };
   }
 
+  // Resolve the user's remembered visa type preference for the detected country.
+  // An explicit override passed via the request (profile.preferredVisaType) wins; otherwise
+  // look up the stored per-country preference from profile.visaPreferences.
+  const preferredVisaType: string | null =
+    profile.preferredVisaType ||
+    (profile.visaPreferences && analysis.country.code !== "XX"
+      ? (profile.visaPreferences[analysis.country.code] ?? null)
+      : null);
+
   // The draft targets the chosen role(s)/program(s), not the user's full wish list.
   const draftAnalysis: Analysis = { ...analysis, positions: applyFor.length ? applyFor : analysis.positions };
 
@@ -462,8 +473,8 @@ async function runPipelineInner(opts: {
   let coverLetterBody: string | null = null;
   if (aiEnabled()) {
     const [aiRes, aiCl] = await Promise.all([
-      aiDrafts({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor, opts.reasoningEffort, { orgType, intent }),
-      aiCoverLetter({ text, analysis: draftAnalysis, profile }, language, tier, applyFor, { orgType, intent }),
+      aiDrafts({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor, opts.reasoningEffort, { orgType, intent }, preferredVisaType),
+      aiCoverLetter({ text, analysis: draftAnalysis, profile }, language, tier, applyFor, { orgType, intent }, preferredVisaType),
     ]);
     if (aiRes && aiRes.length) {
       drafts = aiRes;
@@ -497,6 +508,7 @@ async function runPipelineInner(opts: {
     visaIntelligence,
     skillsGap, sponsorshipSignal, postingFreshness, whvTimeline, postingTone, responseRate,
     salary, coldEmail, companySnippet,
+    preferredVisaType,
   };
 }
 

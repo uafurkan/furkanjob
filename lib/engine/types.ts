@@ -28,6 +28,11 @@ export type EngineProfile = {
   documentsText?: string | null;
   // Working Holiday Visa expiry date (ISO string) — used to surface timeline urgency when applying for sponsored roles.
   whvExpiry?: string | null;
+  // Stored per-country visa type preferences { "AU": "482", "NZ": "AEWV" }.
+  // The pipeline resolves the preference for the detected country into preferredVisaType.
+  visaPreferences?: Record<string, string> | null;
+  // Resolved for the current request: the specific visa program to name in the draft.
+  preferredVisaType?: string | null;
 };
 
 export type Draft = { subject: string; body: string };

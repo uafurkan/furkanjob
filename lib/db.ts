@@ -196,6 +196,14 @@ function mapProfile(r: Record<string, unknown>): Profile {
     digestOptOut: (r.digest_opt_out as boolean | undefined) ?? false,
     reminderOptOut: (r.reminder_opt_out as boolean | undefined) ?? false,
     weeklyGoal: Number(r.weekly_goal ?? 0) || 0,
+    visaPreferences: (() => {
+      try {
+        const raw = r.visa_preferences as string | null | undefined;
+        if (!raw) return {};
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        return typeof parsed === "object" && parsed !== null ? parsed as Record<string, string> : {};
+      } catch { return {}; }
+    })(),
   };
 }
 
@@ -333,6 +341,7 @@ export async function upsertProfile(userId: string, data: Partial<Profile>): Pro
   await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS reminder_opt_out BOOLEAN NOT NULL DEFAULT FALSE`;
   await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS weekly_goal INTEGER NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS current_country TEXT`;
+  await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS visa_preferences TEXT NOT NULL DEFAULT '{}'`;
   const rows = await sql`
     INSERT INTO profiles (id, user_id, full_name, contact_email, phone, languages, target_roles,
       needs_visa_sponsorship, target_countries, short_bio, availability, current_country, relocation, tone,
@@ -361,6 +370,24 @@ export async function upsertProfile(userId: string, data: Partial<Profile>): Pro
     RETURNING *
   `;
   return mapProfile(rows[0] as Record<string, unknown>);
+}
+
+// Set (or clear) the preferred visa type for one country. Merges into the existing JSON map.
+// countryCode: ISO alpha-2 (e.g. "AU"). visaTypeId: null clears the preference for that country.
+export async function setVisaPreference(userId: string, countryCode: string, visaTypeId: string | null): Promise<void> {
+  await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS visa_preferences TEXT NOT NULL DEFAULT '{}'`;
+  const rows = await sql`SELECT visa_preferences FROM profiles WHERE user_id=${userId} LIMIT 1`;
+  let prefs: Record<string, string> = {};
+  try {
+    const raw = rows[0]?.visa_preferences as string | null | undefined;
+    if (raw) prefs = JSON.parse(raw);
+  } catch {}
+  if (visaTypeId === null) {
+    delete prefs[countryCode];
+  } else {
+    prefs[countryCode] = visaTypeId;
+  }
+  await sql`UPDATE profiles SET visa_preferences=${JSON.stringify(prefs)}, updated_at=${now()} WHERE user_id=${userId}`;
 }
 
 // ---------- CVs ----------

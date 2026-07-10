@@ -6,6 +6,8 @@ import { APP_LANGS } from "@/lib/engine/template";
 import { checkRecipients, applyFix } from "@/lib/email-check";
 import { safeJson } from "@/lib/safe-fetch";
 import { scoreDraftQuality } from "@/lib/draft-quality";
+import VisaTypeSelector from "@/components/VisaTypeSelector";
+import { getVisaTypesForCountry } from "@/lib/engine/visa-types";
 
 type Eligibility = { status: "ok" | "warning" | "blocked"; note: string };
 type GenResult = {
@@ -65,6 +67,7 @@ type GenResult = {
   coldEmail?: boolean;
   companySnippet?: string | null;
   salary?: { min: number; max: number; currency: string; period: "hourly" | "annual" } | null;
+  preferredVisaType?: string | null;
   fetchedUrl?: boolean;
   duplicate?: { id: string; company: string | null; when: string } | null;
   cv: { filename: string } | null;
@@ -182,6 +185,7 @@ export default function NewApplication() {
   const [selectedDraftIndex, setSelectedDraftIndex] = useState<number>(0);
   const [currentDrafts, setCurrentDrafts] = useState<{ subject: string; body: string; style: string }[]>([]);
   const [signatureChecked, setSignatureChecked] = useState(false);
+  const [visaRedrafting, setVisaRedrafting] = useState(false);
   const [fullName, setFullName] = useState("");
   const [coverLetterBody, setCoverLetterBody] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -581,6 +585,36 @@ export default function NewApplication() {
       analyzeAbortRef.current = null;
       setAnalyzing(false);
       setStage(null);
+    }
+  }
+
+  async function handleVisaRedraft(visaTypeId: string) {
+    if (!text.trim() || !res) return;
+    setVisaRedrafting(true);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text, language, visaTypeOverride: visaTypeId }),
+      });
+      const d: GenResult = await safeJson(r);
+      if (!r.ok) throw new Error((d as any).error || "Error");
+      setRes(d);
+      const parsedDrafts = d.drafts || [{ subject: d.subject, body: d.body, style: "Balanced & Personal" }];
+      setCurrentDrafts(parsedDrafts);
+      setSelectedDraftIndex(0);
+      setSubject(parsedDrafts[0].subject);
+      let newBody = parsedDrafts[0].body;
+      if (signatureChecked && d.fullName && !newBody.includes("Sincerely,")) {
+        newBody = newBody.trim() + `\n\nSincerely,\n${d.fullName}`;
+      }
+      setBody(newBody);
+      if (d.coverLetterBody) setCoverLetterBody(d.coverLetterBody);
+    } catch (e: any) {
+      setMsg({ kind: "err", text: e.message });
+    } finally {
+      setVisaRedrafting(false);
     }
   }
 
@@ -1050,6 +1084,18 @@ export default function NewApplication() {
                 </p>
               )}
             </div>
+          )}
+
+          {/* Visa Type Selector — only for sponsored users where country is in our list */}
+          {res.intent !== "study" && !res.visaCovered && res.countryCode && getVisaTypesForCountry(res.countryCode) && (
+            <VisaTypeSelector
+              countryCode={res.countryCode}
+              countryName={res.country || res.countryCode}
+              currentVisaType={res.preferredVisaType ?? null}
+              onRedraft={handleVisaRedraft}
+              redrafting={visaRedrafting}
+              lang={res.language}
+            />
           )}
 
           {/* Cold Email Note */}
