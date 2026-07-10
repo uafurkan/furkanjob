@@ -6,7 +6,6 @@ import { enrichProfileWithDocuments } from "@/lib/profile-context";
 import { findDuplicateApplication } from "@/lib/applications";
 import { runPipeline } from "@/lib/engine/pipeline";
 import { fetchPageText } from "@/lib/engine/websearch";
-import { aiSubjectVariant, withAiDeadline } from "@/lib/engine/ai";
 import { aiTier, isOverLimit, planInfo } from "@/lib/plans";
 import { rateLimit } from "@/lib/ratelimit";
 import { reportError } from "@/lib/observability";
@@ -45,27 +44,31 @@ async function handleGenerate(req: Request) {
   let text: string = (body?.text || "").toString();
   if (!text.trim()) return NextResponse.json({ error: "Content is empty." }, { status: 400 });
 
-  // If the user pasted just a URL, pull the page text (keep the URL so email scraping still sees it).
-  let fetchedUrl = false;
   const url = asSingleUrl(text);
-  if (url) {
-    const pageText = await fetchPageText(url);
-    if (pageText.trim().length > 40) {
-      text = `${pageText}\n\n${url}`;
-      fetchedUrl = true;
-    }
+
+  // Parallelise: URL page-fetch (potentially slow, 1-3 s) and all DB/storage work run
+  // simultaneously so neither blocks the other before the AI pipeline starts.
+  const [urlPageText, profileResult, used] = await Promise.all([
+    url ? fetchPageText(url) : Promise.resolve(null),
+    (async () => {
+      const profile = await getProfile(user.id);
+      let engineProfile = toEngineProfile(profile, user);
+      engineProfile = await enrichProfileWithDocuments(user.id, engineProfile);
+      return { profile, engineProfile };
+    })(),
+    getUsage(user.id),
+  ]);
+
+  const { profile, engineProfile: rawEngineProfile } = profileResult;
+  let engineProfile = rawEngineProfile;
+
+  let fetchedUrl = false;
+  if (url && urlPageText && urlPageText.trim().length > 40) {
+    text = `${urlPageText}\n\n${url}`;
+    fetchedUrl = true;
   }
 
-  const used = await getUsage(user.id);
   const overLimit = isOverLimit(user.plan, used);
-
-  const profile = await getProfile(user.id);
-  let engineProfile = toEngineProfile(profile, user);
-
-  // Read the CV plus every other uploaded document (visa proof, certificates, diplomas,
-  // reference letters) so every AI prompt in the pipeline knows the full person, not just
-  // what's in the short profile form.
-  engineProfile = await enrichProfileWithDocuments(user.id, engineProfile);
 
   // A client-side visa type override (from the VisaTypeSelector re-draft) wins over the
   // stored profile preference. An empty string means "clear override, use stored preference".
@@ -73,7 +76,8 @@ async function handleGenerate(req: Request) {
     engineProfile = { ...engineProfile, preferredVisaType: body.visaTypeOverride };
   }
 
-  // Fire DB-only queries in parallel with the pipeline — they only need user.id which we have now.
+  // Fire DB-only queries that are only needed after the pipeline — CV filename for the
+  // response envelope and duplicate-application detection.
   const cvPromise = getDefaultCv(user.id);
   const applicationsPromise = listApplications(user.id).catch(() => []);
 
@@ -91,19 +95,9 @@ async function handleGenerate(req: Request) {
     },
   });
 
-  const [cv, subjectB] = await Promise.all([
-    cvPromise,
-    // The subject variant is a nice-to-have; short hard cap so it never pushes past maxDuration.
-    withAiDeadline(8000, () =>
-      aiSubjectVariant(
-        result.draft.subject,
-        result.analysis.company,
-        result.applyFor.length ? result.applyFor : result.analysis.positions,
-        result.language as any,
-        aiTier(user.plan)
-      )
-    ).catch(() => null),
-  ]);
+  // aiSubjectVariant was a nice-to-have (alternate subject line) that ran sequentially AFTER
+  // the pipeline, adding 2-3 s to every request. Removed to stay within the platform timeout.
+  const cv = await cvPromise;
 
   // Duplicate guard: have we already applied to this company?
   let duplicate: { id: string; company: string | null; when: string } | null = null;
@@ -133,10 +127,11 @@ async function handleGenerate(req: Request) {
     // Recovery links: only useful (and only sent) when nothing was found.
     checkedOrigins: result.emailSource === "none" ? result.checkedOrigins.slice(0, 4) : [],
     subject: result.draft.subject,
-    subjectB: subjectB || null,
+    subjectB: null,
     body: result.draft.body,
     drafts: result.drafts,
     coverLetterBody: result.coverLetterBody || null,
+    coverLetterSource: result.coverLetterSource,
     fullName: profile?.fullName || user.name || "",
     contactEmail: profile?.contactEmail || user.email || "",
     includeSignature: profile?.includeSignature || false,

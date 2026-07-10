@@ -2,7 +2,7 @@
 import { analyze, detectTextLang, countryByCode, pickBestEmail, decodeHtmlEntities, domainCoreWords, type Analysis } from "./detect";
 import { findEmails } from "./websearch";
 import { buildDraft, buildCoverLetter, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
-import { aiAnalyze, aiAssessFit, aiAnalyzeAndFit, aiDrafts, aiEnabled, aiCoverLetter, withAiDeadline, withAiSubBudget, type AiTier, type Eligibility } from "./ai";
+import { aiAnalyze, aiAssessFit, aiAnalyzeAndFit, aiDrafts, aiEnabled, withAiDeadline, withAiSubBudget, type AiTier, type Eligibility } from "./ai";
 import { pickRelevantRoles } from "./match";
 import { isVisaCovered } from "./visa";
 import { workKindForRoles, visaFor, registrationNote, type OrgType, type Intent } from "./professions";
@@ -172,6 +172,7 @@ export type PipelineResult = {
   fitSummary: string;        // one human sentence
   eligibility: Eligibility;  // hard constraint read from the listing, crossed with user's visa status
   coverLetterBody: string | null;
+  coverLetterSource: "template" | "ai";
   // Global intelligence: what kind of organization + whether this is a job or study application.
   orgType: OrgType;
   intent: Intent;
@@ -481,17 +482,16 @@ async function runPipelineInner(opts: {
   // Draft: AI when configured (tier picks the model), else the smart multilingual template.
   let drafts: DraftOption[] = [];
   let draftSource: "ai" | "template" = "template";
-  let coverLetterBody: string | null = null;
   if (aiEnabled()) {
-    const [aiRes, aiCl] = await Promise.all([
-      aiDrafts({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor, opts.reasoningEffort, { orgType, intent }, preferredVisaType),
-      aiCoverLetter({ text, analysis: draftAnalysis, profile }, language, tier, applyFor, { orgType, intent }, preferredVisaType),
-    ]);
+    // aiCoverLetter is intentionally excluded here — it ran in parallel with aiDrafts but added
+    // significant AI provider load, contributing to gateway timeouts on the Hobby plan. The cover
+    // letter is now generated lazily (template immediately; AI version via /api/rewrite-cover-letter
+    // when the user opens the Cover Letter tab or clicks "Rewrite").
+    const aiRes = await aiDrafts({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor, opts.reasoningEffort, { orgType, intent }, preferredVisaType);
     if (aiRes && aiRes.length) {
       drafts = aiRes;
       draftSource = "ai";
     }
-    coverLetterBody = aiCl;
   }
   if (!drafts.length) {
     const fallbackDraft = buildDraft(draftAnalysis, profile, language, authorization);
@@ -501,11 +501,9 @@ async function runPipelineInner(opts: {
       style: "Balanced & Personal"
     }];
   }
-  // AI cover letter failed/unavailable: use the dedicated cover-letter template, never the email
-  // body — a cover letter that's a verbatim copy of the email defeats the point of attaching one.
-  if (!coverLetterBody) {
-    coverLetterBody = buildCoverLetter(draftAnalysis, profile, language, authorization);
-  }
+  // Cover letter: always use the template in the main pipeline (fast, synchronous).
+  // The AI-enhanced version is generated lazily via /api/rewrite-cover-letter.
+  const coverLetterBody = buildCoverLetter(draftAnalysis, profile, language, authorization);
 
   return {
     analysis, emails, emailSource,
@@ -514,6 +512,7 @@ async function runPipelineInner(opts: {
     draftSource, language, visaCovered, visaLabel, checkedOrigins,
     applyFor, droppedRoles, fitScore, fitSummary, eligibility,
     coverLetterBody,
+    coverLetterSource: "template" as const,
     orgType, intent,
     isRecruitmentAgency: Boolean(analysis.isRecruitmentAgency),
     visaIntelligence,

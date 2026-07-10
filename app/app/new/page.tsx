@@ -29,6 +29,7 @@ type GenResult = {
   body: string;
   drafts?: { subject: string; body: string; style: string }[];
   coverLetterBody?: string | null;
+  coverLetterSource?: "template" | "ai";
   fullName?: string;
   contactEmail?: string;
   includeSignature?: boolean;
@@ -928,6 +929,7 @@ export default function NewApplication() {
       const d = await safeJson(r);
       if (!r.ok || !d.body) throw new Error(d.error || "rewrite failed");
       setCoverLetterBody(d.body);
+      setRes((prev) => prev ? { ...prev, coverLetterSource: "ai" } : prev);
       setMsg({ kind: "ok", text: t("new.rewriteCoverLetterDone") });
       setTimeout(() => setMsg(null), 3000);
     } catch {
@@ -1941,16 +1943,34 @@ export default function NewApplication() {
                     );
                   })()}
 
-                  {/* Rule 5: AI personalized */}
-                  {res?.draftSource === "ai" && (
-                    <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-success, #10b981)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <span className="text-secondary">{t("new.coverLetterCheck.aiGenerated")}</span>
-                      <span className="chip chip-sm chip-accent" style={{ fontSize: "var(--text-10)", padding: "1px 6px" }}>{t("new.aiLabel")}</span>
-                    </div>
-                  )}
+                  {/* Rule 5: AI personalized — cover letter is now always template on first load; Rewrite upgrades it */}
+                  <div className="row gap-2" style={{ alignItems: "center", fontSize: "var(--text-13)" }}>
+                    {res?.coverLetterSource === "ai" ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signal-success, #10b981)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span className="text-secondary">{t("new.coverLetterCheck.aiGenerated")}</span>
+                        <span className="chip chip-sm chip-accent" style={{ fontSize: "var(--text-10)", padding: "1px 6px" }}>{t("new.aiLabel")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span className="text-secondary" style={{ fontSize: "var(--text-12)" }}>Template version —</span>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{ fontSize: "var(--text-12)", minHeight: 22, padding: "0 var(--space-2)", gap: 4, color: "var(--accent)" }}
+                          onClick={rewriteCoverLetter}
+                          disabled={rewritingCoverLetter}
+                        >
+                          {rewritingCoverLetter ? "Enhancing…" : "Enhance with AI"}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
