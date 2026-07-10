@@ -1573,11 +1573,15 @@ export default function NewApplication() {
                 </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {[
-                    "Is the tone appropriate for a hospitality role in New Zealand?",
-                    "Should I mention my visa status earlier in the email?",
-                    "Is the email length within the ideal range for a concise application?"
-                  ].map((q) => (
+                  {((): string[] => {
+                    const roleLabel = res.applyFor?.length ? res.applyFor.slice(0, 2).join(" / ") : (res.positions?.length ? res.positions[0] : "this role");
+                    const countryLabel = res.country || "this country";
+                    return [
+                      `Is the tone appropriate for a ${roleLabel} role in ${countryLabel}?`,
+                      "Should I mention my visa status earlier in the email?",
+                      "Is the email length within the ideal range for a concise application?",
+                    ];
+                  })().map((q) => (
                     <button
                       key={q}
                       type="button"

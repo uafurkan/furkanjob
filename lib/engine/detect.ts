@@ -598,7 +598,7 @@ function isSentenceLike(s: string): boolean {
 
 // Generic nav/section labels that are NOT a business name even if they repeat 3+ times
 // (every page has "Contact Us", "Home", "About Us" etc. in its nav and headings).
-const NAV_PHRASE_RE = /^(home|about|about us|contact|contact us|log in|sign in|sign up|book now|read more|learn more|get started|menu|menus|gallery|our story|follow us|terms of use|terms and conditions|privacy policy|skip to content|find us|book a table|opening hours|more info|click here|day tickets|overnight|lake rules)$/i;
+const NAV_PHRASE_RE = /^(home|about|about us|contact|contact us|log in|sign in|sign up|book now|read more|learn more|get started|menu|menus|gallery|our story|follow us|terms of use|terms and conditions|privacy policy|skip to content|find us|book a table|opening hours|more info|click here|day tickets|overnight|lake rules|accommodation|accommodations|food|food & drinks|food and drinks|bottle shop|functions|gaming|news|jobs|careers|events|what's on|whats on|offers|promotions|facilities|rooms|suites|dining|bar|spa|wellness|packages|experiences|location|directions|parking|transport|accessibility|sustainability|media|press|investors|partners|suppliers|franchising|blog|podcast|newsletter|subscribe|unsubscribe|checkout|cart|wishlist|search|help|support|faq|faqs|sitemap|legal|cookie policy|disclaimer|accessibility statement)$/i;
 
 // Embedded third-party widgets (maps, fonts, stock photos, chat widgets…) carry their OWN "©"
 // attribution line in the scraped page text — "Leaflet | © OpenStreetMap contributors" sits right
@@ -1014,7 +1014,7 @@ export function guessCompany(text: string, emails: string[], urls: string[] = []
   }
 
   // Lines we should always skip when searching for a company name
-  const JUNK_COMPANY_LINES = /^(home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|skip to content|privacy policy|terms of service|terms & conditions|website by|designed by|powered by|wix|shopify|squarespace|godaddy|wordpress|facebook|instagram|twitter|linkedin|day|breakfast|lunch|dinner|starters|main courses|sides|desserts|cheeseboard|toast|admin login|admin|login|faq|faqs)$/i;
+  const JUNK_COMPANY_LINES = /^(home|menu|menus|book|book now|cart|contact|contact us|about|about us|welcome|gallery|skip to content|privacy policy|terms of service|terms & conditions|website by|designed by|powered by|wix|shopify|squarespace|godaddy|wordpress|facebook|instagram|twitter|linkedin|day|breakfast|lunch|dinner|starters|main courses|sides|desserts|cheeseboard|toast|admin login|admin|login|faq|faqs|accommodation|accommodations|food|food & drinks|food and drinks|bottle shop|functions|gaming|news|jobs|careers|events|what's on|whats on|offers|promotions|facilities|rooms|suites|dining|bar|spa|wellness|packages|experiences|location|directions|parking|transport|accessibility|sustainability|media|press|investors|search|help|support|sitemap|legal|cookie policy|disclaimer|blog|newsletter|subscribe)$/i;
   const DISCLAIMER_RE = /\b(subject to change|please inform|dietar|allerg|cannot guarantee|gluten free|we cannot|may contain|restrictions|gift card|gift voucher|certificate|sign up|newsletter|stay in the loop)\b/i;
 
   // 3. Detect a concatenated page title (e.g. "Mister D DiningMister D Dining, Napier...")
