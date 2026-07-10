@@ -538,6 +538,122 @@ Rules:
   };
 }
 
+// ---------- Combined analyze + fit assessment (single AI round-trip) ----------
+// Merges aiAnalyze and aiAssessFit into ONE LLM call to eliminate a sequential round-trip.
+// When the combined call succeeds, the pipeline uses its output for both stages.
+export type AiAnalyzeAndFitResult = AiAnalysis & FitAssessment;
+
+export async function aiAnalyzeAndFit(opts: {
+  text: string;
+  profile: EngineProfile;
+  tier?: AiTier;
+  lang?: AppLang;
+}): Promise<AiAnalyzeAndFitResult | null> {
+  if (!aiEnabled()) return null;
+  const { profile, tier = "free" } = opts;
+  const langName = APP_LANGS.find((l) => l.code === (opts.lang || "en"))?.label || "English";
+  const visaLine = profile.hasVisa
+    ? `Already holds work authorization for: ${(profile.visaCountries || []).join(", ") || "(unspecified)"}${profile.visaLabel ? ` (${profile.visaLabel})` : ""}.`
+    : profile.needsVisaSponsorship
+    ? `Needs visa sponsorship (${opts.lang || "en"} — see visa wording in context).`
+    : `Does not need visa sponsorship.`;
+  const regulated = regulatedRoles(profile.targetRoles);
+  const regulatedLine = regulated.length
+    ? `\n- NOTE: ${regulated.join(", ")} ${regulated.length > 1 ? "are regulated professions" : "is a regulated profession"} — local registration/licensure typically required.`
+    : "";
+
+  const prompt = `${PAPLY_PERSONA}
+
+You are performing TWO steps in one pass: ANALYSIS and FIT-ASSESSMENT. Return a single JSON object with all keys from both steps.
+
+STEP 1 — ANALYSIS: Extract structured facts from the raw page text.
+STEP 2 — FIT-ASSESSMENT: Determine which of the applicant's target roles fit this business, score the fit using the STRICT RUBRIC below, and flag any hard eligibility constraint.
+
+APPLICANT
+- Target roles: ${profile.targetRoles.join(", ") || "(none set)"}
+- Target countries: ${profile.targetCountries.join(", ") || "(any)"}
+- Currently based in: ${profile.currentCountry || "(unspecified)"}
+- Languages: ${profile.languages.join(", ") || "(unspecified)"}
+- Open to relocating: ${profile.relocation ? "yes" : "no"}
+${profile.shortBio ? `- Bio: ${profile.shortBio}\n` : ""}${profile.cvText ? `- CV EXTRACT:\n"""\n${profile.cvText.slice(0, 2000)}\n"""\n` : ""}- Work eligibility: ${visaLine}${regulatedLine}${documentsSection(profile)}
+
+RAW PAGE TEXT:
+"""
+${opts.text.slice(0, 5500)}
+"""
+
+=== STRICT SCORING RUBRIC ===
+fitScore = sum of:
+1. ROLE MATCH (0-35): 35=exact advertised match; 30=no vacancy but clear fit by org type/facilities; 25=same job family; 15=loosely related; 5=minimal; 0=no fit
+2. EXPERIENCE & SKILLS (0-25): 25=direct relevant; 15=transferable; 8=general; 0=none evident
+3. LANGUAGE FIT (0-15): 15=speaks primary business language; 10=English in non-English country; 5=somewhat common; 0=no overlap
+4. LOCATION & LOGISTICS (0-15): 15=already there or target country no barriers; 10=target country + willing to relocate; 7=not target but open; 5=uncertain; 0=significant barriers
+5. WORK AUTHORIZATION (0-10): 10=already authorized; 5=needs sponsorship and listing doesn't explicitly exclude it; 0=listing requires existing rights and applicant lacks them
+
+Return STRICT JSON ONLY — exactly these keys, no prose:
+{
+  "company": "clean brand name, no legal suffix, no geo descriptors, no nav labels",
+  "countryCode": "ISO alpha-2 (NZ/AU/US/CA/UK/DE/ES/FR/IT/NL/PT/IE/AT/CH/GR/SE/DK/NO/BE/FI/CZ/PL) or XX",
+  "language": "one of: en tr es fr de it pt",
+  "orgType": "one of: hotel restaurant cafe bar farm clinic dental_clinic hospital pharmacy care_home university school childcare_centre construction factory warehouse logistics garage retail salon it_company office ngo government media professional_services recruitment_agency fitness event_venue shipping mining generic",
+  "intent": "job or study",
+  "positions": ["1-3 realistic roles this organization hires or programs it offers if study"],
+  "isRecruitmentAgency": false,
+  "applyFor": ["1-2 of applicant's target roles that fit; or closest realistic role if none fit"],
+  "droppedRoles": ["applicant target roles that don't fit this specific business"],
+  "fitScore": 0,
+  "fitSummary": "ONE sentence in ${langName} explaining fit and which role(s) to apply for and why",
+  "eligibility": {
+    "status": "ok",
+    "note": "if listing explicitly requires something applicant may lack, state it in ${langName}; otherwise empty string"
+  }
+}
+
+Key rules:
+- company: short proper noun/brand only. Never a sentence, perk, or nav element.
+- countryCode: infer from TLD (.co.nz→NZ, .com.au→AU), phone, address, city names.
+- positions: prefer advertised vacancies; otherwise infer from org type.
+- applyFor: must be realistic for this org. Prefer applicant's own role wording.
+- droppedRoles: only drop when org truly wouldn't employ it (e.g. Night Audit at a standalone restaurant).
+- fitSummary: grounded in the page. Never claim a role is "listed" unless truly advertised.
+- eligibility.note: ONLY from explicit text, OR regulated-profession licensing note if moving countries.
+- isRecruitmentAgency: true only for staffing/labour-hire firms posting on behalf of a client.
+- Be deterministic: same inputs = same output always.`;
+
+  const parsed = extractJson<Partial<AiAnalyzeAndFitResult>>(await complete(prompt, 1200, tier, "low", 0));
+  if (!parsed) return null;
+
+  const langs = APP_LANGS.map((l) => l.code) as string[];
+  const clampStr = (a: unknown): string[] =>
+    Array.isArray(a) ? a.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4) : [];
+  const elig = (parsed.eligibility || {}) as Partial<Eligibility>;
+  const eligStatus: Eligibility["status"] = elig.status === "blocked" || elig.status === "warning" ? elig.status : "ok";
+  const orgType = typeof parsed.orgType === "string" && (VALID_ORG_TYPES as string[]).includes(parsed.orgType) ? (parsed.orgType as OrgType) : undefined;
+
+  const applyFor = clampStr(parsed.applyFor);
+  const droppedRoles = clampStr(parsed.droppedRoles);
+  if (!applyFor.length) return null; // unusable — fall back to separate calls
+
+  return {
+    // AiAnalysis fields
+    company: typeof parsed.company === "string" && parsed.company.trim() ? parsed.company.trim().slice(0, 120) : undefined,
+    countryCode: typeof parsed.countryCode === "string" ? parsed.countryCode.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2) : undefined,
+    language: typeof parsed.language === "string" && langs.includes(parsed.language) ? (parsed.language as AppLang) : undefined,
+    orgType,
+    intent: parsed.intent === "study" ? "study" : parsed.intent === "job" ? "job" : undefined,
+    positions: Array.isArray(parsed.positions)
+      ? parsed.positions.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4)
+      : undefined,
+    isRecruitmentAgency: parsed.isRecruitmentAgency === true ? true : undefined,
+    // FitAssessment fields
+    applyFor,
+    droppedRoles,
+    fitScore: typeof parsed.fitScore === "number" ? Math.max(0, Math.min(100, Math.round(parsed.fitScore))) : 0,
+    fitSummary: typeof parsed.fitSummary === "string" ? parsed.fitSummary.trim().slice(0, 300) : "",
+    eligibility: { status: eligStatus, note: typeof elig.note === "string" ? elig.note.trim().slice(0, 300) : "" },
+  };
+}
+
 // ---------- Visa document understanding ----------
 export type AiVisaAnalysis = {
   visaTypeId?: string; // matches a VISA_TYPES id (eu_work | schengen | es_work | ... | custom)

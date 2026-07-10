@@ -67,6 +67,10 @@ async function handleGenerate(req: Request) {
   // what's in the short profile form.
   engineProfile = await enrichProfileWithDocuments(user.id, engineProfile);
 
+  // Fire DB-only queries in parallel with the pipeline — they only need user.id which we have now.
+  const cvPromise = getDefaultCv(user.id);
+  const applicationsPromise = listApplications(user.id).catch(() => []);
+
   const result = await runPipeline({
     text,
     profile: engineProfile,
@@ -82,10 +86,8 @@ async function handleGenerate(req: Request) {
   });
 
   const [cv, subjectB] = await Promise.all([
-    getDefaultCv(user.id),
-    // The subject variant is a nice-to-have, and it runs AFTER the pipeline has already spent
-    // its own time budget — give it a short hard cap so it can never push the whole request
-    // past the route's maxDuration when providers are slow.
+    cvPromise,
+    // The subject variant is a nice-to-have; short hard cap so it never pushes past maxDuration.
     withAiDeadline(8000, () =>
       aiSubjectVariant(
         result.draft.subject,
@@ -97,11 +99,10 @@ async function handleGenerate(req: Request) {
     ).catch(() => null),
   ]);
 
-  // Duplicate guard: have we already applied to this company (by name, or by recipient
-  // email/domain — info@ vs hr@ vs careers@ at the same business all count)?
+  // Duplicate guard: have we already applied to this company?
   let duplicate: { id: string; company: string | null; when: string } | null = null;
   try {
-    const prior = await listApplications(user.id);
+    const prior = await applicationsPromise;
     const hit = findDuplicateApplication(prior, { company: result.analysis.company, emails: result.emails });
     if (hit) duplicate = { id: hit.id, company: hit.company ?? null, when: hit.createdAt };
   } catch {}

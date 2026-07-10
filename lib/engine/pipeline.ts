@@ -2,7 +2,7 @@
 import { analyze, detectTextLang, countryByCode, pickBestEmail, decodeHtmlEntities, domainCoreWords, type Analysis } from "./detect";
 import { findEmails } from "./websearch";
 import { buildDraft, buildCoverLetter, resolveAppLang, autoLangForCountry, APP_LANGS, type AppLang } from "./template";
-import { aiAnalyze, aiAssessFit, aiDrafts, aiEnabled, aiCoverLetter, withAiDeadline, withAiSubBudget, type AiTier, type Eligibility } from "./ai";
+import { aiAnalyze, aiAssessFit, aiAnalyzeAndFit, aiDrafts, aiEnabled, aiCoverLetter, withAiDeadline, withAiSubBudget, type AiTier, type Eligibility } from "./ai";
 import { pickRelevantRoles } from "./match";
 import { isVisaCovered } from "./visa";
 import { workKindForRoles, visaFor, registrationNote, type OrgType, type Intent } from "./professions";
@@ -228,30 +228,54 @@ async function runPipelineInner(opts: {
     }
   }
 
-  // Smart layer: let the model clean up company/country/positions/language from the messy page.
+  // Resolve the requested language before the AI call so we can pass it as the output language.
+  const requested = opts.language || profile.applicationLanguage || "auto";
+  const validLangs = APP_LANGS.map((l) => l.code) as string[];
+
+  // Smart layer: ONE combined AI call does both analysis AND fit-assessment in a single
+  // round-trip. This replaces two sequential calls (aiAnalyze → aiAssessFit) with one,
+  // cutting the AI latency roughly in half. Falls back to separate calls if the combined
+  // result is unusable (returns null when applyFor is empty).
   let aiLang: AppLang | undefined;
+  let combinedFit: import("./ai").AiAnalyzeAndFitResult | null = null;
+  let separateFitResult: import("./ai").FitAssessment | null = null;
+
   if (aiEnabled()) {
-    // Capped sub-budget: analysis is the first of four sequential/parallel AI calls in this
-    // pipeline — without a cap, a slow/rate-limited provider chain here could burn the whole
-    // request deadline before the drafts/cover-letter stage (the actual deliverable) gets a turn.
-    const ai = await withAiSubBudget(12000, () => aiAnalyze(text, tier));
-    if (ai) {
-      if (ai.company) {
-        const cleaned = cleanCompanyName(ai.company);
-        if (
-          cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned)
-          && singleWordGuessIsGrounded(cleaned, analysis.urls)
-        ) {
+    combinedFit = await withAiSubBudget(18000, () =>
+      aiAnalyzeAndFit({ text, profile, tier, lang: requested !== "auto" && validLangs.includes(requested) ? (requested as AppLang) : undefined })
+    );
+
+    if (combinedFit) {
+      // Apply analysis part
+      if (combinedFit.company) {
+        const cleaned = cleanCompanyName(combinedFit.company);
+        if (cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned) && singleWordGuessIsGrounded(cleaned, analysis.urls)) {
           analysis.company = cleaned;
         }
       }
-      if (ai.countryCode && ai.countryCode !== "XX") analysis.country = countryByCode(ai.countryCode);
-      if (ai.positions?.length) analysis.positions = ai.positions;
-      if (ai.language) aiLang = ai.language;
-      // The AI's read of the organization type and application intent wins over heuristics.
-      if (ai.orgType) analysis.orgType = ai.orgType;
-      if (ai.intent) analysis.intent = ai.intent;
-      if (ai.isRecruitmentAgency) analysis.isRecruitmentAgency = true;
+      if (combinedFit.countryCode && combinedFit.countryCode !== "XX") analysis.country = countryByCode(combinedFit.countryCode);
+      if (combinedFit.positions?.length) analysis.positions = combinedFit.positions;
+      if (combinedFit.language) aiLang = combinedFit.language;
+      if (combinedFit.orgType) analysis.orgType = combinedFit.orgType;
+      if (combinedFit.intent) analysis.intent = combinedFit.intent;
+      if (combinedFit.isRecruitmentAgency) analysis.isRecruitmentAgency = true;
+    } else {
+      // Combined call failed/unusable — fall back to separate sequential calls.
+      const ai = await withAiSubBudget(10000, () => aiAnalyze(text, tier));
+      if (ai) {
+        if (ai.company) {
+          const cleaned = cleanCompanyName(ai.company);
+          if (cleaned && !BLACKLISTED_COMPANIES.test(cleaned.toLowerCase().trim()) && looksLikeBrandName(cleaned) && singleWordGuessIsGrounded(cleaned, analysis.urls)) {
+            analysis.company = cleaned;
+          }
+        }
+        if (ai.countryCode && ai.countryCode !== "XX") analysis.country = countryByCode(ai.countryCode);
+        if (ai.positions?.length) analysis.positions = ai.positions;
+        if (ai.language) aiLang = ai.language;
+        if (ai.orgType) analysis.orgType = ai.orgType;
+        if (ai.intent) analysis.intent = ai.intent;
+        if (ai.isRecruitmentAgency) analysis.isRecruitmentAgency = true;
+      }
     }
   }
 
@@ -264,8 +288,6 @@ async function runPipelineInner(opts: {
   }
 
   // Resolve the application language. "auto" → AI suggestion, else text detection, else country, else English.
-  const requested = opts.language || profile.applicationLanguage || "auto";
-  const validLangs = APP_LANGS.map((l) => l.code) as string[];
   let language: AppLang;
   if (requested === "auto") {
     language = aiLang || (detectTextLang(text) as AppLang | null) || autoLangForCountry(analysis.country.code);
@@ -275,26 +297,6 @@ async function runPipelineInner(opts: {
     language = autoLangForCountry(analysis.country.code);
   }
 
-  // Emails: deterministic extraction from text, else real web search. Never generated.
-  let emails = pickBestEmail(analysis.emails);
-  let emailSource: PipelineResult["emailSource"] = emails.length ? "text" : "none";
-  let checkedOrigins: string[] = [];
-  if (!emails.length && searchWeb) {
-    const found = await findEmails({
-      urls: analysis.urls,
-      company: analysis.company,
-      country: analysis.country.code === "XX" ? "" : analysis.country.name,
-      countryCode: analysis.country.code === "XX" ? "" : analysis.country.code,
-      locality: analysis.locality,
-      address: analysis.address,
-      phone: analysis.phone,
-      isGovernmentOrg: analysis.orgType === "government",
-    });
-    emails = pickBestEmail(found.emails);
-    emailSource = found.source;
-    checkedOrigins = found.checkedOrigins;
-  }
-
   // Held-visa intelligence: does the user already hold a visa that authorizes work here?
   const visaCovered = Boolean(profile.hasVisa) && isVisaCovered(profile.visaCountries, analysis.country.code);
   const visaLabel = visaCovered ? profile.visaLabel || null : null;
@@ -302,25 +304,29 @@ async function runPipelineInner(opts: {
 
   const orgType = analysis.orgType;
   const intent = analysis.intent;
-
-  // Smart fit: which target role(s) actually fit this organization + suitability + eligibility.
-  // The organization's own advertised roles stay in `analysis.positions`; the application targets `applyFor`.
   const businessPositions = analysis.positions;
-  let applyFor: string[] = [];
-  let droppedRoles: string[] = [];
-  let fitScore = 0;
-  let fitSummary = "";
-  let eligibility: Eligibility = { status: "ok", note: "" };
 
-  if (intent === "study") {
-    // University/school admissions: the "roles" are the study programs from the page. Job-fit
-    // scoring doesn't apply — the fit panel stays hidden (empty summary, score 0, eligibility ok).
-    applyFor = businessPositions.slice(0, 2);
-  } else {
-    if (aiEnabled()) {
-      // Same reasoning as the analysis sub-budget above: cap this stage so it can't starve the
-      // drafts/cover-letter stage that follows it.
-      const fit = await withAiSubBudget(12000, () => aiAssessFit({
+  // Email search runs in parallel with the (possible) fallback fit assessment.
+  let emails = pickBestEmail(analysis.emails);
+  let emailSource: PipelineResult["emailSource"] = emails.length ? "text" : "none";
+  let checkedOrigins: string[] = [];
+
+  const emailSearchPromise = (!emails.length && searchWeb)
+    ? findEmails({
+        urls: analysis.urls,
+        company: analysis.company,
+        country: analysis.country.code === "XX" ? "" : analysis.country.name,
+        countryCode: analysis.country.code === "XX" ? "" : analysis.country.code,
+        locality: analysis.locality,
+        address: analysis.address,
+        phone: analysis.phone,
+        isGovernmentOrg: analysis.orgType === "government",
+      })
+    : Promise.resolve(null);
+
+  // Only run a separate aiAssessFit if the combined call failed AND this is a job application.
+  const separateFitPromise = (!combinedFit && intent !== "study" && aiEnabled())
+    ? withAiSubBudget(10000, () => aiAssessFit({
         text,
         company: analysis.company,
         countryName: analysis.country.name,
@@ -330,14 +336,35 @@ async function runPipelineInner(opts: {
         orgType,
         lang: language,
         tier,
-      }));
-      if (fit) {
-        applyFor = fit.applyFor;
-        droppedRoles = fit.droppedRoles;
-        fitScore = fit.fitScore;
-        fitSummary = fit.fitSummary;
-        eligibility = fit.eligibility;
-      }
+      }))
+    : Promise.resolve(null);
+
+  const [emailResult, fallbackFitResult] = await Promise.all([emailSearchPromise, separateFitPromise]);
+  separateFitResult = fallbackFitResult;
+
+  if (emailResult) {
+    emails = pickBestEmail(emailResult.emails);
+    emailSource = emailResult.source;
+    checkedOrigins = emailResult.checkedOrigins;
+  }
+
+  // Smart fit: which target role(s) actually fit this organization + suitability + eligibility.
+  let applyFor: string[] = [];
+  let droppedRoles: string[] = [];
+  let fitScore = 0;
+  let fitSummary = "";
+  let eligibility: Eligibility = { status: "ok", note: "" };
+
+  if (intent === "study") {
+    applyFor = businessPositions.slice(0, 2);
+  } else {
+    const fitResult = combinedFit || separateFitResult;
+    if (fitResult) {
+      applyFor = fitResult.applyFor;
+      droppedRoles = fitResult.droppedRoles;
+      fitScore = fitResult.fitScore;
+      fitSummary = fitResult.fitSummary;
+      eligibility = fitResult.eligibility;
     }
     // Deterministic fallback / safety net: if AI gave no roles, intersect target roles with the organization.
     if (!applyFor.length) {
