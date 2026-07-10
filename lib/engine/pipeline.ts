@@ -513,17 +513,42 @@ async function runPipelineInner(opts: {
 }
 
 // Extract a short company-description snippet from the raw page text.
-// Looks for sentences that describe the business (founding, awards, specialties) and avoids
-// job-requirement or application-instruction sentences.
+// Scores sentences on how "about the business" they are, rejects review noise / job copy.
 function extractCompanySnippet(text: string, company: string): string | null {
   const sentences = text
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.replace(/\s+/g, " ").trim())
-    .filter((s) => s.length >= 30 && s.length <= 280);
+    .filter((s) => {
+      if (s.length < 35 || s.length > 300) return false;
+      // Drop strings with repeated tokens (e.g. "GoogleGoogleGoogle", "more more more")
+      if (/(\b\w{3,}\b)(?:[\s\W]+\1){2,}/i.test(s)) return false;
+      // Drop reviewer metadata lines (dates like 2024-03-23, "profile picture", "Read more")
+      if (/\d{4}-\d{2}-\d{2}/.test(s)) return false;
+      if (/profile picture|read more|thumbs? (up|down)|👍|👎/i.test(s)) return false;
+      // Drop lines that look like a list of names (≥3 proper-nouns in a short span)
+      const properNouns = s.match(/\b[A-Z][a-z]+\b/g) || [];
+      if (properNouns.length / s.split(/\s+/).length > 0.6) return false;
+      return true;
+    });
 
-  const ABOUT_RE = /founded|established|family.?owned|award|rating|special[iz]|known for|recogni[sz]|passionate|pride|located|since \d{4}|year|heritage|tradition|best|excellent|cuisin|menu|serv[ei]/i;
-  const SKIP_RE = /apply|application|cv|résumé|resume|requirement|experience required|must have|should have|will be responsible|key duties|you will|reporting to|we are looking|we (seek|require|need)|click here|submit|role description|position overview|about the role|about this (role|job|position)/i;
+  const ABOUT_RE = /founded|established|family.?owned|award|accolade|gold list|special[iz]|known for|recogni[sz]|passionate|pride|located|since \d{4}|heritage|tradition|star.{0,10}(hotel|property|restaurant|resort)|boutique|luxury|contemporary|independent(ly)?|locally.owned|team of|years? of (experience|operation)|our (mission|vision|team|guests?|story|philosophy)|dedicated to|commit(ted|ment) to|strive|renowned|rated|reviewed/i;
+  const SKIP_RE = /apply|application|cv|résumé|resume|requirement|experience required|must have|should have|will be responsible|key duties|you will|reporting to|we are looking|we (seek|require|need)|click here|submit|role description|position overview|about the role|about this (role|job|position)|equal opportunity|background check|right to work|salary range|per hour|per annum|\$\d|AUD|NZD|USD|GBP/i;
 
-  const matches = sentences.filter((s) => ABOUT_RE.test(s) && !SKIP_RE.test(s)).slice(0, 2);
-  return matches.length ? matches.join(" ") : null;
+  // Score each sentence: prefer ones that mention the company name, have about-words, are well-formed
+  const scored = sentences
+    .filter((s) => ABOUT_RE.test(s) && !SKIP_RE.test(s))
+    .map((s) => {
+      let score = 0;
+      if (new RegExp(company.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(s)) score += 3;
+      if (/founded|established|since \d{4}|years? of/i.test(s)) score += 2;
+      if (/award|accolade|gold list|star|recogni|renown/i.test(s)) score += 2;
+      if (/our (mission|vision|team|guests?|story|philosophy)|dedicated|passionate|pride/i.test(s)) score += 1;
+      // Penalise very short or review-like sentences
+      if (s.length < 60) score -= 1;
+      return { s, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const top = scored.slice(0, 2).map((x) => x.s);
+  return top.length ? top.join(" ") : null;
 }
