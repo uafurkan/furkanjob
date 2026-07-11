@@ -326,7 +326,7 @@ async function runPipelineInner(opts: {
   let checkedOrigins: string[] = [];
 
   const emailSearchPromise = (!emails.length && searchWeb)
-    ? findEmails({
+    ? withAiSubBudget(10000, () => findEmails({
         urls: analysis.urls,
         company: analysis.company,
         country: analysis.country.code === "XX" ? "" : analysis.country.name,
@@ -335,7 +335,7 @@ async function runPipelineInner(opts: {
         address: analysis.address,
         phone: analysis.phone,
         isGovernmentOrg: analysis.orgType === "government",
-      })
+      }))
     : Promise.resolve(null);
 
   // Only run a separate aiAssessFit if the combined call failed AND this is a job application.
