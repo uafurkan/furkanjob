@@ -529,6 +529,7 @@ export default function NewApplication() {
         signal: controller.signal,
       });
       const d: GenResult = await safeJson(r);
+      if (r.status === 401) throw new Error("Session expired — please refresh the page and sign in again.");
       if (!r.ok) throw new Error((d as any).error || "Error");
       setRes(d);
       const toVal = (d.emails || []).join(", ");
@@ -600,6 +601,7 @@ export default function NewApplication() {
         body: JSON.stringify({ text, language, visaTypeOverride: visaTypeId }),
       });
       const d: GenResult = await safeJson(r);
+      if (r.status === 401) throw new Error("Session expired — please refresh the page and sign in again.");
       if (!r.ok) throw new Error((d as any).error || "Error");
       setRes(d);
       const parsedDrafts = d.drafts || [{ subject: d.subject, body: d.body, style: "Balanced & Personal" }];
@@ -631,15 +633,16 @@ export default function NewApplication() {
         body: JSON.stringify({ text, language, reasoningEffort: "high" }),
       });
       const d: GenResult = await safeJson(r);
+      if (r.status === 401) throw new Error("Session expired — please refresh the page and sign in again.");
       if (!r.ok) throw new Error((d as any).error || "Error");
       setRes(d);
-      
+
       const parsedDrafts = d.drafts || [{ subject: d.subject, body: d.body, style: "Balanced & Personal" }];
       setCurrentDrafts(parsedDrafts);
       setSelectedDraftIndex(0);
       setFullName(d.fullName || "");
       setContactEmail(d.contactEmail || "");
-      
+
       let initialBody = parsedDrafts[0].body;
       let isSigChecked = signatureChecked;
       try {
