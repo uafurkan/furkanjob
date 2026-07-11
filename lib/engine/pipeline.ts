@@ -211,7 +211,7 @@ export async function runPipeline(opts: {
   // across all of them keeps the whole pipeline within the route's maxDuration even in the
   // worst case (every provider slow/rate-limited) — once the budget is spent, remaining
   // providers are skipped and the caller falls back to the deterministic template.
-  return withAiDeadline(45000, () => runPipelineInner(opts));
+  return withAiDeadline(20000, () => runPipelineInner(opts));
 }
 
 async function runPipelineInner(opts: {
@@ -255,7 +255,7 @@ async function runPipelineInner(opts: {
   let separateFitResult: import("./ai").FitAssessment | null = null;
 
   if (aiEnabled()) {
-    combinedFit = await withAiSubBudget(18000, () =>
+    combinedFit = await withAiSubBudget(8000, () =>
       aiAnalyzeAndFit({ text, profile, tier, lang: requested !== "auto" && validLangs.includes(requested) ? (requested as AppLang) : undefined })
     );
 
@@ -275,7 +275,7 @@ async function runPipelineInner(opts: {
       if (combinedFit.isRecruitmentAgency) analysis.isRecruitmentAgency = true;
     } else {
       // Combined call failed/unusable — fall back to separate sequential calls.
-      const ai = await withAiSubBudget(10000, () => aiAnalyze(text, tier));
+      const ai = await withAiSubBudget(5000, () => aiAnalyze(text, tier));
       if (ai) {
         if (ai.company) {
           const cleaned = cleanCompanyName(ai.company);
@@ -340,7 +340,7 @@ async function runPipelineInner(opts: {
 
   // Only run a separate aiAssessFit if the combined call failed AND this is a job application.
   const separateFitPromise = (!combinedFit && intent !== "study" && aiEnabled())
-    ? withAiSubBudget(10000, () => aiAssessFit({
+    ? withAiSubBudget(5000, () => aiAssessFit({
         text,
         company: analysis.company,
         countryName: analysis.country.name,
@@ -487,7 +487,9 @@ async function runPipelineInner(opts: {
     // significant AI provider load, contributing to gateway timeouts on the Hobby plan. The cover
     // letter is now generated lazily (template immediately; AI version via /api/rewrite-cover-letter
     // when the user opens the Cover Letter tab or clicks "Rewrite").
-    const aiRes = await aiDrafts({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor, opts.reasoningEffort, { orgType, intent }, preferredVisaType);
+    const aiRes = await withAiSubBudget(8000, () =>
+      aiDrafts({ text, analysis: draftAnalysis, profile }, language, tier, authorization, applyFor, opts.reasoningEffort, { orgType, intent }, preferredVisaType)
+    );
     if (aiRes && aiRes.length) {
       drafts = aiRes;
       draftSource = "ai";

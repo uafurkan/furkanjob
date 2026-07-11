@@ -105,7 +105,7 @@ export function aiEnabled(): boolean {
 // instead of the whole request hanging on the first (possibly unresponsive) provider. Kept
 // short enough that a full 6-provider chain can still fail over within one pipeline sub-budget
 // (see withAiSubBudget below) instead of a single slow provider eating the whole stage.
-const PROVIDER_TIMEOUT_MS = 8000;
+const PROVIDER_TIMEOUT_MS = 4000;
 
 // A single API request (e.g. /api/generate) makes several SEQUENTIAL AI calls (analyze, fit
 // assessment, drafts, cover letter, subject variant), and each one independently walks a chain
