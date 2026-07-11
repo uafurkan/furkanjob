@@ -6,23 +6,15 @@
 import { extractEmails } from "./detect";
 
 const UA = "Mozilla/5.0 (compatible; PaplyBot/1.0; +https://paply.me)";
-const TIMEOUT = 12000;
+const TIMEOUT = 4000;
 
-// Contact-related page suffixes to probe in priority order.
+// Contact-related page suffixes to probe in priority order (short list — tried concurrently).
 const CONTACT_PATHS = [
   "/contact",
   "/contact-us",
-  "/contacts",
   "/about",
-  "/about-us",
   "/careers",
   "/jobs",
-  "/work-with-us",
-  "/employment",
-  "/hiring",
-  "/join-us",
-  "/get-in-touch",
-  "/team",
 ];
 
 async function fetchText(url: string): Promise<string> {
@@ -67,23 +59,25 @@ export async function fetchPageText(url: string): Promise<string> {
   return text.slice(0, 8000);
 }
 
-// Scrape a list of URLs + their most-likely contact/careers subpages.
-// Returns all real email addresses found (up to 3 to keep latency low).
+// Scrape a list of URLs + their most-likely contact subpages — concurrently (CONCURRENCY
+// requests in flight at once) so 6 pages finish in ~one timeout window, not 6×timeout.
+const CONCURRENCY = 4;
 export async function scrapeEmailsFromUrls(urls: string[]): Promise<string[]> {
   const candidates = new Set<string>();
-  for (const u of urls.slice(0, 5)) {
+  for (const u of urls.slice(0, 3)) {
     const o = origin(u);
     if (!o) continue;
-    candidates.add(u);
     candidates.add(o);
     for (const path of CONTACT_PATHS) candidates.add(o + path);
   }
+  const list = [...candidates].slice(0, 8); // max 8 pages total
   const found = new Set<string>();
-  for (const url of [...candidates].slice(0, 18)) {
-    const html = await fetchText(url);
-    if (!html) continue;
-    extractEmails(html).forEach((e) => found.add(e));
-    if (found.size >= 3) break;
+  for (let i = 0; i < list.length && found.size < 3; i += CONCURRENCY) {
+    const batch = list.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map((url) => fetchText(url)));
+    for (const html of results) {
+      if (html) extractEmails(html).forEach((e) => found.add(e));
+    }
   }
   return [...found];
 }
