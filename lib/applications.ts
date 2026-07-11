@@ -93,8 +93,18 @@ export function findDuplicateApplication<T extends DuplicateCandidate>(
 
   for (const a of prior) {
     const aEmails = a.recipients.map((r) => r.trim().toLowerCase()).filter(Boolean);
+    // 1. Exact email address → always a duplicate.
     if (aEmails.some((e) => emailSet.has(e))) return a;
-    if (domainSet.size && aEmails.some((e) => domainSet.has(emailDomain(e)))) return a;
+    // 2. Same business domain — but only when company names also match (or either is unknown).
+    //    Guards against false positives for multi-location chains that share a root domain:
+    //    "Gold Leaf Preston" (info.preston@goldleafrestaurant.com.au) is a different branch from
+    //    "Gold Leaf Springvale" (info.springvale@goldleafrestaurant.com.au) — same domain, different locations.
+    if (domainSet.size && aEmails.some((e) => domainSet.has(emailDomain(e)))) {
+      const aNorm = normalizeCompanyName(a.company);
+      // If either side lacks a company name we can't distinguish branches → conservative match.
+      if (!aNorm || !companyKey || aNorm === companyKey) return a;
+    }
+    // 3. Same normalised company name (different domain or no email) → same brand/entity.
     if (companyKey && companyKey === normalizeCompanyName(a.company)) return a;
   }
   return null;
