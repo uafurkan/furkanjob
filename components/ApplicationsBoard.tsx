@@ -3,6 +3,13 @@ import { useState, useCallback, useEffect } from "react";
 import { useT } from "@/components/i18n";
 import { SETTABLE_STATUSES, PIPELINE_STATUSES, STATUS_CLASS, isFollowupDue } from "@/lib/applications";
 
+// Safely parse JSON from a fetch response — returns {} when the server sends HTML (e.g. a 500 page).
+async function safeJson(r: Response): Promise<Record<string, unknown>> {
+  const ct = r.headers.get("content-type") || "";
+  if (!ct.includes("json")) return {};
+  try { return await r.json(); } catch { return {}; }
+}
+
 function EmailFinder({ company, recipients }: { company: string | null; recipients: string[] }) {
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -367,9 +374,9 @@ export default function ApplicationsBoard({ initial, initialSelectedId }: { init
           recordApplication: false,
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (r.status === 402) { setMsg({ kind: "err", text: t("new.limitReached") }); return; }
-      if (!r.ok) throw new Error(d.error || "error");
+      if (!r.ok) throw new Error((d.error as string) || "Send failed — please try again.");
       setApps((prev) => prev.map((x) => x.id === a.id ? { ...x, status: "sent", error: null, sentAt: new Date().toISOString() } : x));
       setMsg({ kind: "ok", text: t("apps.resenOk") });
     } catch (e: any) {
@@ -420,11 +427,11 @@ export default function ApplicationsBoard({ initial, initialSelectedId }: { init
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ applicationId: app.id }),
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "error");
+      const d = await safeJson(r);
+      if (!r.ok) throw new Error((d.error as string) || "Could not load follow-up — please try again.");
       setFu({
-        app, to: (d.to || []).join(", "), subject: d.subject, body: d.body, language: d.language || "en",
-        inReplyToId: d.inReplyToId || null, threadId: d.threadId || null, sending: false,
+        app, to: ((d.to as string[]) || []).join(", "), subject: d.subject as string, body: d.body as string, language: (d.language as string) || "en",
+        inReplyToId: (d.inReplyToId as string | null) || null, threadId: (d.threadId as string | null) || null, sending: false,
       });
     } catch (e: any) {
       setMsg({ kind: "err", text: e.message || t("apps.statusFailed") });
@@ -447,9 +454,9 @@ export default function ApplicationsBoard({ initial, initialSelectedId }: { init
           inReplyToId: fu.inReplyToId, threadId: fu.threadId, recordApplication: false,
         }),
       });
-      const d = await r.json();
+      const d = await safeJson(r);
       if (r.status === 402) { setMsg({ kind: "err", text: t("new.limitReached") }); setFu(null); return; }
-      if (!r.ok) throw new Error(d.error || "error");
+      if (!r.ok) throw new Error((d.error as string) || "Send failed — please try again.");
       setMsg({ kind: "ok", text: t("apps.followupSent") });
       setFu(null);
     } catch (e: any) {

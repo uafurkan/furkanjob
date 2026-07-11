@@ -47,7 +47,7 @@ async function handleSend(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const recipients: string[] = (Array.isArray(body?.to) ? body.to : String(body?.to || "").split(/[,;\s]+/))
-    .map((s: string) => s.trim())
+    .map((s: string) => s.trim().replace(/[.,;:]+$/, "")) // strip trailing punctuation (e.g. "paul@theagency.blue.")
     .filter(Boolean);
   const subject: string = (body?.subject || "").toString();
   const text: string = (body?.body || "").toString();
