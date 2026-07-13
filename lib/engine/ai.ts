@@ -527,13 +527,15 @@ Rules:
   // silently failing extractJson — collapsing every fit assessment to the fitScore:0 fallback.
   const parsed = extractJson<Partial<FitAssessment>>(await complete(prompt, 1100, opts.tier || "free", "low", 0));
   if (!parsed) return null;
-  const clampStr = (a: unknown): string[] =>
+  const clampApply = (a: unknown): string[] =>
+    Array.isArray(a) ? a.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 2) : [];
+  const clampDrop = (a: unknown): string[] =>
     Array.isArray(a) ? a.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4) : [];
   const elig = (parsed.eligibility || {}) as Partial<Eligibility>;
   const status: Eligibility["status"] = elig.status === "blocked" || elig.status === "warning" ? elig.status : "ok";
   return {
-    applyFor: clampStr(parsed.applyFor),
-    droppedRoles: clampStr(parsed.droppedRoles),
+    applyFor: clampApply(parsed.applyFor),
+    droppedRoles: clampDrop(parsed.droppedRoles),
     fitScore: typeof parsed.fitScore === "number" ? Math.max(0, Math.min(100, Math.round(parsed.fitScore))) : 0,
     fitSummary: typeof parsed.fitSummary === "string" ? parsed.fitSummary.trim().slice(0, 300) : "",
     eligibility: { status, note: typeof elig.note === "string" ? elig.note.trim().slice(0, 300) : "" },
@@ -612,7 +614,7 @@ Return STRICT JSON ONLY — exactly these keys, no prose:
 }
 
 Key rules:
-- company: short proper noun/brand only. Never a sentence, perk, nav element, or phone number. If a vanity phone number is used as a display name (e.g. "1300 4 KITCHENS"), extract only the word-based brand (e.g. "4Kitchens").
+- company: short proper noun/brand only. Never a sentence, perk, contact-form header ("We love questions...", "Get in touch", "Come say g'day", "Send us a message"), nav element, or phone number. If a vanity phone number is used as a display name (e.g. "1300 4 KITCHENS"), extract only the word-based brand (e.g. "4Kitchens"). Look for the real brand in the copyright footer, the logo alt text, or the domain — not in form/CTA headings.
 - countryCode: infer from TLD (.co.nz→NZ, .com.au→AU), phone, address, city names.
 - positions: prefer advertised vacancies; otherwise infer from org type.
 - applyFor: must be realistic for this org. Prefer applicant's own role wording. Return [] if the org's industry means it would never employ the applicant's target roles (e.g. hospitality roles at a kitchen renovation studio).
@@ -626,14 +628,16 @@ Key rules:
   if (!parsed) return null;
 
   const langs = APP_LANGS.map((l) => l.code) as string[];
-  const clampStr = (a: unknown): string[] =>
+  const clampApply2 = (a: unknown): string[] =>
+    Array.isArray(a) ? a.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 2) : [];
+  const clampDrop2 = (a: unknown): string[] =>
     Array.isArray(a) ? a.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, 4) : [];
   const elig = (parsed.eligibility || {}) as Partial<Eligibility>;
   const eligStatus: Eligibility["status"] = elig.status === "blocked" || elig.status === "warning" ? elig.status : "ok";
   const orgType = typeof parsed.orgType === "string" && (VALID_ORG_TYPES as string[]).includes(parsed.orgType) ? (parsed.orgType as OrgType) : undefined;
 
-  const applyFor = clampStr(parsed.applyFor);
-  const droppedRoles = clampStr(parsed.droppedRoles);
+  const applyFor = clampApply2(parsed.applyFor);
+  const droppedRoles = clampDrop2(parsed.droppedRoles);
   // Empty applyFor is valid (industry mismatch) — only fall back if the whole result is unusable
   if (!parsed.company && !parsed.countryCode) return null;
 
@@ -1072,10 +1076,12 @@ Return STRICT JSON only:
 }
 
 === HARD RULES ===
+- COMPANY NAME RULE: The organization's name is "${analysis.company}" (shown under THE ORGANIZATION above). Use THIS EXACT NAME when referring to the employer in the subject and body. Do NOT substitute any contact-form header ("We love questions", "Get in touch", "Come say g'day"…), marketing slogan, page section title, or any other phrase from the page text — those are UI copy, not the business name.
 - Apply ONLY for the role(s) listed under "Applying specifically for" — do NOT mention or apply for any other role. The subject line names only these role(s).
 - Subject: plain text, NO "SUBJECT:" prefix. Make it specific to the organization and role — never generic like "Job Application".
 - Write in professional, natural paragraphs — no bullet points, no numbered lists.
 - Reference the organization by its correct name and at least one concrete, true detail from the page text. Show you actually know what it does.
+- COLD OUTREACH RULE: Unless the page text EXPLICITLY advertises a vacancy (clear signals: "Apply Now" button, "Current Openings", "We are hiring for [role]", a job-listing page with duties and requirements) — treat this as a SPECULATIVE/COLD application to an organization's own website. In that case, NEVER write "I was delighted to discover the [role] position" or "I noticed you are hiring for" or any phrasing that implies the employer has listed or is currently advertising this vacancy. Use speculative language instead: "I am writing to express my interest in joining [Company] as a [role]" / "I would welcome the opportunity to contribute as a [role]" / "I am reaching out to enquire about potential [role] opportunities." This rule also applies to the subject — do NOT write "[Role] Application" (implies a listing); write "Expression of Interest — [Role] | [Company]" or "[Company] — [Role] Interest" or a similarly speculative framing.
 - NO "Sincerely"/"Kind regards"/any closing salutation, NO applicant name, email, phone, or signature block at the end — a Gmail signature is appended automatically.
 - Invent NOTHING — no email addresses, no qualifications, licenses, or facts not supported by the page or applicant profile. No clichés ("I am a passionate individual"), no fake urgency, no filler phrases.
 - STATS RULE: Never invent statistics, percentages, ratings, or quantified achievements (e.g. "98% satisfaction", "reduced closing time by 20%") unless they appear verbatim in the CV extract. Real experience without numbers is fine — describe it without fabricating metrics.
