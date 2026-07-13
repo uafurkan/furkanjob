@@ -558,7 +558,7 @@ function cleanSegment(clean: string): string | null {
   // Remove common suffixes like "all rights reserved", "ltd", etc.
   s = s
     .replace(/\b(all rights reserved|ltd|limited|inc|pty|co|corp|corporation|wdw|staah)\b.*/i, "")
-    .replace(/[^a-zA-Z0-9\s&]/g, "") // Keep alphanumeric, spaces, and ampersand
+    .replace(/[^a-zA-Z0-9\s&'']/g, "") // Keep alphanumeric, spaces, ampersand, and apostrophes (e.g. Matso's)
     .replace(/\s+/g, " ")
     .trim();
     

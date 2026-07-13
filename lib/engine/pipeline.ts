@@ -148,8 +148,11 @@ function looksLikeBrandName(name: string): boolean {
 function singleWordGuessIsGrounded(name: string, urls: string[]): boolean {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length !== 1) return true; // multi-word names are already a stronger signal
-  const word = words[0].toLowerCase();
-  return domainCoreWords(urls).includes(word);
+  // Normalize apostrophes so "Matso's" matches domain core "matsos"
+  const word = words[0].toLowerCase().replace(/['']/g, "");
+  const wordNoS = word.endsWith("s") ? word.slice(0, -1) : "";
+  const cores = domainCoreWords(urls);
+  return cores.includes(word) || (wordNoS.length >= 3 && cores.includes(wordNoS));
 }
 
 export type PipelineResult = {

@@ -614,7 +614,7 @@ Return STRICT JSON ONLY — exactly these keys, no prose:
 }
 
 Key rules:
-- company: short proper noun/brand only. Never a sentence, perk, nav element, or phone number. If a vanity phone number is used as a display name (e.g. "1300 4 KITCHENS"), extract only the word-based brand (e.g. "4Kitchens").
+- company: short proper noun/brand only. Never a sentence, perk, contact-form header ("We love questions...", "Get in touch", "Come say g'day", "Send us a message"), nav element, or phone number. If a vanity phone number is used as a display name (e.g. "1300 4 KITCHENS"), extract only the word-based brand (e.g. "4Kitchens"). Look for the real brand in the copyright footer, the logo alt text, or the domain — not in form/CTA headings.
 - countryCode: infer from TLD (.co.nz→NZ, .com.au→AU), phone, address, city names.
 - positions: prefer advertised vacancies; otherwise infer from org type.
 - applyFor: must be realistic for this org. Prefer applicant's own role wording. Return [] if the org's industry means it would never employ the applicant's target roles (e.g. hospitality roles at a kitchen renovation studio).
@@ -1076,6 +1076,7 @@ Return STRICT JSON only:
 }
 
 === HARD RULES ===
+- COMPANY NAME RULE: The organization's name is "${analysis.company}" (shown under THE ORGANIZATION above). Use THIS EXACT NAME when referring to the employer in the subject and body. Do NOT substitute any contact-form header ("We love questions", "Get in touch", "Come say g'day"…), marketing slogan, page section title, or any other phrase from the page text — those are UI copy, not the business name.
 - Apply ONLY for the role(s) listed under "Applying specifically for" — do NOT mention or apply for any other role. The subject line names only these role(s).
 - Subject: plain text, NO "SUBJECT:" prefix. Make it specific to the organization and role — never generic like "Job Application".
 - Write in professional, natural paragraphs — no bullet points, no numbered lists.
