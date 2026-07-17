@@ -449,6 +449,84 @@ export async function getCvData(cvId: string): Promise<Buffer | null> {
   }
 }
 
+// ---------- Country Cover Letters ----------
+async function ensureCountryCoverLettersTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS country_cover_letters (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      country_code TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      data TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE(user_id, country_code)
+    )
+  `;
+}
+
+export type CountryCoverLetter = {
+  id: string; userId: string; countryCode: string;
+  filename: string; mime: string; size: number; createdAt: string;
+};
+
+function mapCcl(r: Record<string, unknown>): CountryCoverLetter {
+  return {
+    id: r.id as string, userId: r.user_id as string, countryCode: r.country_code as string,
+    filename: r.filename as string, mime: r.mime as string,
+    size: Number(r.size), createdAt: r.created_at as string,
+  };
+}
+
+export async function upsertCountryCoverLetter(data: {
+  userId: string; countryCode: string; filename: string; mime: string; size: number; dataB64: string;
+}): Promise<CountryCoverLetter> {
+  await ensureCountryCoverLettersTable();
+  const rows = await sql`
+    INSERT INTO country_cover_letters (id, user_id, country_code, filename, mime, size, data, created_at)
+    VALUES (${id()}, ${data.userId}, ${data.countryCode}, ${data.filename}, ${data.mime}, ${data.size}, ${data.dataB64}, ${now()})
+    ON CONFLICT (user_id, country_code) DO UPDATE SET
+      filename=EXCLUDED.filename, mime=EXCLUDED.mime, size=EXCLUDED.size, data=EXCLUDED.data, created_at=${now()}
+    RETURNING id, user_id, country_code, filename, mime, size, created_at
+  `;
+  return mapCcl(rows[0] as Record<string, unknown>);
+}
+
+export async function listCountryCoverLetters(userId: string): Promise<CountryCoverLetter[]> {
+  await ensureCountryCoverLettersTable();
+  const rows = await sql`
+    SELECT id, user_id, country_code, filename, mime, size, created_at
+    FROM country_cover_letters WHERE user_id=${userId} ORDER BY country_code ASC
+  `;
+  return rows.map((r) => mapCcl(r as Record<string, unknown>));
+}
+
+export async function getCountryCoverLetter(userId: string, countryCode: string): Promise<CountryCoverLetter | null> {
+  await ensureCountryCoverLettersTable();
+  const rows = await sql`
+    SELECT id, user_id, country_code, filename, mime, size, created_at
+    FROM country_cover_letters WHERE user_id=${userId} AND country_code=${countryCode} LIMIT 1
+  `;
+  return rows[0] ? mapCcl(rows[0] as Record<string, unknown>) : null;
+}
+
+export async function deleteCountryCoverLetter(clId: string, userId: string): Promise<void> {
+  await ensureCountryCoverLettersTable();
+  await sql`DELETE FROM country_cover_letters WHERE id=${clId} AND user_id=${userId}`;
+}
+
+export async function getCountryCoverLetterData(clId: string, userId?: string): Promise<Buffer | null> {
+  await ensureCountryCoverLettersTable();
+  try {
+    const rows = userId
+      ? await sql`SELECT data FROM country_cover_letters WHERE id=${clId} AND user_id=${userId} LIMIT 1`
+      : await sql`SELECT data FROM country_cover_letters WHERE id=${clId} LIMIT 1`;
+    const b64 = rows[0]?.data as string | null | undefined;
+    return b64 ? Buffer.from(b64, "base64") : null;
+  } catch { return null; }
+}
+
 // ---------- Documents (extra attachments: visa proof, certificates, diplomas…) ----------
 async function ensureDocumentsTable() {
   await sql`

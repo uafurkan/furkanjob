@@ -69,6 +69,8 @@ type GenResult = {
   companySnippet?: string | null;
   salary?: { min: number; max: number; currency: string; period: "hourly" | "annual" } | null;
   preferredVisaType?: string | null;
+  countryClId?: string | null;
+  countryClFilename?: string | null;
   fetchedUrl?: boolean;
   duplicate?: { id: string; company: string | null; when: string } | null;
   cv: { filename: string } | null;
@@ -692,6 +694,8 @@ export default function NewApplication() {
           language: p.meta.language,
           includeCoverLetter,
           coverLetterBody: includeCoverLetter ? coverLetterBody : undefined,
+          coverLetterId: includeCoverLetter && p.meta.countryClId ? p.meta.countryClId : undefined,
+          coverLetterFilename: includeCoverLetter && p.meta.countryClFilename ? p.meta.countryClFilename : undefined,
           ccSelf,
           documentIds: selectedDocs,
           cvId: selectedCv || undefined,
@@ -2037,6 +2041,12 @@ export default function NewApplication() {
                 {t("new.coverLetter")}
               </span>
             </label>
+
+            {includeCoverLetter && res?.countryClId && res?.countryClFilename && (
+              <div className="notice notice-ok" style={{ fontSize: "var(--text-12)", padding: "var(--space-2) var(--space-3)" }}>
+                {t("ccl.activeNotice").replace("{country}", res.country || res.countryCode || "").replace("{filename}", res.countryClFilename)}
+              </div>
+            )}
 
             <label className="row gap-2" style={{ alignItems: "center", cursor: "pointer", userSelect: "none" }}>
               <input

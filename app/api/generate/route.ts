@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { getProfile, getUsage, getDefaultCv, listApplications } from "@/lib/db";
+import { getProfile, getUsage, getDefaultCv, listApplications, getCountryCoverLetter } from "@/lib/db";
 import { toEngineProfile } from "@/lib/profile-adapter";
 import { enrichProfileWithDocuments } from "@/lib/profile-context";
 import { findDuplicateApplication } from "@/lib/applications";
@@ -107,6 +107,17 @@ async function handleGenerate(req: Request) {
     if (hit) duplicate = { id: hit.id, company: hit.company ?? null, when: hit.createdAt };
   } catch {}
 
+  // Check if user has a pre-uploaded cover letter for the detected country.
+  let countryClId: string | null = null;
+  let countryClFilename: string | null = null;
+  const detectedCode = result.analysis.country.code;
+  if (detectedCode && detectedCode !== "XX") {
+    try {
+      const cl = await getCountryCoverLetter(user.id, detectedCode);
+      if (cl) { countryClId = cl.id; countryClFilename = cl.filename; }
+    } catch {}
+  }
+
   return NextResponse.json({
     company: result.analysis.company,
     // Don't surface the grammatical fallback ("the destination country") as a country label.
@@ -132,6 +143,8 @@ async function handleGenerate(req: Request) {
     drafts: result.drafts,
     coverLetterBody: result.coverLetterBody || null,
     coverLetterSource: result.coverLetterSource,
+    countryClId,
+    countryClFilename,
     fullName: profile?.fullName || user.name || "",
     contactEmail: profile?.contactEmail || user.email || "",
     includeSignature: profile?.includeSignature || false,

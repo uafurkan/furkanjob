@@ -1,9 +1,10 @@
 import { getCurrentUser } from "@/lib/session";
-import { getProfile, getDefaultCv, getDefaultEmailAccount, listDocuments, listCvs } from "@/lib/db";
+import { getProfile, getDefaultCv, getDefaultEmailAccount, listDocuments, listCvs, listCountryCoverLetters } from "@/lib/db";
 import { googleEnabled } from "@/lib/auth";
 import { DEFAULT_PROFILE } from "@/lib/engine/rules";
 import ProfilePageClient from "@/components/ProfilePageClient";
 import DocumentsManager from "@/components/DocumentsManager";
+import CountryCoverLetterManager from "@/components/CountryCoverLetterManager";
 import AccountData from "@/components/AccountData";
 import { computeProfileScore } from "@/lib/profile-score";
 import { getT } from "@/lib/i18n-server";
@@ -13,12 +14,13 @@ export const metadata = { title: "Profile" };
 export default async function ProfilePage() {
   const { t } = getT();
   const user = (await getCurrentUser())!;
-  const [profile, cv, account, allDocs, cvs] = await Promise.all([
+  const [profile, cv, account, allDocs, cvs, ccls] = await Promise.all([
     getProfile(user.id),
     getDefaultCv(user.id),
     getDefaultEmailAccount(user.id),
     listDocuments(user.id),
     listCvs(user.id),
+    listCountryCoverLetters(user.id),
   ]);
   const cvList = cvs.map((c) => ({ id: c.id, filename: c.filename, isDefault: c.isDefault }));
   const libraryDocs = allDocs
@@ -80,6 +82,10 @@ export default async function ProfilePage() {
       />
 
       <DocumentsManager initial={libraryDocs} />
+
+      <CountryCoverLetterManager
+        initial={ccls.map((c) => ({ id: c.id, countryCode: c.countryCode, filename: c.filename, size: c.size }))}
+      />
 
       <AccountData />
     </div>

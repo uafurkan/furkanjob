@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentAuth } from "@/lib/session";
 import {
   getProfile, getDefaultCv, getCvForUser, getCvData, getDefaultEmailAccount, updateEmailAccountTokens,
-  createApplication, incrementUsage, getUsage, getDocumentsForAttach,
+  createApplication, incrementUsage, getUsage, getDocumentsForAttach, getCountryCoverLetterData,
 } from "@/lib/db";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { isOverLimit } from "@/lib/plans";
@@ -118,22 +118,41 @@ async function handleSend(req: Request) {
 
   // Optional cover letter DOCX
   const includeCoverLetter = body?.includeCoverLetter === true;
+  // coverLetterId: pre-uploaded country cover letter to use instead of building one.
+  const coverLetterId: string | null = body?.coverLetterId ? String(body.coverLetterId) : null;
   let coverLetterAttached = false;
   if (includeCoverLetter) {
     try {
-      const applicantName = profile?.fullName || user.name || "Applicant";
-      const applicantEmail = profile?.contactEmail || user.email || "";
-      const company = (body?.company as string | undefined) || "the company";
-      const language = (body?.language as string | undefined) || "en";
-      const clBody = (body?.coverLetterBody as string | undefined) || text;
-      const docxBuf = await buildCoverLetterDocx({ applicantName, applicantEmail, company, body: clBody, language });
-      const safeName = (applicantName.replace(/\s+/g, "_") || "Applicant") + "_cover_letter.docx";
-      attachments.push({
-        filename: safeName,
-        content: docxBuf,
-        mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
-      coverLetterAttached = true;
+      if (coverLetterId) {
+        // Use pre-uploaded country-specific cover letter (owner verified by getCountryCoverLetterData).
+        const clBytes = await getCountryCoverLetterData(coverLetterId, user.id);
+        if (clBytes) {
+          const applicantName = profile?.fullName || user.name || "Applicant";
+          const safeName = body?.coverLetterFilename
+            ? String(body.coverLetterFilename)
+            : (applicantName.replace(/\s+/g, "_") || "Applicant") + "_cover_letter.docx";
+          attachments.push({
+            filename: safeName,
+            content: clBytes,
+            mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          });
+          coverLetterAttached = true;
+        }
+      } else {
+        const applicantName = profile?.fullName || user.name || "Applicant";
+        const applicantEmail = profile?.contactEmail || user.email || "";
+        const company = (body?.company as string | undefined) || "the company";
+        const language = (body?.language as string | undefined) || "en";
+        const clBody = (body?.coverLetterBody as string | undefined) || text;
+        const docxBuf = await buildCoverLetterDocx({ applicantName, applicantEmail, company, body: clBody, language });
+        const safeName = (applicantName.replace(/\s+/g, "_") || "Applicant") + "_cover_letter.docx";
+        attachments.push({
+          filename: safeName,
+          content: docxBuf,
+          mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+        coverLetterAttached = true;
+      }
     } catch (e) {
       console.error("cover letter build failed:", e);
     }

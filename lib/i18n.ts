@@ -312,6 +312,13 @@ const en: Dict = {
   "bulk.status.failed": "Failed",
   "bulk.status.skipped": "Needs review",
 
+  "ccl.title": "Country cover letters",
+  "ccl.note": "Upload a pre-written cover letter for a specific country. When you apply to a company in that country, paply attaches your file instead of generating one.",
+  "ccl.country": "Country",
+  "ccl.upload": "Upload cover letter",
+  "ccl.uploaded": "Cover letter saved.",
+  "ccl.activeNotice": "Using your {country} cover letter: {filename}",
+
   "doc.title": "My documents",
   "doc.note": "Upload once — diplomas, certificates, experience letters. On each application you choose which ones to attach alongside your CV.",
   "doc.type": "Document type",
@@ -875,6 +882,13 @@ const tr: Dict = {
   "bulk.status.sent": "Gönderildi",
   "bulk.status.failed": "Başarısız",
   "bulk.status.skipped": "Kontrol gerek",
+
+  "ccl.title": "Ülkeye özel ön yazılar",
+  "ccl.note": "Belirli bir ülke için önceden yazılmış ön yazı yükle. O ülkedeki şirketlere başvururken paply üretmek yerine senin dosyanı ekler.",
+  "ccl.country": "Ülke",
+  "ccl.upload": "Ön yazı yükle",
+  "ccl.uploaded": "Ön yazı kaydedildi.",
+  "ccl.activeNotice": "{country} ön yazın kullanılıyor: {filename}",
 
   "doc.title": "Belgelerim",
   "doc.note": "Bir kez yükle — diploma, sertifika, deneyim belgesi. Her başvuruda CV'nin yanına hangilerinin ekleneceğini sen seçersin.",
