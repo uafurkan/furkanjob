@@ -7,7 +7,7 @@ import ProfileForm from "@/components/ProfileForm";
 import OnboardingNav from "@/components/nav/OnboardingNav";
 import { getT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Setup" };
+export const metadata = { title: "Setup", robots: { index: false, follow: false } };
 
 export default async function OnboardingPage() {
   const user = await getCurrentUser();

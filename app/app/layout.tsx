@@ -5,6 +5,10 @@ import { isAdminEmail } from "@/lib/admin";
 import AppNav from "@/components/nav/AppNav";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 
+// Private, auth-gated area: keep it out of search indexes (robots.txt alone
+// doesn't prevent a disallowed URL from being indexed by reference).
+export const metadata = { robots: { index: false, follow: false } };
+
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/signin");

@@ -4,7 +4,11 @@ import { googleEnabled } from "@/lib/auth";
 import SignInForm from "@/components/auth/SignInForm";
 import { getT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Sign in" };
+export const metadata = {
+  title: "Sign in",
+  description: "Sign in to paply and start sending visa-sponsorship job applications with your CV.",
+  alternates: { canonical: "/signin" },
+};
 
 export default function SignInPage() {
   const { t } = getT();

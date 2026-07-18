@@ -3,8 +3,9 @@ import { LangToggle } from "@/components/i18n";
 import { getLang } from "@/lib/i18n-server";
 
 export const metadata = {
-  title: "Terms of Service — paply",
+  title: "Terms of Service",
   description: "The terms governing your use of paply.",
+  alternates: { canonical: "/terms" },
 };
 
 const UPDATED = "2026-06-25";

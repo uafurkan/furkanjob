@@ -3,8 +3,9 @@ import { LangToggle } from "@/components/i18n";
 import { getLang } from "@/lib/i18n-server";
 
 export const metadata = {
-  title: "Privacy Policy — paply",
+  title: "Privacy Policy",
   description: "How paply collects, uses, and protects your data.",
+  alternates: { canonical: "/privacy" },
 };
 
 const UPDATED = "2026-06-25";

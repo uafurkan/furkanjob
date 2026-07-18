@@ -7,6 +7,13 @@ import StepsScene from "@/components/StepsScene";
 import StatStrip from "@/components/StatStrip";
 import HeaderAuthDropdown from "@/components/nav/HeaderAuthDropdown";
 import InstagramLink from "@/components/InstagramLink";
+import type { Metadata } from "next";
+
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || "https://paply.me";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function Landing() {
   const { t } = getT();
@@ -36,8 +43,54 @@ export default async function Landing() {
     { n: t("landing.step3.n"), title: t("landing.step3.t"), d: t("landing.step3.d") },
   ];
 
+  // Structured data for rich results: app + org + site + the on-page FAQ (kept in
+  // sync with the rendered content — Google requires JSON-LD to match visible text).
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${BASE}/#org`,
+        name: "Veor",
+        url: BASE,
+        logo: `${BASE}/icons/paply-square-512.png`,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${BASE}/#website`,
+        name: "paply",
+        url: BASE,
+        publisher: { "@id": `${BASE}/#org` },
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${BASE}/#app`,
+        name: "paply",
+        url: BASE,
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        description: t("landing.sub"),
+        offers: [
+          { "@type": "Offer", name: "Free", price: "0", priceCurrency: "EUR" },
+          { "@type": "Offer", name: "Pro", price: "12", priceCurrency: "EUR" },
+        ],
+        publisher: { "@id": `${BASE}/#org` },
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${BASE}/#faq`,
+        mainEntity: faqs.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      },
+    ],
+  };
+
   return (
     <main className="landing">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="site-header glass">
         <Link href="/" className="brand"><span className="brand-dot" /> paply</Link>
         <div className="topbar-right">
