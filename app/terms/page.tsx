@@ -9,7 +9,7 @@ export const metadata = {
 };
 
 const UPDATED = "2026-06-25";
-const CONTACT = "privacy@paply.me";
+const CONTACT = "help@paply.me";
 
 export default function TermsPage() {
   const lang = getLang();
